@@ -1,0 +1,21 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // User-specific storage paths
+    match /users/{userId}/{allPaths=**} {
+      // Allow authenticated users to manage their own files
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Legacy images folder - allow authenticated users to manage
+    match /images/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Allow public read access to all files (for serving images)
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+  }
+}

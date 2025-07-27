@@ -1,0 +1,545 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import DataTable from '@/components/shared/DataTable';
+import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import Modal from '@/components/shared/Modal';
+import { 
+  Users, 
+  Shield, 
+  ShieldCheck, 
+  Crown, 
+  User, 
+  Mail, 
+  Calendar,
+  Settings,
+  AlertTriangle,
+  Check,
+  X
+} from 'lucide-react';
+import { format } from 'date-fns';
+import toast from 'react-hot-toast';
+
+export default function UserManagementPage() {
+  const { currentUser, getAuthToken } = useAuth();
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [editModal, setEditModal] = useState({ isOpen: false, user: null });
+  const [updating, setUpdating] = useState(false);
+
+  // Check if current user is admin
+  const isAdmin = currentUser?.role === 'admin';
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchUsers();
+    } else {
+      setLoading(false);
+      setError('Access denied: Admin privileges required');
+    }
+  }, [isAdmin]);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const token = await getAuthToken();
+      const response = await fetch('/api/admin/users', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      setUsers(data.users || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setError(error.message);
+      toast.error('Failed to fetch users');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateUser = async (userId, updates) => {
+    try {
+      setUpdating(true);
+      
+      const token = await getAuthToken();
+      const response = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId,
+          ...updates
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      toast.success('User updated successfully');
+      setEditModal({ isOpen: false, user: null });
+      fetchUsers(); // Refresh the list
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error(error.message || 'Failed to update user');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const toggleMultiBlogAccess = async (user) => {
+    const newStatus = !user.canManageMultipleBlogs;
+    await handleUpdateUser(user.uid, { 
+      canManageMultipleBlogs: newStatus 
+    });
+  };
+
+  const toggleAdminRole = async (user) => {
+    const newRole = user.role === 'admin' ? 'user' : 'admin';
+    await handleUpdateUser(user.uid, { 
+      role: newRole 
+    });
+  };
+
+  const columns = [
+    {
+      key: 'email',
+      title: 'User',
+      render: (value, row) => (
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+            <User className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <div className="text-sm font-medium text-foreground truncate">
+              {row.displayName || 'No name'}
+            </div>
+            <div className="text-xs text-muted-foreground truncate">
+              {value}
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'role',
+      title: 'Role',
+      render: (value, row) => (
+        <div className="flex items-center space-x-2">
+          {value === 'admin' ? (
+            <>
+              <Crown className="h-4 w-4 text-amber-600" />
+              <span className="badge bg-amber-100 text-amber-800 border-amber-200">
+                Admin
+              </span>
+            </>
+          ) : (
+            <>
+              <User className="h-4 w-4 text-gray-600" />
+              <span className="badge badge-secondary">
+                User
+              </span>
+            </>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'canManageMultipleBlogs',
+      title: 'Multi-Blog Access',
+      render: (value, row) => (
+        <div className="flex items-center space-x-2">
+          {value ? (
+            <>
+              <ShieldCheck className="h-4 w-4 text-green-600" />
+              <span className="badge badge-success">
+                Enabled
+              </span>
+            </>
+          ) : (
+            <>
+              <Shield className="h-4 w-4 text-gray-600" />
+              <span className="badge badge-secondary">
+                Disabled
+              </span>
+            </>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'emailVerified',
+      title: 'Email Status',
+      render: (value) => (
+        <div className="flex items-center space-x-2">
+          {value ? (
+            <>
+              <Check className="h-4 w-4 text-green-600" />
+              <span className="text-sm text-green-600">Verified</span>
+            </>
+          ) : (
+            <>
+              <X className="h-4 w-4 text-red-600" />
+              <span className="text-sm text-red-600">Unverified</span>
+            </>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'creationTime',
+      title: 'Created',
+      render: (value) => (
+        <span className="text-sm text-foreground">
+          {value ? format(new Date(value), 'MMM dd, yyyy') : 'N/A'}
+        </span>
+      )
+    },
+    {
+      key: 'actions',
+      title: 'Actions',
+      sortable: false,
+      render: (_, row) => (
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setEditModal({ isOpen: true, user: row })}
+            className="text-primary p-2 rounded-md hover:bg-primary/10 transition-colors duration-200"
+            title="Edit user"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+          
+          {/* Quick toggle buttons */}
+          <button
+            onClick={() => toggleMultiBlogAccess(row)}
+            disabled={updating}
+            className={`p-2 rounded-md transition-colors duration-200 ${
+              row.canManageMultipleBlogs 
+                ? 'text-green-600 hover:bg-green-50' 
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+            title={`${row.canManageMultipleBlogs ? 'Disable' : 'Enable'} multi-blog access`}
+          >
+            {row.canManageMultipleBlogs ? <ShieldCheck className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
+          </button>
+          
+          {row.uid !== currentUser?.uid && (
+            <button
+              onClick={() => toggleAdminRole(row)}
+              disabled={updating}
+              className={`p-2 rounded-md transition-colors duration-200 ${
+                row.role === 'admin' 
+                  ? 'text-amber-600 hover:bg-amber-50' 
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+              title={`${row.role === 'admin' ? 'Remove admin' : 'Make admin'}`}
+            >
+              {row.role === 'admin' ? <Crown className="h-4 w-4" /> : <User className="h-4 w-4" />}
+            </button>
+          )}
+        </div>
+      )
+    }
+  ];
+
+  if (!isAdmin) {
+    return (
+      <div className="section-spacing">
+        <div className="card border-red-200 bg-red-50">
+          <div className="card-content p-8 text-center">
+            <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
+            <h2 className="text-2xl font-bold text-red-800 mb-4">Access Denied</h2>
+            <p className="text-lg text-red-700 mb-6">
+              You need administrator privileges to access user management.
+            </p>
+            <p className="text-base text-red-600">
+              Contact your system administrator if you believe you should have access to this page.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="section-spacing">
+        <div className="page-header">
+          <h1 className="page-title">User Management</h1>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <LoadingSpinner size="lg" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="section-spacing">
+        <div className="page-header">
+          <h1 className="page-title">User Management</h1>
+        </div>
+        <div className="card border-red-200 bg-red-50">
+          <div className="card-content p-8 text-center">
+            <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
+            <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Users</h3>
+            <p className="text-red-700 mb-6">{error}</p>
+            <button onClick={fetchUsers} className="btn-secondary">
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="section-spacing">
+      <div className="page-header">
+        <h1 className="page-title">User Management</h1>
+        <p className="page-description">
+          Manage user roles and multi-blog access permissions
+        </p>
+      </div>
+
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="card border-blue-200 bg-blue-50">
+          <div className="card-content p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-600 mb-2">Total Users</p>
+                <p className="text-3xl font-bold text-blue-900">{users.length}</p>
+              </div>
+              <Users className="h-8 w-8 text-blue-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="card border-amber-200 bg-amber-50">
+          <div className="card-content p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-amber-600 mb-2">Administrators</p>
+                <p className="text-3xl font-bold text-amber-900">
+                  {users.filter(u => u.role === 'admin').length}
+                </p>
+              </div>
+              <Crown className="h-8 w-8 text-amber-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="card border-green-200 bg-green-50">
+          <div className="card-content p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-green-600 mb-2">Multi-Blog Users</p>
+                <p className="text-3xl font-bold text-green-900">
+                  {users.filter(u => u.canManageMultipleBlogs).length}
+                </p>
+              </div>
+              <ShieldCheck className="h-8 w-8 text-green-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="card border-purple-200 bg-purple-50">
+          <div className="card-content p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-purple-600 mb-2">Verified Emails</p>
+                <p className="text-3xl font-bold text-purple-900">
+                  {users.filter(u => u.emailVerified).length}
+                </p>
+              </div>
+              <Mail className="h-8 w-8 text-purple-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Users Table */}
+      <div className="card">
+        <div className="card-content p-0">
+          <DataTable
+            data={users}
+            columns={columns}
+            searchable={true}
+            sortable={true}
+            pagination={true}
+            pageSize={15}
+          />
+        </div>
+      </div>
+
+      {/* Edit User Modal */}
+      <Modal
+        isOpen={editModal.isOpen}
+        onClose={() => setEditModal({ isOpen: false, user: null })}
+        title={`Edit User: ${editModal.user?.email}`}
+        size="md"
+      >
+        {editModal.user && (
+          <UserEditForm
+            user={editModal.user}
+            onSave={handleUpdateUser}
+            onCancel={() => setEditModal({ isOpen: false, user: null })}
+            updating={updating}
+            currentUserId={currentUser?.uid}
+          />
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+// User Edit Form Component
+function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
+  const [formData, setFormData] = useState({
+    role: user.role || 'user',
+    canManageMultipleBlogs: user.canManageMultipleBlogs || false
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(user.uid, formData);
+  };
+
+  const isCurrentUser = user.uid === currentUserId;
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* User Info */}
+      <div className="p-4 bg-muted/30 rounded-lg">
+        <div className="flex items-center space-x-3 mb-3">
+          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+            <User className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <div className="font-medium text-foreground">
+              {user.displayName || 'No display name'}
+            </div>
+            <div className="text-sm text-muted-foreground">{user.email}</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="font-medium">Created:</span>
+            <div className="text-muted-foreground">
+              {user.creationTime ? format(new Date(user.creationTime), 'MMM dd, yyyy') : 'N/A'}
+            </div>
+          </div>
+          <div>
+            <span className="font-medium">Email Status:</span>
+            <div className={user.emailVerified ? 'text-green-600' : 'text-red-600'}>
+              {user.emailVerified ? 'Verified' : 'Unverified'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Role Selection */}
+      <div>
+        <label className="block text-base font-medium text-foreground mb-4">
+          User Role
+        </label>
+        <div className="space-y-3">
+          <label className="flex items-center space-x-3">
+            <input
+              type="radio"
+              name="role"
+              value="user"
+              checked={formData.role === 'user'}
+              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
+              disabled={updating || isCurrentUser}
+              className="w-4 h-4 text-primary"
+            />
+            <div className="flex items-center space-x-2">
+              <User className="h-4 w-4 text-gray-600" />
+              <span>Regular User</span>
+            </div>
+          </label>
+          <label className="flex items-center space-x-3">
+            <input
+              type="radio"
+              name="role"
+              value="admin"
+              checked={formData.role === 'admin'}
+              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
+              disabled={updating || isCurrentUser}
+              className="w-4 h-4 text-primary"
+            />
+            <div className="flex items-center space-x-2">
+              <Crown className="h-4 w-4 text-amber-600" />
+              <span>Administrator</span>
+            </div>
+          </label>
+        </div>
+        {isCurrentUser && (
+          <p className="text-sm text-muted-foreground mt-2">
+            You cannot change your own role
+          </p>
+        )}
+      </div>
+
+      {/* Multi-Blog Access */}
+      <div>
+        <label className="block text-base font-medium text-foreground mb-4">
+          Multi-Blog Access
+        </label>
+        <label className="flex items-center space-x-3">
+          <input
+            type="checkbox"
+            checked={formData.canManageMultipleBlogs}
+            onChange={(e) => setFormData(prev => ({ ...prev, canManageMultipleBlogs: e.target.checked }))}
+            disabled={updating}
+            className="w-4 h-4 text-primary"
+          />
+          <div className="flex items-center space-x-2">
+            <ShieldCheck className="h-4 w-4 text-green-600" />
+            <span>Allow user to manage multiple blogs</span>
+          </div>
+        </label>
+        <p className="text-sm text-muted-foreground mt-2">
+          When enabled, this user can create and manage multiple blogs instead of being limited to one.
+        </p>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end space-x-4 pt-4 border-t border-border">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={updating}
+          className="btn-secondary"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={updating}
+          className="btn-primary"
+        >
+          {updating ? 'Updating...' : 'Save Changes'}
+        </button>
+      </div>
+    </form>
+  );
+}
