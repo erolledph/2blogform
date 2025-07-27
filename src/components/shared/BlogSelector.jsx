@@ -51,8 +51,8 @@ export default function BlogSelector({ activeBlogId, setActiveBlogId }) {
 
   const canManageMultipleBlogs = currentUser?.canManageMultipleBlogs || false;
 
-  // Don't render if user can't manage multiple blogs and only has one blog
-  if (!canManageMultipleBlogs && blogs.length <= 1) {
+  // Don't render if user can't manage multiple blogs
+  if (!canManageMultipleBlogs) {
     return null;
   }
 

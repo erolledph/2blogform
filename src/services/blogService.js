@@ -122,6 +122,31 @@ export const blogService = {
     }
   },
 
+  // Delete a blog and all its associated content
+  async deleteBlog(userId, blogId, authToken) {
+    try {
+      const response = await fetch('/.netlify/functions/admin-blog', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ blogId })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error deleting blog:', error);
+      throw error;
+    }
+  },
+
   // Check if user can manage multiple blogs
   async canUserManageMultipleBlogs(userId) {
     try {

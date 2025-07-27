@@ -4,7 +4,8 @@ import { blogService } from '@/services/blogService';
 import InputField from '@/components/shared/InputField';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import CreateBlogModal from '@/components/shared/CreateBlogModal';
-import { BookOpen, Save, Plus, Edit, Check } from 'lucide-react';
+import Modal from '@/components/shared/Modal';
+import { BookOpen, Save, Plus, Edit, Check, Copy, Trash2, AlertTriangle, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
@@ -15,6 +16,8 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingBlog, setDeletingBlog] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -125,6 +128,59 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
     toast.success(`Switched to "${newBlog.name}"`);
   };
 
+  const handleDeleteBlog = async () => {
+    if (!currentBlog || allBlogs.length <= 1) {
+      toast.error('Cannot delete the last blog');
+      return;
+    }
+
+    try {
+      setDeletingBlog(true);
+      
+      const token = await currentUser.getIdToken();
+      await blogService.deleteBlog(currentUser.uid, activeBlogId, token);
+      
+      // Find another blog to switch to
+      const remainingBlogs = allBlogs.filter(blog => blog.id !== activeBlogId);
+      if (remainingBlogs.length > 0) {
+        setActiveBlogId(remainingBlogs[0].id);
+        toast.success(`Blog deleted. Switched to "${remainingBlogs[0].name}"`);
+      }
+      
+      // Refresh blog data
+      await fetchBlogData();
+      setDeleteModalOpen(false);
+    } catch (error) {
+      console.error('Error deleting blog:', error);
+      
+      if (error.message.includes('LAST_BLOG_DELETION_FORBIDDEN')) {
+        toast.error('Cannot delete your last blog. Users must have at least one blog.');
+      } else {
+        toast.error(error.message || 'Failed to delete blog');
+      }
+    } finally {
+      setDeletingBlog(false);
+    }
+  };
+
+  const copyToClipboard = async (text, label) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} copied to clipboard!`);
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+      toast.error('Failed to copy to clipboard');
+    }
+  };
+
+  const getContentApiUrl = () => {
+    return `${window.location.origin}/users/${currentUser?.uid}/blogs/${activeBlogId}/api/content.json`;
+  };
+
+  const getProductsApiUrl = () => {
+    return `${window.location.origin}/users/${currentUser?.uid}/blogs/${activeBlogId}/api/products.json`;
+  };
+
   const canManageMultipleBlogs = currentUser?.canManageMultipleBlogs || false;
 
   if (loading) {
@@ -229,6 +285,104 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                 )}
               </button>
             </form>
+
+            {/* API Endpoints Section */}
+            <div className="border-t border-border pt-6">
+              <h4 className="text-base font-medium text-foreground mb-4">API Endpoints</h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                    <div className="p-2 bg-blue-100 rounded">
+                      <BookOpen className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-blue-800">Content API</div>
+                      <div className="text-xs text-blue-600 truncate font-mono">
+                        {getContentApiUrl()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(getContentApiUrl(), 'Content API URL')}
+                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
+                      title="Copy Content API URL"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                    <a
+                      href={getContentApiUrl()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
+                      title="Open Content API"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                    <div className="p-2 bg-green-100 rounded">
+                      <Plus className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-green-800">Products API</div>
+                      <div className="text-xs text-green-600 truncate font-mono">
+                        {getProductsApiUrl()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(getProductsApiUrl(), 'Products API URL')}
+                      className="p-2 text-green-600 hover:bg-green-100 rounded-md transition-colors"
+                      title="Copy Products API URL"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                    <a
+                      href={getProductsApiUrl()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-green-600 hover:bg-green-100 rounded-md transition-colors"
+                      title="Open Products API"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Delete Blog Section */}
+            {allBlogs.length > 1 && (
+              <div className="border-t border-border pt-6">
+                <h4 className="text-base font-medium text-foreground mb-4">Danger Zone</h4>
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-start space-x-3">
+                    <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h5 className="text-sm font-medium text-red-800 mb-2">Delete This Blog</h5>
+                      <p className="text-sm text-red-700 mb-4">
+                        This will permanently delete this blog and all its content and products. This action cannot be undone.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteModalOpen(true)}
+                        className="btn-danger btn-sm"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Blog
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -272,6 +426,9 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                       {blog.id === activeBlogId && (
                         <span className="badge badge-success text-xs">Active</span>
                       )}
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Created {blog.createdAt?.toDate().toLocaleDateString()}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -334,6 +491,76 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
         onClose={() => setCreateModalOpen(false)}
         onBlogCreated={handleBlogCreated}
       />
+
+      {/* Delete Blog Confirmation Modal */}
+      <Modal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Delete Blog"
+        size="md"
+      >
+        <div className="space-y-6">
+          <div className="flex items-start space-x-4">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                Delete "{currentBlog?.name}"?
+              </h3>
+              <p className="text-base text-muted-foreground mb-4">
+                This action will permanently delete this blog and all associated content and products.
+              </p>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h4 className="text-sm font-medium text-red-800 mb-2">What will be deleted:</h4>
+            <ul className="text-sm text-red-700 space-y-1">
+              <li>• All blog content and articles</li>
+              <li>• All products in this blog</li>
+              <li>• Blog settings and configuration</li>
+              <li>• Associated analytics data</li>
+            </ul>
+          </div>
+            </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-amber-800 font-medium">This action cannot be undone</p>
+                <p className="text-sm text-amber-700">
+                  Make sure you have backed up any important content before proceeding.
+                </p>
+              </div>
+            </div>
+          </div>
+          </div>
+          <div className="flex justify-end space-x-4 pt-4 border-t border-border">
+            <button
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={deletingBlog}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteBlog}
+              disabled={deletingBlog}
+              className="btn-danger"
+            >
+              {deletingBlog ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Blog
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
