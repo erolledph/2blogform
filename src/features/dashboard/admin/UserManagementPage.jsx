@@ -45,7 +45,7 @@ export default function UserManagementPage() {
       setError(null);
       
       const token = await getAuthToken();
-      const response = await fetch('/api/admin/users', {
+      const response = await fetch('/.netlify/functions/admin-users', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -74,7 +74,7 @@ export default function UserManagementPage() {
       setUpdating(true);
       
       const token = await getAuthToken();
-      const response = await fetch('/api/admin/users', {
+      const response = await fetch('/.netlify/functions/admin-users', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
