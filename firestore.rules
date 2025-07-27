@@ -2,6 +2,12 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // User-specific blog management
+    match /users/{userId}/blogs/{blogId} {
+      // Allow authenticated users to manage their own blogs
+      allow read, write, create, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
     // User-specific blog content and products
     match /users/{userId}/blogs/{blogId}/content/{contentId} {
       // Allow public read access to published content

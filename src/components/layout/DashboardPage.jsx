@@ -1,6 +1,7 @@
 import React, { useState, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { blogService } from '@/services/blogService';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
@@ -22,14 +23,36 @@ export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { currentUser } = useAuth();
   
-  // For now, activeBlogId defaults to userId to maintain backward compatibility
-  // In Phase 2, this will be managed by a BlogSelector component for premium users
-  const [activeBlogId, setActiveBlogId] = useState(currentUser?.uid);
+  // activeBlogId is now managed by BlogSelector component for multi-blog users
+  const [activeBlogId, setActiveBlogId] = useState(null);
+  const [blogInitialized, setBlogInitialized] = useState(false);
   
-  // Update activeBlogId when currentUser changes
+  // Initialize activeBlogId when currentUser changes
   React.useEffect(() => {
-    if (currentUser?.uid) {
-      setActiveBlogId(currentUser.uid);
+    const initializeBlog = async () => {
+      if (currentUser?.uid && !blogInitialized) {
+        try {
+          // Ensure user has a default blog and get the appropriate blog ID
+          const defaultBlogId = await blogService.ensureDefaultBlog(currentUser.uid);
+          setActiveBlogId(defaultBlogId);
+          setBlogInitialized(true);
+        } catch (error) {
+          console.error('Error initializing blog:', error);
+          // Fallback to userId for backward compatibility
+          setActiveBlogId(currentUser.uid);
+          setBlogInitialized(true);
+        }
+      }
+    };
+
+    initializeBlog();
+  }, [currentUser?.uid, blogInitialized]);
+
+  // Reset blog initialization when user changes
+  React.useEffect(() => {
+    if (!currentUser?.uid) {
+      setBlogInitialized(false);
+      setActiveBlogId(null);
     }
   }, [currentUser?.uid]);
 
@@ -57,7 +80,11 @@ export default function DashboardPage() {
       
       <main className="main-content">
         {/* Header is now sticky and positioned at the top */}
-        <Header onMenuClick={openSidebar} />
+        <Header 
+          onMenuClick={openSidebar}
+          activeBlogId={activeBlogId}
+          setActiveBlogId={setActiveBlogId}
+        />
 
         <div className="content-section">
           <div className="page-container">
@@ -66,22 +93,29 @@ export default function DashboardPage() {
                 <LoadingSpinner size="lg" />
               </div>
             }>
-              <Routes>
-                <Route path="/" element={<Navigate to="/dashboard/overview" replace />} />
-                <Route path="/overview" element={<OverviewPage activeBlogId={activeBlogId} />} />
-                <Route path="/manage" element={<ManageContentPage activeBlogId={activeBlogId} />} />
-                <Route path="/create" element={<CreateContentPage activeBlogId={activeBlogId} />} />
-                <Route path="/edit/:id" element={<CreateContentPage activeBlogId={activeBlogId} />} />
-                <Route path="/manage-products" element={<ManageProductsPage activeBlogId={activeBlogId} />} />
-                <Route path="/create-product" element={<CreateProductPage activeBlogId={activeBlogId} />} />
-                <Route path="/edit-product/:id" element={<CreateProductPage activeBlogId={activeBlogId} />} />
-                <Route path="/analytics" element={<AnalyticsPage activeBlogId={activeBlogId} />} />
-                <Route path="/storage" element={<FileStoragePage />} />
-                <Route path="/user-management" element={<UserManagementPage />} />
-                <Route path="/account-settings" element={<AccountSettingsPage />} />
-                <Route path="/tips" element={<TipsPage />} />
-                <Route path="/documentation" element={<DocumentationPage activeBlogId={activeBlogId} />} />
-              </Routes>
+              {/* Only render routes when blog is initialized */}
+              {blogInitialized && activeBlogId ? (
+                <Routes>
+                  <Route path="/" element={<Navigate to="/dashboard/overview" replace />} />
+                  <Route path="/overview" element={<OverviewPage activeBlogId={activeBlogId} />} />
+                  <Route path="/manage" element={<ManageContentPage activeBlogId={activeBlogId} />} />
+                  <Route path="/create" element={<CreateContentPage activeBlogId={activeBlogId} />} />
+                  <Route path="/edit/:id" element={<CreateContentPage activeBlogId={activeBlogId} />} />
+                  <Route path="/manage-products" element={<ManageProductsPage activeBlogId={activeBlogId} />} />
+                  <Route path="/create-product" element={<CreateProductPage activeBlogId={activeBlogId} />} />
+                  <Route path="/edit-product/:id" element={<CreateProductPage activeBlogId={activeBlogId} />} />
+                  <Route path="/analytics" element={<AnalyticsPage activeBlogId={activeBlogId} />} />
+                  <Route path="/storage" element={<FileStoragePage />} />
+                  <Route path="/user-management" element={<UserManagementPage />} />
+                  <Route path="/account-settings" element={<AccountSettingsPage />} />
+                  <Route path="/tips" element={<TipsPage />} />
+                  <Route path="/documentation" element={<DocumentationPage activeBlogId={activeBlogId} />} />
+                </Routes>
+              ) : (
+                <div className="flex items-center justify-center h-64">
+                  <LoadingSpinner size="lg" />
+                </div>
+              )}
             </Suspense>
           </div>
         </div>
