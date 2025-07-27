@@ -5,7 +5,7 @@ import InputField from '@/components/shared/InputField';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import CreateBlogModal from '@/components/shared/CreateBlogModal';
 import Modal from '@/components/shared/Modal';
-import { BookOpen, Save, Plus, Edit, Check, Copy, Trash2, AlertTriangle, ExternalLink } from 'lucide-react';
+import { BookOpen, Save, Plus, Edit, Check, Copy, Trash2, AlertTriangle, ExternalLink, RefreshCw, Globe, Database } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
@@ -13,6 +13,7 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
   const [currentBlog, setCurrentBlog] = useState(null);
   const [allBlogs, setAllBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -30,13 +31,30 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
     }
   }, [currentUser?.uid, activeBlogId]);
 
+  const refreshBlogData = async () => {
+    setRefreshing(true);
+    await fetchBlogData();
+    setRefreshing(false);
+    toast.success('Blog data refreshed');
+  };
+
   const fetchBlogData = async () => {
     try {
-      setLoading(true);
+      if (!refreshing) {
+        setLoading(true);
+      }
       
       // Fetch all blogs for the user
       const blogs = await blogService.fetchUserBlogs(currentUser.uid);
       setAllBlogs(blogs);
+      
+      // If no blogs exist, this shouldn't happen due to ensureDefaultBlog
+      if (blogs.length === 0) {
+        console.warn('No blogs found for user');
+        setCurrentBlog(null);
+        setFormData({ name: '', description: '' });
+        return;
+      }
       
       // Find the current active blog
       const activeBlog = blogs.find(blog => blog.id === activeBlogId);
@@ -48,24 +66,27 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
           description: activeBlog.description || ''
         });
       } else {
-        // If active blog not found, try to get blog details directly
-        try {
-          const blogDetails = await blogService.getBlogById(currentUser.uid, activeBlogId);
-          setCurrentBlog(blogDetails);
-          setFormData({
-            name: blogDetails.name || '',
-            description: blogDetails.description || ''
-          });
-        } catch (error) {
-          console.error('Error fetching blog details:', error);
-          toast.error('Failed to load blog details');
-        }
+        // Active blog not found in the list, switch to the first available blog
+        console.warn(`Active blog ${activeBlogId} not found, switching to first available blog`);
+        const firstBlog = blogs[0];
+        setActiveBlogId(firstBlog.id);
+        setCurrentBlog(firstBlog);
+        setFormData({
+          name: firstBlog.name || '',
+          description: firstBlog.description || ''
+        });
+        toast.success(`Switched to "${firstBlog.name}" as the previous blog was not found.`);
       }
     } catch (error) {
       console.error('Error fetching blog data:', error);
-      toast.error('Failed to load blog data');
+      // Only show error toast if it's not a refresh operation
+      if (!refreshing) {
+        toast.error('Failed to load blog data');
+      }
     } finally {
-      setLoading(false);
+      if (!refreshing) {
+        setLoading(false);
+      }
     }
   };
 
@@ -105,6 +126,13 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
         description: formData.description.trim()
       }));
       
+      // Update the blog in the allBlogs array
+      setAllBlogs(prev => prev.map(blog => 
+        blog.id === activeBlogId 
+          ? { ...blog, name: formData.name.trim(), description: formData.description.trim() }
+          : blog
+      ));
+      
       setSaved(true);
       toast.success('Blog updated successfully');
       
@@ -134,6 +162,7 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
       toast.success(`Switched to "${blog.name}"`);
     }
   };
+  
   const handleDeleteBlog = async () => {
     if (!currentBlog || allBlogs.length <= 1) {
       toast.error('Cannot delete the last blog');
@@ -204,22 +233,64 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
 
   return (
     <div className="section-spacing">
-      <div className="page-header">
-        <h1 className="page-title">Manage Blog</h1>
-        <p className="page-description">
-          Configure your blog settings and create new blogs
-        </p>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
+        <div className="page-header mb-0">
+          <h1 className="page-title mb-2">Manage Blog</h1>
+          <p className="page-description">
+            Configure your blog settings and create new blogs
+          </p>
+        </div>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={refreshBlogData}
+            disabled={refreshing}
+            className="btn-secondary inline-flex items-center"
+          >
+            <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+      {/* Current Blog Status Bar */}
+      {currentBlog && (
+        <div className="card border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 mb-8">
+          <div className="card-content p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                  <BookOpen className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-blue-900">Currently Managing: {currentBlog.name}</h2>
+                  <p className="text-blue-700">
+                    {currentBlog.description || 'No description provided'}
+                  </p>
+                  <div className="flex items-center space-x-4 mt-2 text-sm text-blue-600">
+                    <span>Blog ID: {currentBlog.id.substring(0, 12)}...</span>
+                    <span>•</span>
+                    <span>Created: {currentBlog.createdAt?.toDate().toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-blue-900">{allBlogs.length}</div>
+                <div className="text-sm text-blue-600">Total Blogs</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Current Blog Settings */}
         <div className="card">
           <div className="card-header">
             <div className="flex items-center space-x-4 mb-4">
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <BookOpen className="h-8 w-8 text-primary" />
+              <div className="p-3 bg-green-100 rounded-lg">
+                <Edit className="h-8 w-8 text-green-600" />
               </div>
-              <h2 className="card-title">Current Blog Settings</h2>
+              <h2 className="card-title">Edit Blog Details</h2>
             </div>
             <p className="card-description">
               Update your blog name and description
@@ -252,31 +323,10 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                 />
               </div>
 
-              {/* Blog Info */}
-              {currentBlog && (
-                <div className="p-4 bg-muted/30 rounded-lg border border-border">
-                  <h4 className="text-sm font-medium text-foreground mb-3">Blog Information</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Blog ID:</span>
-                      <span className="font-mono text-xs">{currentBlog.id}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Created:</span>
-                      <span>{currentBlog.createdAt?.toDate().toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Last Updated:</span>
-                      <span>{currentBlog.updatedAt?.toDate().toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <button
                 type="submit"
                 disabled={saving || !formData.name.trim()}
-                className="btn-primary w-full"
+                className="btn-primary w-full h-12"
               >
                 {saved ? (
                   <>
@@ -291,78 +341,6 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                 )}
               </button>
             </form>
-
-            {/* API Endpoints Section */}
-            <div className="border-t border-border pt-6">
-              <h4 className="text-base font-medium text-foreground mb-4">API Endpoints</h4>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center space-x-3 min-w-0 flex-1">
-                    <div className="p-2 bg-blue-100 rounded">
-                      <BookOpen className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-blue-800">Content API</div>
-                      <div className="text-xs text-blue-600 truncate font-mono">
-                        {getContentApiUrl()}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 flex-shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(getContentApiUrl(), 'Content API URL')}
-                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
-                      title="Copy Content API URL"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
-                    <a
-                      href={getContentApiUrl()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
-                      title="Open Content API"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center space-x-3 min-w-0 flex-1">
-                    <div className="p-2 bg-green-100 rounded">
-                      <Plus className="h-4 w-4 text-green-600" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-green-800">Products API</div>
-                      <div className="text-xs text-green-600 truncate font-mono">
-                        {getProductsApiUrl()}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 flex-shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(getProductsApiUrl(), 'Products API URL')}
-                      className="p-2 text-green-600 hover:bg-green-100 rounded-md transition-colors"
-                      title="Copy Products API URL"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </button>
-                    <a
-                      href={getProductsApiUrl()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2 text-green-600 hover:bg-green-100 rounded-md transition-colors"
-                      title="Open Products API"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* Delete Blog Section */}
             {allBlogs.length > 1 && (
@@ -396,13 +374,13 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
         <div className="card">
           <div className="card-header">
             <div className="flex items-center space-x-4 mb-4">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Plus className="h-8 w-8 text-green-600" />
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <Database className="h-8 w-8 text-purple-600" />
               </div>
               <h2 className="card-title">Blog Management</h2>
             </div>
             <p className="card-description">
-              Manage your blogs and create new ones
+              Switch between blogs and create new ones
             </p>
           </div>
           <div className="card-content space-y-6">
@@ -414,31 +392,59 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                   <div
                     key={blog.id}
                     onClick={() => handleBlogSwitch(blog)}
-                    className={`p-4 border rounded-lg transition-colors ${
-                      blog.id === activeBlogId 
-                        ? 'border-primary bg-primary/10 shadow-md' 
-                        : 'border-border bg-background hover:bg-muted/30 cursor-pointer'
-                    } ${blog.id !== activeBlogId ? 'hover:border-primary/30' : ''}`}
+                    className={`p-4 border-2 rounded-xl transition-all duration-200 ${
+                      blog.id === activeBlogId
+                        ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-blue-100 shadow-lg transform scale-105'
+                        : 'border-gray-200 bg-white hover:bg-gray-50 cursor-pointer hover:border-blue-300 hover:shadow-md'
+                    }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <BookOpen className="h-5 w-5 text-primary" />
+                        <div className={`p-2 rounded-lg ${
+                          blog.id === activeBlogId 
+                            ? 'bg-blue-500' 
+                            : 'bg-gray-100'
+                        }`}>
+                          <BookOpen className={`h-5 w-5 ${
+                            blog.id === activeBlogId 
+                              ? 'text-white' 
+                              : 'text-gray-600'
+                          }`} />
+                        </div>
                         <div>
-                          <div className="font-medium text-foreground">{blog.name}</div>
+                          <div className={`font-semibold ${
+                            blog.id === activeBlogId 
+                              ? 'text-blue-900' 
+                              : 'text-gray-900'
+                          }`}>
+                            {blog.name}
+                          </div>
                           {blog.description && (
-                            <div className="text-sm text-muted-foreground">{blog.description}</div>
+                            <div className={`text-sm mt-1 ${
+                              blog.id === activeBlogId 
+                                ? 'text-blue-700' 
+                                : 'text-gray-600'
+                            }`}>
+                              {blog.description}
+                            </div>
                           )}
-                          <div className="text-xs text-muted-foreground mt-1">
+                          <div className={`text-xs mt-1 ${
+                            blog.id === activeBlogId 
+                              ? 'text-blue-600' 
+                              : 'text-gray-500'
+                          }`}>
                             Created {blog.createdAt?.toDate().toLocaleDateString()}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
                         {blog.id === activeBlogId && (
-                          <span className="badge badge-success text-xs">Active</span>
+                          <span className="px-3 py-1 bg-blue-500 text-white text-xs font-semibold rounded-full">
+                            Active
+                          </span>
                         )}
                         {blog.id !== activeBlogId && (
-                          <span className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                          <span className="text-xs text-gray-500 hover:text-blue-600 transition-colors">
                             Click to switch
                           </span>
                         )}
@@ -469,7 +475,7 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                   </p>
                   <button
                     onClick={() => setCreateModalOpen(true)}
-                    className="btn-primary w-full"
+                    className="btn-primary w-full h-12"
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Create New Blog
@@ -508,6 +514,152 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
         </div>
       </div>
 
+      {/* API Endpoints Section */}
+      <div className="card mt-8">
+        <div className="card-header">
+          <div className="flex items-center space-x-4 mb-4">
+            <div className="p-3 bg-indigo-100 rounded-lg">
+              <Globe className="h-8 w-8 text-indigo-600" />
+            </div>
+            <h2 className="card-title">API Endpoints</h2>
+          </div>
+          <p className="card-description">
+            Public API endpoints for accessing your blog content and products
+          </p>
+        </div>
+        <div className="card-content">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <div className="flex items-center space-x-3 mb-3">
+                <div className="p-2 bg-blue-500 rounded-lg">
+                  <BookOpen className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-blue-800">Content API</h4>
+                  <p className="text-sm text-blue-600">Access all published blog content</p>
+                </div>
+              </div>
+              <div className="bg-white border border-blue-200 rounded-lg p-3 mb-3">
+                <code className="text-xs text-blue-800 break-all font-mono">
+                  {getContentApiUrl()}
+                </code>
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => copyToClipboard(getContentApiUrl(), 'Content API URL')}
+                  className="btn-secondary btn-sm flex-1"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </button>
+                <a
+                  href={getContentApiUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary btn-sm flex-1 inline-flex items-center justify-center"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open
+                </a>
+              </div>
+            </div>
+
+            <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
+              <div className="flex items-center space-x-3 mb-3">
+                <div className="p-2 bg-green-500 rounded-lg">
+                  <Plus className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-green-800">Products API</h4>
+                  <p className="text-sm text-green-600">Access all published products</p>
+                </div>
+              </div>
+              <div className="bg-white border border-green-200 rounded-lg p-3 mb-3">
+                <code className="text-xs text-green-800 break-all font-mono">
+                  {getProductsApiUrl()}
+                </code>
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => copyToClipboard(getProductsApiUrl(), 'Products API URL')}
+                  className="btn-secondary btn-sm flex-1"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </button>
+                <a
+                  href={getProductsApiUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary btn-sm flex-1 inline-flex items-center justify-center"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Open
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Blog Information Section */}
+      {currentBlog && (
+        <div className="card mt-8">
+          <div className="card-header">
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="p-3 bg-gray-100 rounded-lg">
+                <Database className="h-8 w-8 text-gray-600" />
+              </div>
+              <h2 className="card-title">Blog Information</h2>
+            </div>
+            <p className="card-description">
+              Technical details and metadata for the current blog
+            </p>
+          </div>
+          <div className="card-content">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Blog ID</h4>
+                <div className="flex items-center justify-between">
+                  <code className="text-xs font-mono text-gray-800 bg-white px-2 py-1 rounded border">
+                    {currentBlog.id}
+                  </code>
+                  <button
+                    onClick={() => copyToClipboard(currentBlog.id, 'Blog ID')}
+                    className="p-1 text-gray-600 hover:text-gray-800 transition-colors"
+                    title="Copy Blog ID"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Created Date</h4>
+                <div className="text-sm text-gray-800">
+                  {currentBlog.createdAt?.toDate().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </div>
+              </div>
+              
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Last Updated</h4>
+                <div className="text-sm text-gray-800">
+                  {currentBlog.updatedAt?.toDate().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create Blog Modal */}
       <CreateBlogModal
         isOpen={createModalOpen}
@@ -534,6 +686,8 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               <p className="text-base text-muted-foreground mb-4">
                 This action will permanently delete this blog and all associated content and products.
               </p>
+            </div>
+          </div>
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <h4 className="text-sm font-medium text-red-800 mb-2">What will be deleted:</h4>
             <ul className="text-sm text-red-700 space-y-1">
@@ -543,7 +697,6 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               <li>• Associated analytics data</li>
             </ul>
           </div>
-            </div>
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <div className="flex items-start space-x-3">
               <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -554,7 +707,6 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                 </p>
               </div>
             </div>
-          </div>
           </div>
           <div className="flex justify-end space-x-4 pt-4 border-t border-border">
             <button
