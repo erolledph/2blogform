@@ -18,6 +18,7 @@ const AccountSettingsPage = React.lazy(() => import('@/features/dashboard/settin
 const TipsPage = React.lazy(() => import('@/features/dashboard/tips/TipsPage'));
 const DocumentationPage = React.lazy(() => import('@/features/dashboard/documentation/DocumentationPage'));
 const UserManagementPage = React.lazy(() => import('@/features/dashboard/admin/UserManagementPage'));
+const ManageBlogPage = React.lazy(() => import('@/features/dashboard/manage-blog/ManageBlogPage'));
 
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -107,6 +108,7 @@ export default function DashboardPage() {
                   <Route path="/analytics" element={<AnalyticsPage activeBlogId={activeBlogId} />} />
                   <Route path="/storage" element={<FileStoragePage />} />
                   <Route path="/user-management" element={<UserManagementPage />} />
+                  <Route path="/manage-blog" element={<ManageBlogPage activeBlogId={activeBlogId} setActiveBlogId={setActiveBlogId} />} />
                   <Route path="/account-settings" element={<AccountSettingsPage />} />
                   <Route path="/tips" element={<TipsPage />} />
                   <Route path="/documentation" element={<DocumentationPage activeBlogId={activeBlogId} />} />

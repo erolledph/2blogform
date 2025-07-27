@@ -104,7 +104,7 @@ export const blogService = {
       
       if (blogs.length === 0) {
         // Create a default blog for the user
-        const defaultBlog = await this.createNewBlog(userId, 'My Blog', 'Default blog');
+        const defaultBlog = await this.createNewBlog(userId, 'My Blog', 'My personal blog');
         
         // Mark it as default
         await this.updateBlog(userId, defaultBlog.id, { isDefault: true });
