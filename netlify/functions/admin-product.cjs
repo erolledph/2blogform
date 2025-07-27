@@ -1,37 +1,24 @@
 const admin = require('firebase-admin');
 
-// Global variable to track Firebase Admin SDK initialization status
-let isFirebaseAdminInitialized = false;
-let initializationError = null;
-
 // Initialize Firebase Admin SDK
-try {
-  if (!admin.apps.length) {
-    const serviceAccount = {
-      type: "service_account",
-      project_id: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph",
-      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-      private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
-      client_email: process.env.FIREBASE_CLIENT_EMAIL || "firebase-adminsdk-fbsvc@admin-cms-ph.iam.gserviceaccount.com",
-      client_id: process.env.FIREBASE_CLIENT_ID,
-      auth_uri: "https://accounts.google.com/o/oauth2/auth",
-      token_uri: "https://oauth2.googleapis.com/token",
-      auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-      client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
-    };
+if (!admin.apps.length) {
+  const serviceAccount = {
+    type: "service_account",
+    project_id: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph",
+    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+    private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
+    client_email: process.env.FIREBASE_CLIENT_EMAIL || "firebase-adminsdk-fbsvc@admin-cms-ph.iam.gserviceaccount.com",
+    client_id: process.env.FIREBASE_CLIENT_ID,
+    auth_uri: "https://accounts.google.com/o/oauth2/auth",
+    token_uri: "https://oauth2.googleapis.com/token",
+    auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+    client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
+  };
 
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      projectId: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph"
-    });
-    
-    isFirebaseAdminInitialized = true;
-  } else {
-    isFirebaseAdminInitialized = true;
-  }
-} catch (error) {
-  initializationError = error;
-  isFirebaseAdminInitialized = false;
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    projectId: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph"
+  });
 }
 
 const db = admin.firestore();
@@ -56,17 +43,6 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Check if Firebase Admin SDK is properly initialized
-    if (!isFirebaseAdminInitialized) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ 
-          error: 'Internal server error'
-        })
-      };
-    }
-
     // Verify authentication
     const authHeader = event.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -247,11 +223,13 @@ exports.handler = async (event, context) => {
     }
 
   } catch (error) {
+    console.error('Admin product function error:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({ 
-        error: 'Internal server error'
+        error: 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
       })
     };
   }
