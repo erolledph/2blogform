@@ -9,7 +9,7 @@ import { BookOpen, Save, Plus, Edit, Check, Copy, Trash2, AlertTriangle, Externa
 import toast from 'react-hot-toast';
 
 export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
-  const { currentUser } = useAuth();
+  const { currentUser, getAuthToken } = useAuth();
   const [currentBlog, setCurrentBlog] = useState(null);
   const [allBlogs, setAllBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -143,7 +143,7 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
     try {
       setDeletingBlog(true);
       
-      const token = await currentUser.getIdToken();
+      const token = await getAuthToken();
       await blogService.deleteBlog(currentUser.uid, activeBlogId, token);
       
       // Find another blog to switch to
