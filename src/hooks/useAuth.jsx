@@ -16,6 +16,7 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   function login(email, password) {
@@ -40,20 +41,18 @@ export function AuthProvider({ children }) {
           // Fetch user settings to get role and multi-blog permissions
           const userSettings = await settingsService.getUserSettings(user.uid);
           
-          // Extend user object with settings
-          const extendedUser = {
-            ...user,
+          // Store raw Firebase user and separate profile data
+          setCurrentUser(user);
+          setUserProfile({
             role: userSettings.role || 'user',
             canManageMultipleBlogs: userSettings.canManageMultipleBlogs || false,
             currency: userSettings.currency || '$'
-          };
-          
-          setCurrentUser(extendedUser);
+          });
         } catch (error) {
           console.error('Error fetching user settings:', error);
-          // Set user with default settings if fetch fails
-          setCurrentUser({
-            ...user,
+          // Set user and default profile if fetch fails
+          setCurrentUser(user);
+          setUserProfile({
             role: 'user',
             canManageMultipleBlogs: false,
             currency: '$'
@@ -61,6 +60,7 @@ export function AuthProvider({ children }) {
         }
       } else {
         setCurrentUser(null);
+        setUserProfile(null);
       }
       setLoading(false);
     });
@@ -69,7 +69,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = {
-    currentUser,
+    currentUser: currentUser ? { ...currentUser, ...userProfile } : null,
     login,
     logout,
     getAuthToken
