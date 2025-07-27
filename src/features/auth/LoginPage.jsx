@@ -6,13 +6,13 @@ import toast from 'react-hot-toast';
 import { Lock, Mail } from 'lucide-react';
 
 export default function LoginPage() {
+  const { login, currentUser } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  const { login } = useAuth();
   const navigate = useNavigate();
 
   const validateForm = () => {
@@ -60,15 +60,25 @@ export default function LoginPage() {
     try {
       setLoading(true);
       await login(formData.email, formData.password);
+      // Don't navigate immediately - let the auth state change handle it
       toast.success('Login successful!');
-      navigate('/dashboard');
     } catch (error) {
       console.error('Login error:', error);
       toast.error('Failed to login. Please check your credentials.');
-    } finally {
       setLoading(false);
+    } finally {
+      // Don't set loading to false here if login was successful
+      // The auth state change will handle the redirect
     }
   }
+
+  // Handle redirect when user becomes authenticated
+  React.useEffect(() => {
+    // If user is already authenticated, redirect to dashboard
+    if (currentUser) {
+      navigate('/dashboard');
+    }
+  }, [currentUser, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-neutral-50 to-neutral-100 px-4 py-8 sm:px-6 lg:px-8">
