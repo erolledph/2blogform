@@ -83,8 +83,6 @@ export default function DashboardPage() {
         {/* Header is now sticky and positioned at the top */}
         <Header 
           onMenuClick={openSidebar}
-          activeBlogId={activeBlogId}
-          setActiveBlogId={setActiveBlogId}
         />
 
         <div className="content-section">

@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import BlogSelector from '@/components/shared/BlogSelector';
 import { Bell } from 'lucide-react';
 
-export default function Header({ onMenuClick, activeBlogId, setActiveBlogId }) {
+export default function Header({ onMenuClick }) {
 
   return (
     <header className="bg-white border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-30 backdrop-blur-sm bg-white/95">
@@ -20,13 +19,8 @@ export default function Header({ onMenuClick, activeBlogId, setActiveBlogId }) {
           </button>
         </div>
 
-        {/* Center - Blog Selector */}
-        <div className="flex-1 flex justify-center">
-          <BlogSelector 
-            activeBlogId={activeBlogId}
-            setActiveBlogId={setActiveBlogId}
-          />
-        </div>
+        {/* Center - Empty space for future use */}
+        <div className="flex-1"></div>
 
         {/* Right side - Notifications */}
         <div className="flex items-center space-x-2 sm:space-x-3">

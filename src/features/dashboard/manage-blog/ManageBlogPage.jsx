@@ -128,6 +128,12 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
     toast.success(`Switched to "${newBlog.name}"`);
   };
 
+  const handleBlogSwitch = (blog) => {
+    if (blog.id !== activeBlogId) {
+      setActiveBlogId(blog.id);
+      toast.success(`Switched to "${blog.name}"`);
+    }
+  };
   const handleDeleteBlog = async () => {
     if (!currentBlog || allBlogs.length <= 1) {
       toast.error('Cannot delete the last blog');
@@ -407,11 +413,12 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                 {allBlogs.map((blog) => (
                   <div
                     key={blog.id}
+                    onClick={() => handleBlogSwitch(blog)}
                     className={`p-4 border rounded-lg transition-colors ${
                       blog.id === activeBlogId 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-border bg-background hover:bg-muted/30'
-                    }`}
+                        ? 'border-primary bg-primary/10 shadow-md' 
+                        : 'border-border bg-background hover:bg-muted/30 cursor-pointer'
+                    } ${blog.id !== activeBlogId ? 'hover:border-primary/30' : ''}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
@@ -421,18 +428,34 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                           {blog.description && (
                             <div className="text-sm text-muted-foreground">{blog.description}</div>
                           )}
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Created {blog.createdAt?.toDate().toLocaleDateString()}
+                          </div>
                         </div>
                       </div>
-                      {blog.id === activeBlogId && (
-                        <span className="badge badge-success text-xs">Active</span>
-                      )}
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Created {blog.createdAt?.toDate().toLocaleDateString()}
+                      <div className="flex items-center space-x-2">
+                        {blog.id === activeBlogId && (
+                          <span className="badge badge-success text-xs">Active</span>
+                        )}
+                        {blog.id !== activeBlogId && (
+                          <span className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                            Click to switch
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
+              
+              {/* Instructions for switching blogs */}
+              {allBlogs.length > 1 && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    💡 <strong>Tip:</strong> Click on any blog above to switch to it. The active blog determines which content and products you're managing.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Create New Blog Section */}
