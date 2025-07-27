@@ -125,7 +125,7 @@ export const blogService = {
   // Delete a blog and all its associated content
   async deleteBlog(userId, blogId, authToken) {
     try {
-      const response = await fetch('/.netlify/functions/admin-blog', {
+      const response = await fetch('/api/admin/blog', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
