@@ -45,6 +45,11 @@ export default function UserManagementPage() {
       setError(null);
       
       const token = await getAuthToken();
+      
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+      
       const response = await fetch('/.netlify/functions/admin-users', {
         method: 'GET',
         headers: {
@@ -54,15 +59,39 @@ export default function UserManagementPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
+        let errorMessage = `HTTP ${response.status}`;
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+          
+          // Log additional error details for debugging
+          if (errorData.details) {
+            console.error('Server error details:', errorData.details);
+          }
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       setUsers(data.users || []);
     } catch (error) {
       console.error('Error fetching users:', error);
-      setError(error.message);
+      
+      // Provide user-friendly error messages
+      let userMessage = error.message;
+      if (error.message.includes('Authentication token')) {
+        userMessage = 'Authentication failed. Please try logging out and logging back in.';
+      } else if (error.message.includes('Admin access required')) {
+        userMessage = 'You do not have administrator privileges to access this page.';
+      } else if (error.message.includes('Insufficient permissions')) {
+        userMessage = 'The system configuration needs to be updated by a system administrator.';
+      }
+      
+      setError(userMessage);
       toast.error('Failed to fetch users');
     } finally {
       setLoading(false);
@@ -87,8 +116,16 @@ export default function UserManagementPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
+        let errorMessage = `HTTP ${response.status}`;
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+        }
+        
+        throw new Error(errorMessage);
       }
 
       toast.success('User updated successfully');
