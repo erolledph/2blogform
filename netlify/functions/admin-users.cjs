@@ -1,53 +1,24 @@
 const admin = require('firebase-admin');
 
-// Global variable to track Firebase Admin SDK initialization status
-let isFirebaseAdminInitialized = false;
-let initializationError = null;
-
 // Initialize Firebase Admin SDK
-try {
-  if (!admin.apps.length) {
-    // Validate required environment variables
-    const requiredEnvVars = [
-      'FIREBASE_PROJECT_ID',
-      'FIREBASE_PRIVATE_KEY_ID', 
-      'FIREBASE_PRIVATE_KEY',
-      'FIREBASE_CLIENT_EMAIL',
-      'FIREBASE_CLIENT_ID',
-      'FIREBASE_CLIENT_X509_CERT_URL'
-    ];
-    
-    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-    if (missingVars.length > 0) {
-      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
-    }
+if (!admin.apps.length) {
+  const serviceAccount = {
+    type: "service_account",
+    project_id: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph",
+    private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+    private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
+    client_email: process.env.FIREBASE_CLIENT_EMAIL || "firebase-adminsdk-fbsvc@admin-cms-ph.iam.gserviceaccount.com",
+    client_id: process.env.FIREBASE_CLIENT_ID,
+    auth_uri: "https://accounts.google.com/o/oauth2/auth",
+    token_uri: "https://oauth2.googleapis.com/token",
+    auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+    client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
+  };
 
-    const serviceAccount = {
-      type: "service_account",
-      project_id: process.env.FIREBASE_PROJECT_ID || 'admin-cms-ph',
-      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-      client_email: process.env.FIREBASE_CLIENT_EMAIL || 'firebase-adminsdk-fbsvc@admin-cms-ph.iam.gserviceaccount.com',
-      client_id: process.env.FIREBASE_CLIENT_ID,
-      auth_uri: "https://accounts.google.com/o/oauth2/auth",
-      token_uri: "https://oauth2.googleapis.com/token",
-      auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-      client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
-    };
-
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      projectId: process.env.FIREBASE_PROJECT_ID || 'admin-cms-ph'
-    });
-    
-    isFirebaseAdminInitialized = true;
-  } else {
-    isFirebaseAdminInitialized = true;
-  }
-} catch (error) {
-  initializationError = error;
-  isFirebaseAdminInitialized = false;
-  console.error('Firebase Admin SDK initialization failed:', error);
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    projectId: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph"
+  });
 }
 
 const db = admin.firestore();
@@ -72,19 +43,6 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Check if Firebase Admin SDK is properly initialized
-    if (!isFirebaseAdminInitialized) {
-      console.error('Firebase Admin SDK not initialized:', initializationError?.message);
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ 
-          error: 'Internal server error',
-          details: process.env.NODE_ENV === 'development' ? initializationError?.message : undefined
-        })
-      };
-    }
-
     // Verify authentication
     const authHeader = event.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -126,7 +84,8 @@ exports.handler = async (event, context) => {
       case 'GET': {
         // List all users with their settings
         try {
-          const listUsersResult = await auth.listUsers();
+          // Use pagination to handle large user lists
+          const listUsersResult = await auth.listUsers(1000); // Max 1000 users per request
           const users = [];
 
           for (const userRecord of listUsersResult.users) {
@@ -174,10 +133,23 @@ exports.handler = async (event, context) => {
           };
         } catch (error) {
           console.error('Error listing users:', error);
+          
+          // Provide more specific error information
+          let errorMessage = 'Failed to list users';
+          if (error.code === 'auth/insufficient-permission') {
+            errorMessage = 'Insufficient permissions to list users. Check Firebase Admin SDK configuration.';
+          } else if (error.code === 'auth/project-not-found') {
+            errorMessage = 'Firebase project not found. Check project configuration.';
+          }
+          
           return {
             statusCode: 500,
             headers,
-            body: JSON.stringify({ error: 'Failed to list users' })
+            body: JSON.stringify({ 
+              error: errorMessage,
+              code: error.code,
+              details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            })
           };
         }
       }
@@ -271,12 +243,30 @@ exports.handler = async (event, context) => {
 
   } catch (error) {
     console.error('Admin users function error:', error);
+    
+    // Provide more detailed error information
+    let errorMessage = 'Internal server error';
+    let statusCode = 500;
+    
+    if (error.code === 'auth/id-token-expired') {
+      errorMessage = 'Authentication token expired';
+      statusCode = 401;
+    } else if (error.code === 'auth/id-token-revoked') {
+      errorMessage = 'Authentication token revoked';
+      statusCode = 401;
+    } else if (error.code === 'auth/invalid-id-token') {
+      errorMessage = 'Invalid authentication token';
+      statusCode = 401;
+    }
+    
     return {
-      statusCode: 500,
+      statusCode,
       headers,
       body: JSON.stringify({ 
-        error: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: errorMessage,
+        code: error.code,
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
       })
     };
   }
