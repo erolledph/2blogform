@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ref, listAll, getMetadata, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/firebase';
+import { useAuth } from '@/hooks/useAuth';
 import Modal from './Modal';
 import LoadingSpinner from './LoadingSpinner';
 import { 
