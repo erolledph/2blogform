@@ -255,14 +255,11 @@ export default function FileStoragePage() {
       setPathHistory([userBasePath, targetPath]);
       setCurrentPath(targetPath);
     }
+  };
 
   const handleDelete = async (item) => {
     try {
-    if (!currentPath || !userBasePath) return [{ name: 'My Storage', path: userBasePath }];
-    
-    if (currentPath === userBasePath) {
-      return [{ name: 'My Storage', path: userBasePath }];
-    }
+      if (item.type === 'folder') {
         // For folders, we need to delete all files inside recursively
         await deleteFolder(item.ref);
         toast.success('Folder deleted successfully');
