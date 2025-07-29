@@ -510,6 +510,7 @@ export default function FileStoragePage() {
               <div>
                 <p className="text-sm font-medium text-green-600 mb-2">Total Size</p>
                 <p className="text-3xl font-bold text-green-900">{formatBytes(storageStats.totalSize)}</p>
+                <p className="text-sm text-green-600">of {currentUser?.totalStorageMB || 100} MB limit</p>
               </div>
               <HardDrive className="h-8 w-8 text-green-600" />
             </div>
@@ -520,13 +521,11 @@ export default function FileStoragePage() {
           <div className="card-content p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-600 mb-2">Current Folder</p>
-                <p className="text-lg font-bold text-purple-900">
-                  {items.filter(item => item.type === 'file').length} files
+                <p className="text-sm font-medium text-purple-600 mb-2">Storage Usage</p>
+                <p className="text-2xl font-bold text-purple-900">
+                  {((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100) * 100).toFixed(1)}%
                 </p>
-                <p className="text-sm text-purple-600">
-                  {items.filter(item => item.type === 'folder').length} folders
-                </p>
+                <p className="text-sm text-purple-600">used</p>
               </div>
               <FileImage className="h-8 w-8 text-purple-600" />
             </div>
@@ -535,22 +534,83 @@ export default function FileStoragePage() {
       </div>
 
       {/* Storage Usage Warning */}
-      <div className="card border-blue-200 bg-blue-50">
+      <div className={`card ${
+        ((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.9 
+          ? 'border-red-200 bg-red-50' 
+          : ((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.7
+          ? 'border-yellow-200 bg-yellow-50'
+          : 'border-blue-200 bg-blue-50'
+      }`}>
         <div className="card-content p-6">
           <div className="flex items-start space-x-4">
-            <AlertTriangle className="h-6 w-6 text-blue-600 flex-shrink-0 mt-1" />
+            <AlertTriangle className={`h-6 w-6 flex-shrink-0 mt-1 ${
+              ((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.9 
+                ? 'text-red-600' 
+                : ((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.7
+                ? 'text-yellow-600'
+                : 'text-blue-600'
+            }`} />
             <div>
-              <h3 className="text-lg font-semibold text-blue-800 mb-2">Storage Information</h3>
-              <div className="text-base text-blue-700 space-y-2">
+              <h3 className={`text-lg font-semibold mb-2 ${
+                ((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.9 
+                  ? 'text-red-800' 
+                  : ((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.7
+                  ? 'text-yellow-800'
+                  : 'text-blue-800'
+              }`}>
+                {((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.9 
+                  ? 'Storage Limit Nearly Reached' 
+                  : ((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.7
+                  ? 'Storage Usage High'
+                  : 'Storage Information'
+                }
+              </h3>
+              <div className={`text-base space-y-2 ${
+                ((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.9 
+                  ? 'text-red-700' 
+                  : ((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.7
+                  ? 'text-yellow-700'
+                  : 'text-blue-700'
+              }`}>
                 <p>
-                  <strong>Current Usage:</strong> {formatBytes(storageStats.totalSize)} total storage used
+                  <strong>Current Usage:</strong> {formatBytes(storageStats.totalSize)} of {currentUser?.totalStorageMB || 100} MB
                 </p>
                 <p>
-                  All uploaded images and files are stored securely in the cloud with automatic backups.
+                  <strong>Remaining:</strong> {formatBytes(((currentUser?.totalStorageMB || 100) * 1024 * 1024) - storageStats.totalSize)}
                 </p>
                 <p>
-                  Files are optimized for fast delivery and global accessibility.
+                  Storage is shared across all your blogs ({currentUser?.maxBlogs || 1} blog{(currentUser?.maxBlogs || 1) > 1 ? 's' : ''} allowed).
                 </p>
+                {((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.9 && (
+                  <p className="font-medium">
+                    ⚠️ Contact an administrator to increase your storage limit if you need more space.
+                  </p>
+                )}
+                <p>
+                  All files are stored securely with automatic backups and global CDN delivery.
+                </p>
+              </div>
+              
+              {/* Storage Progress Bar */}
+              <div className="mt-4">
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div 
+                    className={`h-3 rounded-full transition-all duration-300 ${
+                      ((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.9 
+                        ? 'bg-red-500' 
+                        : ((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.7
+                        ? 'bg-yellow-500'
+                        : 'bg-blue-500'
+                    }`}
+                    style={{ 
+                      width: `${Math.min(((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) * 100, 100)}%` 
+                    }}
+                  ></div>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span>0 MB</span>
+                  <span>{currentUser?.totalStorageMB || 100} MB</span>
+                </div>
               </div>
             </div>
           </div>

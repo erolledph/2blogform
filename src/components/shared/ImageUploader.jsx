@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/firebase';
+import { useAuth } from '@/hooks/useAuth';
 import { fromBlob } from 'image-resize-compress';
 import InputField from './InputField';
 import LoadingSpinner from './LoadingSpinner';
@@ -19,11 +20,14 @@ export default function ImageUploader({
   initialMaxWidth = 1920,
   initialMaxHeight = 1080
 }) {
+  const { currentUser } = useAuth();
   const [selectedFile, setSelectedFile] = useState(null);
   const [newFileName, setNewFileName] = useState('');
   const [compressing, setCompressing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [storageUsage, setStorageUsage] = useState({ used: 0, limit: 100 });
+  const [checkingStorage, setCheckingStorage] = useState(false);
 
   // User-configurable optimization settings
   const [imageQuality, setImageQuality] = useState(initialQuality);
@@ -37,6 +41,33 @@ export default function ImageUploader({
   const [compressionStats, setCompressionStats] = useState(null);
   const [confirmUploadModal, setConfirmUploadModal] = useState(false);
   const [finalCompressedBlob, setFinalCompressedBlob] = useState(null);
+
+  useEffect(() => {
+    if (currentUser?.uid) {
+      checkStorageUsage();
+    }
+  }, [currentUser?.uid]);
+
+  const checkStorageUsage = async () => {
+    try {
+      setCheckingStorage(true);
+      // This is a simplified check - in a real implementation, you'd calculate actual storage usage
+      const storageLimit = currentUser?.totalStorageMB || 100;
+      
+      // For now, we'll use a placeholder calculation
+      // In a real implementation, you'd sum up all file sizes across all user's blogs
+      const estimatedUsage = 0; // This would be calculated from actual file sizes
+      
+      setStorageUsage({
+        used: estimatedUsage,
+        limit: storageLimit
+      });
+    } catch (error) {
+      console.error('Error checking storage usage:', error);
+    } finally {
+      setCheckingStorage(false);
+    }
+  };
 
   const handleFileSelect = async (e) => {
     const file = e.target.files[0];
@@ -54,6 +85,15 @@ export default function ImageUploader({
       return;
     }
 
+    // Check storage limits
+    const estimatedCompressedSize = file.size * 0.7; // Rough estimate
+    const storageLimit = (currentUser?.totalStorageMB || 100) * 1024 * 1024; // Convert MB to bytes
+    const currentUsageBytes = storageUsage.used * 1024 * 1024;
+    
+    if (currentUsageBytes + estimatedCompressedSize > storageLimit) {
+      toast.error(`Upload would exceed your storage limit of ${currentUser?.totalStorageMB || 100} MB. Contact an administrator to increase your storage.`);
+      return;
+    }
     setSelectedFile(file);
     setOriginalFileSize(file.size);
     
@@ -148,6 +188,16 @@ export default function ImageUploader({
 
       // Check if compressed file is larger than original
       if (compressedBlob.size > selectedFile.size) {
+        // Additional storage check for larger compressed files
+        const storageLimit = (currentUser?.totalStorageMB || 100) * 1024 * 1024;
+        const currentUsageBytes = storageUsage.used * 1024 * 1024;
+        
+        if (currentUsageBytes + compressedBlob.size > storageLimit) {
+          toast.error(`Upload would exceed your storage limit of ${currentUser?.totalStorageMB || 100} MB. Try reducing quality or dimensions.`);
+          setCompressing(false);
+          return;
+        }
+        
         setFinalCompressedBlob(compressedBlob);
         setConfirmUploadModal(true);
       } else {
@@ -190,6 +240,9 @@ export default function ImageUploader({
       
       // Reset form
       resetForm();
+
+      // Refresh storage usage
+      await checkStorageUsage();
 
       // Callback for parent component
       if (onUploadSuccess) {
@@ -249,6 +302,34 @@ export default function ImageUploader({
 
   return (
     <div className={`space-y-6 ${className}`}>
+      {/* Storage Usage Display */}
+      <div className="card border-blue-200 bg-blue-50">
+        <div className="card-content p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-medium text-blue-800">Storage Usage</h4>
+            {checkingStorage && <LoadingSpinner size="sm" />}
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-blue-700">Used: {formatBytes(storageUsage.used * 1024 * 1024)}</span>
+              <span className="text-blue-700">Limit: {storageUsage.limit} MB</span>
+            </div>
+            <div className="w-full bg-blue-200 rounded-full h-2">
+              <div 
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  (storageUsage.used / storageUsage.limit) > 0.9 ? 'bg-red-500' :
+                  (storageUsage.used / storageUsage.limit) > 0.7 ? 'bg-yellow-500' : 'bg-blue-500'
+                }`}
+                style={{ width: `${Math.min((storageUsage.used / storageUsage.limit) * 100, 100)}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-blue-600">
+              Storage is shared across all your blogs
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* File Selection */}
       <div className="card">
         <div className="card-header">

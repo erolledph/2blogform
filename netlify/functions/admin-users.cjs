@@ -106,7 +106,9 @@ exports.handler = async (event, context) => {
                 lastSignInTime: userRecord.metadata.lastSignInTime,
                 role: settings.role || 'user',
                 canManageMultipleBlogs: settings.canManageMultipleBlogs || false,
-                currency: settings.currency || '$'
+                currency: settings.currency || '$',
+                maxBlogs: settings.maxBlogs || 1,
+                totalStorageMB: settings.totalStorageMB || 100
               });
             } catch (error) {
               console.warn(`Error fetching settings for user ${userRecord.uid}:`, error);
@@ -121,7 +123,9 @@ exports.handler = async (event, context) => {
                 lastSignInTime: userRecord.metadata.lastSignInTime,
                 role: 'user',
                 canManageMultipleBlogs: false,
-                currency: '$'
+                currency: '$',
+                maxBlogs: 1,
+                totalStorageMB: 100
               });
             }
           }
@@ -157,7 +161,7 @@ exports.handler = async (event, context) => {
       case 'PUT': {
         // Update user settings
         const data = JSON.parse(event.body);
-        const { userId, role, canManageMultipleBlogs } = data;
+        const { userId, role, canManageMultipleBlogs, maxBlogs, totalStorageMB } = data;
         
         if (!userId) {
           return {
@@ -185,6 +189,23 @@ exports.handler = async (event, context) => {
           };
         }
 
+        // Validate maxBlogs
+        if (maxBlogs !== undefined && (!Number.isInteger(maxBlogs) || maxBlogs < 1)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'maxBlogs must be a positive integer (minimum 1)' })
+          };
+        }
+
+        // Validate totalStorageMB
+        if (totalStorageMB !== undefined && (!Number.isInteger(totalStorageMB) || totalStorageMB < 100)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'totalStorageMB must be a positive integer (minimum 100)' })
+          };
+        }
         try {
           // Verify the target user exists
           await auth.getUser(userId);
@@ -204,6 +225,13 @@ exports.handler = async (event, context) => {
             updateData.canManageMultipleBlogs = canManageMultipleBlogs;
           }
 
+          if (maxBlogs !== undefined) {
+            updateData.maxBlogs = maxBlogs;
+          }
+
+          if (totalStorageMB !== undefined) {
+            updateData.totalStorageMB = totalStorageMB;
+          }
           await userSettingsRef.set(updateData, { merge: true });
 
           return {

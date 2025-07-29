@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 export default function CreateBlogModal({ isOpen, onClose, onBlogCreated }) {
   const { currentUser } = useAuth();
   const [creating, setCreating] = useState(false);
+  const [checkingLimits, setCheckingLimits] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: ''
@@ -32,7 +33,21 @@ export default function CreateBlogModal({ isOpen, onClose, onBlogCreated }) {
     }
 
     try {
+      setCheckingLimits(true);
+      
+      // Check user's blog limits before creating
+      const userBlogs = await blogService.fetchUserBlogs(currentUser.uid);
+      const maxBlogs = currentUser.maxBlogs || 1;
+      
+      if (userBlogs.length >= maxBlogs) {
+        toast.error(`You have reached your limit of ${maxBlogs} blog${maxBlogs > 1 ? 's' : ''}. Contact an administrator to increase your limit.`);
+        setCheckingLimits(false);
+        return;
+      }
+      
+      setCheckingLimits(false);
       setCreating(true);
+      
       const newBlog = await blogService.createNewBlog(
         currentUser.uid,
         formData.name.trim(),
@@ -53,8 +68,9 @@ export default function CreateBlogModal({ isOpen, onClose, onBlogCreated }) {
       onClose();
     } catch (error) {
       console.error('Error creating blog:', error);
-      toast.error('Failed to create blog');
+      toast.error(error.message || 'Failed to create blog');
     } finally {
+      setCheckingLimits(false);
       setCreating(false);
     }
   };
@@ -106,6 +122,7 @@ export default function CreateBlogModal({ isOpen, onClose, onBlogCreated }) {
             <li>• You'll be automatically switched to the new blog</li>
             <li>• All content you create will be associated with the active blog</li>
             <li>• Each blog has its own API endpoints for public access</li>
+            <li>• Storage is shared across all your blogs ({currentUser?.totalStorageMB || 100} MB total)</li>
           </ul>
         </div>
 
@@ -113,17 +130,22 @@ export default function CreateBlogModal({ isOpen, onClose, onBlogCreated }) {
           <button
             type="button"
             onClick={handleClose}
-            disabled={creating}
+            disabled={creating || checkingLimits}
             className="btn-secondary"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={creating || !formData.name.trim()}
+            disabled={creating || checkingLimits || !formData.name.trim()}
             className="btn-primary"
           >
-            {creating ? (
+            {checkingLimits ? (
+              <>
+                <LoadingSpinner size="sm" className="mr-2" />
+                Checking limits...
+              </>
+            ) : creating ? (
               <>
                 <LoadingSpinner size="sm" className="mr-2" />
                 Creating...

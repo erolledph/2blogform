@@ -91,6 +91,8 @@ export const settingsService = {
         currency: '$', // Default currency
         role: 'user', // Default role
         canManageMultipleBlogs: false, // Default multi-blog permission
+        maxBlogs: 1, // Default blog limit
+        totalStorageMB: 100, // Default storage limit in MB
         updatedAt: new Date()
       };
     } catch (error) {
@@ -99,6 +101,8 @@ export const settingsService = {
         currency: '$', // Default currency on error
         role: 'user', // Default role on error
         canManageMultipleBlogs: false, // Default multi-blog permission on error
+        maxBlogs: 1, // Default blog limit on error
+        totalStorageMB: 100, // Default storage limit on error
         updatedAt: new Date()
       };
     }

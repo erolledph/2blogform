@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import DataTable from '@/components/shared/DataTable';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import Modal from '@/components/shared/Modal';
+import InputField from '@/components/shared/InputField';
 import { 
   Users, 
   Shield, 
@@ -14,7 +15,9 @@ import {
   Settings,
   AlertTriangle,
   Check,
-  X
+  X,
+  HardDrive,
+  Database
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -220,6 +223,26 @@ export default function UserManagementPage() {
       )
     },
     {
+      key: 'maxBlogs',
+      title: 'Max Blogs',
+      render: (value, row) => (
+        <div className="text-center">
+          <div className="text-sm font-medium text-foreground">{value || 1}</div>
+          <div className="text-xs text-muted-foreground">allowed</div>
+        </div>
+      )
+    },
+    {
+      key: 'totalStorageMB',
+      title: 'Storage Limit',
+      render: (value, row) => (
+        <div className="text-center">
+          <div className="text-sm font-medium text-foreground">{value || 100} MB</div>
+          <div className="text-xs text-muted-foreground">total</div>
+        </div>
+      )
+    },
+    {
       key: 'emailVerified',
       title: 'Email Status',
       render: (value) => (
@@ -387,26 +410,26 @@ export default function UserManagementPage() {
           <div className="card-content p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-600 mb-2">Multi-Blog Users</p>
+                <p className="text-sm font-medium text-green-600 mb-2">Enhanced Users</p>
                 <p className="text-3xl font-bold text-green-900">
-                  {users.filter(u => u.canManageMultipleBlogs).length}
+                  {users.filter(u => u.canManageMultipleBlogs || (u.maxBlogs && u.maxBlogs > 1)).length}
                 </p>
               </div>
-              <ShieldCheck className="h-8 w-8 text-green-600" />
+              <Database className="h-8 w-8 text-green-600" />
             </div>
           </div>
         </div>
 
-        <div className="card border-purple-200 bg-purple-50">
+        <div className="card border-orange-200 bg-orange-50">
           <div className="card-content p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-600 mb-2">Verified Emails</p>
-                <p className="text-3xl font-bold text-purple-900">
-                  {users.filter(u => u.emailVerified).length}
+                <p className="text-sm font-medium text-orange-600 mb-2">Total Storage</p>
+                <p className="text-3xl font-bold text-orange-900">
+                  {(users.reduce((sum, u) => sum + (u.totalStorageMB || 100), 0) / 1024).toFixed(1)} GB
                 </p>
               </div>
-              <Mail className="h-8 w-8 text-purple-600" />
+              <HardDrive className="h-8 w-8 text-orange-600" />
             </div>
           </div>
         </div>
@@ -451,11 +474,69 @@ export default function UserManagementPage() {
 function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
   const [formData, setFormData] = useState({
     role: user.role || 'user',
-    canManageMultipleBlogs: user.canManageMultipleBlogs || false
+    canManageMultipleBlogs: user.canManageMultipleBlogs || false,
+    maxBlogs: user.maxBlogs || 1,
+    totalStorageMB: user.totalStorageMB || 100
   });
+  
+  const [storageOption, setStorageOption] = useState('preset');
+  const [customStorage, setCustomStorage] = useState('');
+
+  const storagePresets = [
+    { value: 100, label: '100 MB (Default)' },
+    { value: 250, label: '250 MB' },
+    { value: 500, label: '500 MB' },
+    { value: 700, label: '700 MB' },
+    { value: 1024, label: '1 GB' },
+    { value: 2048, label: '2 GB' },
+    { value: 5120, label: '5 GB' }
+  ];
+
+  useEffect(() => {
+    // Determine if current storage is a preset or custom
+    const isPreset = storagePresets.some(preset => preset.value === formData.totalStorageMB);
+    if (isPreset) {
+      setStorageOption('preset');
+    } else {
+      setStorageOption('custom');
+      setCustomStorage(formData.totalStorageMB.toString());
+    }
+  }, [formData.totalStorageMB]);
+
+  const handleStorageOptionChange = (option) => {
+    setStorageOption(option);
+    if (option === 'preset') {
+      setFormData(prev => ({ ...prev, totalStorageMB: 100 }));
+    }
+  };
+
+  const handleStoragePresetChange = (value) => {
+    setFormData(prev => ({ ...prev, totalStorageMB: parseInt(value) }));
+  };
+
+  const handleCustomStorageChange = (value) => {
+    setCustomStorage(value);
+    const numValue = parseInt(value) || 100;
+    if (numValue >= 100) {
+      setFormData(prev => ({ ...prev, totalStorageMB: numValue }));
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Validate maxBlogs
+    if (formData.maxBlogs < 1) {
+      toast.error('Maximum blogs must be at least 1');
+      return;
+    }
+    
+    // Validate totalStorageMB
+    if (formData.totalStorageMB < 100) {
+      toast.error('Storage limit must be at least 100 MB');
+      return;
+    }
+    
     onSave(user.uid, formData);
   };
 
@@ -538,25 +619,97 @@ function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
 
       {/* Multi-Blog Access */}
       <div>
-        <label className="block text-base font-medium text-foreground mb-4">
-          Multi-Blog Access
-        </label>
-        <label className="flex items-center space-x-3">
-          <input
-            type="checkbox"
-            checked={formData.canManageMultipleBlogs}
-            onChange={(e) => setFormData(prev => ({ ...prev, canManageMultipleBlogs: e.target.checked }))}
-            disabled={updating}
-            className="w-4 h-4 text-primary"
-          />
-          <div className="flex items-center space-x-2">
-            <ShieldCheck className="h-4 w-4 text-green-600" />
-            <span>Allow user to manage multiple blogs</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-base font-medium text-foreground mb-4">
+              Maximum Blogs
+            </label>
+            <InputField
+              type="number"
+              min="1"
+              max="50"
+              value={formData.maxBlogs}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 1;
+                setFormData(prev => ({ 
+                  ...prev, 
+                  maxBlogs: value,
+                  canManageMultipleBlogs: value > 1
+                }));
+              }}
+              disabled={updating}
+              placeholder="1"
+            />
+            <p className="text-sm text-muted-foreground mt-2">
+              Number of blogs this user can create (1-50)
+            </p>
           </div>
-        </label>
-        <p className="text-sm text-muted-foreground mt-2">
-          When enabled, this user can create and manage multiple blogs instead of being limited to one.
-        </p>
+          
+          <div>
+            <label className="block text-base font-medium text-foreground mb-4">
+              Storage Limit
+            </label>
+            <div className="space-y-4">
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    name="storageOption"
+                    value="preset"
+                    checked={storageOption === 'preset'}
+                    onChange={(e) => handleStorageOptionChange(e.target.value)}
+                    disabled={updating}
+                    className="w-4 h-4 text-primary"
+                  />
+                  <span className="text-sm">Preset</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    name="storageOption"
+                    value="custom"
+                    checked={storageOption === 'custom'}
+                    onChange={(e) => handleStorageOptionChange(e.target.value)}
+                    disabled={updating}
+                    className="w-4 h-4 text-primary"
+                  />
+                  <span className="text-sm">Custom</span>
+                </label>
+              </div>
+              
+              {storageOption === 'preset' ? (
+                <select
+                  value={formData.totalStorageMB}
+                  onChange={(e) => handleStoragePresetChange(e.target.value)}
+                  disabled={updating}
+                  className="input-field"
+                >
+                  {storagePresets.map(preset => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <InputField
+                    type="number"
+                    min="100"
+                    value={customStorage}
+                    onChange={(e) => handleCustomStorageChange(e.target.value)}
+                    disabled={updating}
+                    placeholder="100"
+                    className="flex-1"
+                  />
+                  <span className="text-sm text-muted-foreground">MB</span>
+                </div>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">
+              Total storage shared across all user's blogs
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Action Buttons */}

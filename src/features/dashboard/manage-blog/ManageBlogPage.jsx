@@ -468,18 +468,30 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
             <div className="border-t border-border pt-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">Create New Blog</h3>
               
-              {canManageMultipleBlogs ? (
+              {(canManageMultipleBlogs || (currentUser?.maxBlogs && currentUser.maxBlogs > 1)) ? (
                 <div className="space-y-4">
-                  <p className="text-base text-muted-foreground">
-                    You have permission to create multiple blogs. Each blog will have its own content, products, and API endpoints.
-                  </p>
-                  <button
-                    onClick={() => setCreateModalOpen(true)}
-                    className="btn-primary w-full h-12"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create New Blog
-                  </button>
+                  {allBlogs.length < (currentUser?.maxBlogs || 1) ? (
+                    <>
+                      <p className="text-base text-muted-foreground">
+                        You can create up to {currentUser?.maxBlogs || 1} blogs. Currently have {allBlogs.length}.
+                      </p>
+                      <button
+                        onClick={() => setCreateModalOpen(true)}
+                        className="btn-primary w-full h-12"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create New Blog ({allBlogs.length}/{currentUser?.maxBlogs || 1})
+                      </button>
+                    </>
+                  ) : (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      <h4 className="text-sm font-medium text-amber-800 mb-2">Blog Limit Reached</h4>
+                      <p className="text-sm text-amber-700 mb-3">
+                        You have reached your maximum of {currentUser?.maxBlogs || 1} blog{(currentUser?.maxBlogs || 1) > 1 ? 's' : ''}. 
+                        To create more blogs, contact an administrator to increase your limit.
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
@@ -504,9 +516,22 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                 </div>
                 <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-center">
                   <div className="text-2xl font-bold text-green-900">
-                    {canManageMultipleBlogs ? '∞' : '1'}
+                    {currentUser?.maxBlogs || 1}
                   </div>
                   <div className="text-sm text-green-600">Max Allowed</div>
+                </div>
+              </div>
+              
+              {/* Storage Information */}
+              <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-lg font-bold text-purple-900">{currentUser?.totalStorageMB || 100} MB</div>
+                    <div className="text-sm text-purple-600">Storage Limit</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-purple-700">Shared across all blogs</div>
+                  </div>
                 </div>
               </div>
             </div>
