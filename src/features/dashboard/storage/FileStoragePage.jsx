@@ -29,7 +29,8 @@ import toast from 'react-hot-toast';
 export default function FileStoragePage() {
   const [items, setItems] = useState([]);
   const [currentPath, setCurrentPath] = useState('');
-  const [pathHistory, setPathHistory] = useState(['']);
+  const [pathHistory, setPathHistory] = useState([]);
+  const [userBasePath, setUserBasePath] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, item: null });
@@ -37,17 +38,47 @@ export default function FileStoragePage() {
   const [uploadModal, setUploadModal] = useState({ isOpen: false });
   const [storageStats, setStorageStats] = useState({ totalFiles: 0, totalSize: 0 });
   const { currentUser } = useAuth();
+  
+  // Import storage service
+  const [storageService, setStorageService] = useState(null);
+
+  // Load storage service dynamically
+  useEffect(() => {
+    const loadStorageService = async () => {
+      try {
+        const { storageService: service } = await import('@/services/storageService');
+        setStorageService(service);
+      } catch (error) {
+        console.error('Error loading storage service:', error);
+      }
+    };
+    loadStorageService();
+  }, []);
+
+  // Initialize user-specific base path
+  useEffect(() => {
+    if (currentUser?.uid) {
+      const basePath = `users/${currentUser.uid}/public_images`;
+      setUserBasePath(basePath);
+      setCurrentPath(basePath);
+      setPathHistory([basePath]);
+    }
+  }, [currentUser?.uid]);
 
   useEffect(() => {
-    fetchItems();
-  }, [currentPath]);
+    if (currentPath && userBasePath) {
+      fetchItems();
+    }
+  }, [currentPath, userBasePath]);
 
   const fetchItems = async () => {
+    if (!currentPath) return;
+    
     try {
       setLoading(true);
       setError(null);
       
-      const storageRef = currentPath ? ref(storage, currentPath) : ref(storage);
+      const storageRef = ref(storage, currentPath);
       const result = await listAll(storageRef);
       
       const currentItems = [];
@@ -103,14 +134,29 @@ export default function FileStoragePage() {
       
       // Update storage stats (only count files)
       const fileItems = currentItems.filter(item => item.type === 'file');
-      const currentSize = fileItems.reduce((sum, file) => sum + file.size, 0);
       
-      // For total stats, we need to get all files recursively (but only for stats)
-      if (currentPath === '') {
-        const allFiles = await getAllFilesRecursive(ref(storage));
+      // Calculate total storage stats for this user only
+      if (currentPath === userBasePath && storageService && currentUser?.uid) {
+        try {
+          const totalUsageBytes = await storageService.getUserTotalStorageUsage(currentUser.uid);
+          const allUserFiles = await getAllUserFilesRecursive(ref(storage, userBasePath));
+          setStorageStats({
+            totalFiles: allUserFiles.length,
+            totalSize: totalUsageBytes
+          });
+        } catch (error) {
+          console.error('Error calculating user storage stats:', error);
+          // Fallback to current level calculation
+          setStorageStats({
+            totalFiles: fileItems.length,
+            totalSize: fileItems.reduce((sum, file) => sum + file.size, 0)
+          });
+        }
+      } else {
+        // For subdirectories, just show current level stats
         setStorageStats({
-          totalFiles: allFiles.length,
-          totalSize: allFiles.reduce((sum, file) => sum + file.size, 0)
+          totalFiles: fileItems.length,
+          totalSize: fileItems.reduce((sum, file) => sum + file.size, 0)
         });
       }
       
@@ -123,8 +169,8 @@ export default function FileStoragePage() {
     }
   };
 
-  // Helper function to get all files recursively (for stats only)
-  const getAllFilesRecursive = async (storageRef) => {
+  // Helper function to get all user files recursively (for stats only)
+  const getAllUserFilesRecursive = async (storageRef) => {
     const allFiles = [];
     
     try {
@@ -149,7 +195,7 @@ export default function FileStoragePage() {
       // Recursively process subfolders
       const subfolderPromises = result.prefixes.map(async (prefixRef) => {
         try {
-          const subfolderFiles = await getAllFilesRecursive(prefixRef);
+          const subfolderFiles = await getAllUserFilesRecursive(prefixRef);
           return subfolderFiles;
         } catch (error) {
           return [];
@@ -169,6 +215,11 @@ export default function FileStoragePage() {
   };
 
   const navigateToFolder = (folderPath) => {
+    // Ensure we stay within user's storage space
+    if (!folderPath.startsWith(userBasePath)) {
+      console.warn('Attempted to navigate outside user storage space');
+      return;
+    }
     setPathHistory(prev => [...prev, currentPath]);
     setCurrentPath(folderPath);
   };
@@ -176,32 +227,42 @@ export default function FileStoragePage() {
   const navigateBack = () => {
     if (pathHistory.length > 1) {
       const newHistory = [...pathHistory];
-      const previousPath = newHistory.pop();
+      newHistory.pop(); // Remove current path
+      const previousPath = newHistory[newHistory.length - 1];
       setPathHistory(newHistory);
       setCurrentPath(previousPath);
     }
   };
 
-  const navigateToRoot = () => {
-    setPathHistory(['']);
-    setCurrentPath('');
+  const navigateToUserRoot = () => {
+    setPathHistory([userBasePath]);
+    setCurrentPath(userBasePath);
   };
 
   const navigateToPath = (targetPath) => {
+    // Ensure we stay within user's storage space
+    if (!targetPath.startsWith(userBasePath) && targetPath !== userBasePath) {
+      console.warn('Attempted to navigate outside user storage space');
+      return;
+    }
+    
     // Find the index of the target path in history or create new history
     const pathIndex = pathHistory.indexOf(targetPath);
     if (pathIndex !== -1) {
       setPathHistory(pathHistory.slice(0, pathIndex + 1));
       setCurrentPath(targetPath);
     } else {
-      setPathHistory(['', targetPath]);
+      setPathHistory([userBasePath, targetPath]);
       setCurrentPath(targetPath);
     }
-  };
 
   const handleDelete = async (item) => {
     try {
-      if (item.type === 'folder') {
+    if (!currentPath || !userBasePath) return [{ name: 'My Storage', path: userBasePath }];
+    
+    if (currentPath === userBasePath) {
+      return [{ name: 'My Storage', path: userBasePath }];
+    }
         // For folders, we need to delete all files inside recursively
         await deleteFolder(item.ref);
         toast.success('Folder deleted successfully');
@@ -261,12 +322,14 @@ export default function FileStoragePage() {
   const getBreadcrumbs = () => {
     if (!currentPath) return [{ name: 'Root', path: '' }];
     
-    const parts = currentPath.split('/').filter(Boolean);
-    const breadcrumbs = [{ name: 'Root', path: '' }];
+    // Get the relative path from user base path
+    const relativePath = currentPath.replace(userBasePath + '/', '');
+    const parts = relativePath.split('/').filter(Boolean);
+    const breadcrumbs = [{ name: 'My Storage', path: userBasePath }];
     
-    let currentBreadcrumbPath = '';
+    let currentBreadcrumbPath = userBasePath;
     parts.forEach(part => {
-      currentBreadcrumbPath = currentBreadcrumbPath ? `${currentBreadcrumbPath}/${part}` : part;
+      currentBreadcrumbPath = `${currentBreadcrumbPath}/${part}`;
       breadcrumbs.push({ name: part, path: currentBreadcrumbPath });
     });
     
@@ -437,7 +500,7 @@ export default function FileStoragePage() {
           <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">File Storage</h1>
         </div>
         <div className="flex items-center space-x-4">
-          {currentPath && (
+          {currentPath && currentPath !== userBasePath && (
             <button
               onClick={navigateBack}
               className="btn-secondary inline-flex items-center"
@@ -469,13 +532,13 @@ export default function FileStoragePage() {
         <div className="card-content p-4">
           <nav className="flex items-center space-x-2 text-sm">
             <button
-              onClick={navigateToRoot}
+              onClick={navigateToUserRoot}
               className="flex items-center text-blue-600 hover:text-blue-800"
             >
               <Home className="h-4 w-4 mr-1" />
-              Storage
+              My Storage
             </button>
-            {getBreadcrumbs().slice(1).map((crumb, index) => (
+            {getBreadcrumbs().slice(1).map((crumb) => (
               <React.Fragment key={crumb.path}>
                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 <button
@@ -579,7 +642,7 @@ export default function FileStoragePage() {
                   <strong>Remaining:</strong> {formatBytes(((currentUser?.totalStorageMB || 100) * 1024 * 1024) - storageStats.totalSize)}
                 </p>
                 <p>
-                  Storage is shared across all your blogs ({currentUser?.maxBlogs || 1} blog{(currentUser?.maxBlogs || 1) > 1 ? 's' : ''} allowed).
+                  This is your personal storage space, isolated from other users. Storage is shared across all your blogs ({currentUser?.maxBlogs || 1} blog{(currentUser?.maxBlogs || 1) > 1 ? 's' : ''} allowed).
                 </p>
                 {((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.9 && (
                   <p className="font-medium">
@@ -587,7 +650,7 @@ export default function FileStoragePage() {
                   </p>
                 )}
                 <p>
-                  All files are stored securely with automatic backups and global CDN delivery.
+                  All your files are stored securely in your private space with automatic backups and global CDN delivery for public images.
                 </p>
               </div>
               
@@ -633,12 +696,12 @@ export default function FileStoragePage() {
           <div className="card-content text-center py-16">
             <Folder className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
             <h3 className="text-2xl font-semibold text-foreground mb-4">
-              {currentPath ? 'Folder is empty' : 'No files found'}
+              {currentPath && currentPath !== userBasePath ? 'Folder is empty' : 'No files in your storage'}
             </h3>
             <p className="text-lg text-muted-foreground mb-8">
-              {currentPath 
+              {currentPath && currentPath !== userBasePath
                 ? 'This folder contains no files or subfolders.'
-                : 'Upload some images through the content creation process to see them here.'
+                : 'Upload some images through the content creation process or use the upload button to add files to your personal storage.'
               }
             </p>
           </div>
@@ -767,7 +830,7 @@ export default function FileStoragePage() {
         size="xl"
       >
         <ImageUploader
-          currentPath={currentPath}
+          currentPath={currentPath === userBasePath ? null : currentPath}
           onUploadSuccess={handleUploadSuccess}
           onUploadError={handleUploadError}
           maxFileSize={10 * 1024 * 1024} // 10MB

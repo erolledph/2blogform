@@ -26,24 +26,38 @@ export default function ImageGalleryModal({
   maxSelections = 5,
   title = "Select Image"
 }) {
+  const { currentUser } = useAuth();
   const [items, setItems] = useState([]); // Combined folders and images
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [selectedImages, setSelectedImages] = useState([]);
   const [currentPath, setCurrentPath] = useState('');
-  const [pathHistory, setPathHistory] = useState(['']);
+  const [pathHistory, setPathHistory] = useState([]);
+  const [userBasePath, setUserBasePath] = useState('');
+
+  // Initialize user-specific base path
+  useEffect(() => {
+    if (currentUser?.uid) {
+      const basePath = `users/${currentUser.uid}/public_images`;
+      setUserBasePath(basePath);
+      setCurrentPath(basePath);
+      setPathHistory([basePath]);
+    }
+  }, [currentUser?.uid]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && currentPath && userBasePath) {
       fetchItems();
     }
-  }, [isOpen, currentPath]);
+  }, [isOpen, currentPath, userBasePath]);
 
   const fetchItems = async () => {
+    if (!currentPath) return;
+    
     try {
       setLoading(true);
-      const storageRef = currentPath ? ref(storage, currentPath) : ref(storage);
+      const storageRef = ref(storage, currentPath);
       const result = await listAll(storageRef);
       
       const currentItems = [];
@@ -108,6 +122,11 @@ export default function ImageGalleryModal({
   };
 
   const navigateToFolder = (folderPath) => {
+    // Ensure we stay within user's storage space
+    if (!folderPath.startsWith(userBasePath)) {
+      console.warn('Attempted to navigate outside user storage space');
+      return;
+    }
     setPathHistory(prev => [...prev, currentPath]);
     setCurrentPath(folderPath);
     setSearchTerm(''); // Clear search when navigating
@@ -116,40 +135,53 @@ export default function ImageGalleryModal({
   const navigateBack = () => {
     if (pathHistory.length > 1) {
       const newHistory = [...pathHistory];
-      const previousPath = newHistory.pop();
+      newHistory.pop(); // Remove current path
+      const previousPath = newHistory[newHistory.length - 1];
       setPathHistory(newHistory);
       setCurrentPath(previousPath);
     }
   };
 
-  const navigateToRoot = () => {
-    setPathHistory(['']);
-    setCurrentPath('');
+  const navigateToUserRoot = () => {
+    setPathHistory([userBasePath]);
+    setCurrentPath(userBasePath);
     setSearchTerm('');
   };
 
   const navigateToPath = (targetPath) => {
+    // Ensure we stay within user's storage space
+    if (!targetPath.startsWith(userBasePath) && targetPath !== userBasePath) {
+      console.warn('Attempted to navigate outside user storage space');
+      return;
+    }
+    
     // Find the index of the target path in history or create new history
     const pathIndex = pathHistory.indexOf(targetPath);
     if (pathIndex !== -1) {
       setPathHistory(pathHistory.slice(0, pathIndex + 1));
       setCurrentPath(targetPath);
     } else {
-      setPathHistory(['', targetPath]);
+      setPathHistory([userBasePath, targetPath]);
       setCurrentPath(targetPath);
     }
     setSearchTerm('');
   };
 
   const getBreadcrumbs = () => {
-    if (!currentPath) return [{ name: 'Storage', path: '' }];
+    if (!currentPath || !userBasePath) return [{ name: 'My Images', path: userBasePath }];
     
-    const parts = currentPath.split('/').filter(Boolean);
-    const breadcrumbs = [{ name: 'Storage', path: '' }];
+    if (currentPath === userBasePath) {
+      return [{ name: 'My Images', path: userBasePath }];
+    }
     
-    let currentBreadcrumbPath = '';
+    // Get the relative path from user base path
+    const relativePath = currentPath.replace(userBasePath + '/', '');
+    const parts = relativePath.split('/').filter(Boolean);
+    const breadcrumbs = [{ name: 'My Images', path: userBasePath }];
+    
+    let currentBreadcrumbPath = userBasePath;
     parts.forEach(part => {
-      currentBreadcrumbPath = currentBreadcrumbPath ? `${currentBreadcrumbPath}/${part}` : part;
+      currentBreadcrumbPath = `${currentBreadcrumbPath}/${part}`;
       breadcrumbs.push({ name: part, path: currentBreadcrumbPath });
     });
     
@@ -206,11 +238,11 @@ export default function ImageGalleryModal({
           {/* Breadcrumb Navigation */}
           <nav className="flex items-center space-x-2 text-sm bg-muted/30 rounded-lg p-3">
             <button
-              onClick={navigateToRoot}
+              onClick={navigateToUserRoot}
               className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
             >
               <Home className="h-4 w-4 mr-1" />
-              Storage
+              My Images
             </button>
             {getBreadcrumbs().slice(1).map((crumb, index) => (
               <React.Fragment key={crumb.path}>
@@ -228,7 +260,7 @@ export default function ImageGalleryModal({
           {/* Search and View Controls */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center space-x-3">
-              {currentPath && (
+              {currentPath && currentPath !== userBasePath && (
                 <button
                   onClick={navigateBack}
                   className="btn-secondary btn-sm inline-flex items-center"
@@ -286,7 +318,10 @@ export default function ImageGalleryModal({
             <div className="text-center py-8">
               <ImageIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
               <p className="text-muted-foreground">
-                {searchTerm ? 'No folders or images found matching your search' : 'No folders or images available'}
+                {searchTerm ? 'No folders or images found matching your search' : 'No folders or images in your storage'}
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Upload images through the content creation process or file storage page to see them here.
               </p>
             </div>
           ) : viewMode === 'grid' ? (

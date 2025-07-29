@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 export default function ImageUploader({ 
   onUploadSuccess, 
   onUploadError,
-  currentPath = '',
+  currentPath = null, // Will be set to user-specific path if null
   className = '',
   maxFileSize = 10 * 1024 * 1024, // 10MB default
   initialQuality = 80,
@@ -21,6 +21,7 @@ export default function ImageUploader({
   initialMaxHeight = 1080
 }) {
   const { currentUser } = useAuth();
+  const [userStoragePath, setUserStoragePath] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [newFileName, setNewFileName] = useState('');
   const [compressing, setCompressing] = useState(false);
@@ -28,6 +29,30 @@ export default function ImageUploader({
   const [previewUrl, setPreviewUrl] = useState(null);
   const [storageUsage, setStorageUsage] = useState({ used: 0, limit: 100 });
   const [checkingStorage, setCheckingStorage] = useState(false);
+
+  // Import storage service
+  const [storageService, setStorageService] = useState(null);
+
+  // Load storage service dynamically
+  useEffect(() => {
+    const loadStorageService = async () => {
+      try {
+        const { storageService: service } = await import('@/services/storageService');
+        setStorageService(service);
+      } catch (error) {
+        console.error('Error loading storage service:', error);
+      }
+    };
+    loadStorageService();
+  }, []);
+
+  // Set user-specific storage path
+  useEffect(() => {
+    if (currentUser?.uid) {
+      const userPath = currentPath || `users/${currentUser.uid}/public_images`;
+      setUserStoragePath(userPath);
+    }
+  }, [currentUser?.uid, currentPath]);
 
   // User-configurable optimization settings
   const [imageQuality, setImageQuality] = useState(initialQuality);
@@ -46,20 +71,21 @@ export default function ImageUploader({
     if (currentUser?.uid) {
       checkStorageUsage();
     }
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, storageService]);
 
   const checkStorageUsage = async () => {
+    if (!storageService || !currentUser?.uid) return;
+    
     try {
       setCheckingStorage(true);
-      // This is a simplified check - in a real implementation, you'd calculate actual storage usage
       const storageLimit = currentUser?.totalStorageMB || 100;
       
-      // For now, we'll use a placeholder calculation
-      // In a real implementation, you'd sum up all file sizes across all user's blogs
-      const estimatedUsage = 0; // This would be calculated from actual file sizes
+      // Get actual storage usage for this user
+      const actualUsageBytes = await storageService.getUserTotalStorageUsage(currentUser.uid);
+      const actualUsageMB = actualUsageBytes / (1024 * 1024);
       
       setStorageUsage({
-        used: estimatedUsage,
+        used: actualUsageMB,
         limit: storageLimit
       });
     } catch (error) {
@@ -86,12 +112,14 @@ export default function ImageUploader({
     }
 
     // Check storage limits
-    const estimatedCompressedSize = file.size * 0.7; // Rough estimate
+    const estimatedCompressedSize = file.size * 0.8; // Conservative estimate
     const storageLimit = (currentUser?.totalStorageMB || 100) * 1024 * 1024; // Convert MB to bytes
-    const currentUsageBytes = storageUsage.used * 1024 * 1024;
+    const currentUsageBytes = storageUsage.used * 1024 * 1024; // Convert MB to bytes
     
     if (currentUsageBytes + estimatedCompressedSize > storageLimit) {
-      toast.error(`Upload would exceed your storage limit of ${currentUser?.totalStorageMB || 100} MB. Contact an administrator to increase your storage.`);
+      const limitMB = currentUser?.totalStorageMB || 100;
+      const currentUsageMB = (currentUsageBytes / (1024 * 1024)).toFixed(1);
+      toast.error(`Upload would exceed your storage limit of ${limitMB} MB. Current usage: ${currentUsageMB} MB. Contact an administrator to increase your storage.`);
       return;
     }
     setSelectedFile(file);
@@ -172,6 +200,26 @@ export default function ImageUploader({
       return;
     }
 
+    // Final storage check with actual usage if storage service is available
+    if (storageService && currentUser?.uid) {
+      try {
+        const uploadCheck = await storageService.canUserUploadFile(
+          currentUser.uid,
+          selectedFile.size,
+          currentUser?.totalStorageMB || 100
+        );
+        
+        if (!uploadCheck.canUpload) {
+          const limitMB = currentUser?.totalStorageMB || 100;
+          const currentUsageMB = (uploadCheck.currentUsage / (1024 * 1024)).toFixed(1);
+          toast.error(`Upload would exceed your storage limit of ${limitMB} MB. Current usage: ${currentUsageMB} MB. Contact an administrator to increase your storage.`);
+          return;
+        }
+      } catch (error) {
+        console.warn('Storage check failed, proceeding with upload:', error);
+      }
+    }
+
     try {
       setCompressing(true);
       
@@ -217,7 +265,7 @@ export default function ImageUploader({
 
       // Create storage path
       const fileName = `${newFileName.trim()}.${outputFormat}`;
-      const fullPath = currentPath ? `${currentPath}/${fileName}` : `images/${fileName}`;
+      const fullPath = userStoragePath ? `${userStoragePath}/${fileName}` : `users/${currentUser?.uid}/public_images/${fileName}`;
       const storageRef = ref(storage, fullPath);
       
       // Upload compressed image
@@ -307,11 +355,20 @@ export default function ImageUploader({
         <div className="card-content p-4">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-sm font-medium text-blue-800">Storage Usage</h4>
-            {checkingStorage && <LoadingSpinner size="sm" />}
+            <div className="flex items-center space-x-2">
+              {checkingStorage && <LoadingSpinner size="sm" />}
+              <button
+                onClick={checkStorageUsage}
+                className="text-blue-600 hover:text-blue-800 text-xs"
+                title="Refresh storage usage"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-blue-700">Used: {formatBytes(storageUsage.used * 1024 * 1024)}</span>
+              <span className="text-blue-700">Used: {(storageUsage.used).toFixed(1)} MB</span>
               <span className="text-blue-700">Limit: {storageUsage.limit} MB</span>
             </div>
             <div className="w-full bg-blue-200 rounded-full h-2">
@@ -324,7 +381,7 @@ export default function ImageUploader({
               ></div>
             </div>
             <p className="text-xs text-blue-600">
-              Storage is shared across all your blogs
+              Your personal storage space ({userStoragePath})
             </p>
           </div>
         </div>
