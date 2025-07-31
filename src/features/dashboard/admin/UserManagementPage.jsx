@@ -142,13 +142,6 @@ export default function UserManagementPage() {
     }
   };
 
-  const toggleMultiBlogAccess = async (user) => {
-    const newStatus = !user.canManageMultipleBlogs;
-    await handleUpdateUser(user.uid, { 
-      canManageMultipleBlogs: newStatus 
-    });
-  };
-
   const toggleAdminRole = async (user) => {
     const newRole = user.role === 'admin' ? 'user' : 'admin';
     await handleUpdateUser(user.uid, { 
@@ -193,29 +186,6 @@ export default function UserManagementPage() {
               <User className="h-4 w-4 text-gray-600" />
               <span className="badge badge-secondary">
                 User
-              </span>
-            </>
-          )}
-        </div>
-      )
-    },
-    {
-      key: 'canManageMultipleBlogs',
-      title: 'Multi-Blog Access',
-      render: (value, row) => (
-        <div className="flex items-center space-x-2">
-          {value ? (
-            <>
-              <ShieldCheck className="h-4 w-4 text-green-600" />
-              <span className="badge badge-success">
-                Enabled
-              </span>
-            </>
-          ) : (
-            <>
-              <Shield className="h-4 w-4 text-gray-600" />
-              <span className="badge badge-secondary">
-                Disabled
               </span>
             </>
           )}
@@ -284,20 +254,7 @@ export default function UserManagementPage() {
             <Settings className="h-4 w-4" />
           </button>
           
-          {/* Quick toggle buttons */}
-          <button
-            onClick={() => toggleMultiBlogAccess(row)}
-            disabled={updating}
-            className={`p-2 rounded-md transition-colors duration-200 ${
-              row.canManageMultipleBlogs 
-                ? 'text-green-600 hover:bg-green-50' 
-                : 'text-gray-600 hover:bg-gray-50'
-            }`}
-            title={`${row.canManageMultipleBlogs ? 'Disable' : 'Enable'} multi-blog access`}
-          >
-            {row.canManageMultipleBlogs ? <ShieldCheck className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
-          </button>
-          
+          {/* Quick admin role toggle */}
           {row.uid !== currentUser?.uid && (
             <button
               onClick={() => toggleAdminRole(row)}
@@ -410,9 +367,9 @@ export default function UserManagementPage() {
           <div className="card-content p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-600 mb-2">Enhanced Users</p>
+                <p className="text-sm font-medium text-green-600 mb-2">Multi-Blog Users</p>
                 <p className="text-3xl font-bold text-green-900">
-                  {users.filter(u => u.canManageMultipleBlogs || (u.maxBlogs && u.maxBlogs > 1)).length}
+                  {users.filter(u => (u.maxBlogs && u.maxBlogs > 1)).length}
                 </p>
               </div>
               <Database className="h-8 w-8 text-green-600" />
