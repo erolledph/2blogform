@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronUp, ChevronDown, Search, Filter } from 'lucide-react';
+import { ChevronUp, ChevronDown, Search, Filter, Check } from 'lucide-react';
 
 export default function DataTable({
   data = [],
@@ -9,7 +9,11 @@ export default function DataTable({
   sortable = true,
   pagination = true,
   pageSize = 10,
-  className = ''
+  className = '',
+  selectable = false,
+  selectedItems = [],
+  onSelectAll = null,
+  onSelectRow = null
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -77,6 +81,22 @@ export default function DataTable({
     );
   };
 
+  const isAllSelected = data.length > 0 && selectedItems.length === data.length;
+  const isIndeterminate = selectedItems.length > 0 && selectedItems.length < data.length;
+
+  const handleSelectAll = () => {
+    if (onSelectAll) {
+      onSelectAll(!isAllSelected);
+    }
+  };
+
+  const handleRowSelect = (itemId) => {
+    if (onSelectRow) {
+      const isSelected = selectedItems.includes(itemId);
+      onSelectRow(itemId, !isSelected);
+    }
+  };
+
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Search and Filters */}
@@ -106,6 +126,21 @@ export default function DataTable({
         <table className="min-w-full divide-y divide-border">
           <thead className="bg-muted/50">
             <tr>
+              {selectable && (
+                <th className="px-4 sm:px-6 py-3 sm:py-4 text-left">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      ref={(input) => {
+                        if (input) input.indeterminate = isIndeterminate;
+                      }}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 text-primary rounded border-border focus:ring-primary focus:ring-2"
+                    />
+                  </div>
+                </th>
+              )}
               {columns.map((column) => (
                 <th
                   key={column.key}
@@ -125,6 +160,16 @@ export default function DataTable({
           <tbody className="bg-background divide-y divide-border">
             {paginatedData.map((row, index) => (
               <tr key={row.id || index} className="hover:bg-muted/30 transition-colors duration-200">
+                {selectable && (
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.includes(row.id)}
+                      onChange={() => handleRowSelect(row.id)}
+                      className="w-4 h-4 text-primary rounded border-border focus:ring-primary focus:ring-2"
+                    />
+                  </td>
+                )}
                 {columns.map((column) => (
                   <td key={column.key} className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                     {column.render ? column.render(row[column.key], row) : row[column.key]}
@@ -142,6 +187,11 @@ export default function DataTable({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="text-sm text-muted-foreground">
               Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, sortedData.length)} of {sortedData.length} results
+              {selectable && selectedItems.length > 0 && (
+                <span className="ml-4 text-primary font-medium">
+                  {selectedItems.length} selected
+                </span>
+              )}
             </div>
             <div className="flex items-center justify-center sm:justify-end space-x-2">
               <button

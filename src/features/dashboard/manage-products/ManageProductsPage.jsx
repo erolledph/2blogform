@@ -6,7 +6,7 @@ import { settingsService } from '@/services/settingsService';
 import DataTable from '@/components/shared/DataTable';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import Modal from '@/components/shared/Modal';
-import { Edit, Trash2, Plus, ImageIcon, DollarSign, Package, ExternalLink, Eye } from 'lucide-react';
+import { Edit, Trash2, Plus, ImageIcon, DollarSign, Package, ExternalLink, Eye, Upload, Download, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { getStatusBadgeClass } from '@/utils/helpers';
 import toast from 'react-hot-toast';
@@ -15,6 +15,9 @@ export default function ManageProductsPage({ activeBlogId }) {
   const { products, loading, error, refetch } = useProducts(activeBlogId);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, product: null });
   const [userCurrency, setUserCurrency] = useState('$');
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const { getAuthToken, currentUser } = useAuth();
 
   useEffect(() => {
@@ -30,6 +33,190 @@ export default function ManageProductsPage({ activeBlogId }) {
     } catch (error) {
       console.error('Error fetching user settings:', error);
       // Keep default currency on error
+    }
+  };
+
+  const handleSelectAll = (selectAll) => {
+    if (selectAll) {
+      setSelectedItems(products.map(item => item.id));
+    } else {
+      setSelectedItems([]);
+    }
+  };
+
+  const handleSelectRow = (itemId, isSelected) => {
+    if (isSelected) {
+      setSelectedItems(prev => [...prev, itemId]);
+    } else {
+      setSelectedItems(prev => prev.filter(id => id !== itemId));
+    }
+  };
+
+  const handleImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        toast.error('Please select a CSV file');
+        return;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File size must be less than 10MB');
+        return;
+      }
+
+      try {
+        setImporting(true);
+        const token = await getAuthToken();
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('blogId', activeBlogId);
+
+        const response = await fetch('/api/import/products', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
+
+        const results = await response.json();
+        
+        if (results.successCount > 0) {
+          toast.success(`Successfully imported ${results.successCount} product${results.successCount !== 1 ? 's' : ''}`);
+          refetch(); // Refresh the products list
+        }
+
+        if (results.errorCount > 0) {
+          toast.error(`${results.errorCount} product${results.errorCount !== 1 ? 's' : ''} failed to import. Check console for details.`);
+          console.error('Import errors:', results.errors);
+        }
+
+      } catch (error) {
+        console.error('Import error:', error);
+        toast.error(error.message || 'Failed to import products');
+      } finally {
+        setImporting(false);
+      }
+    };
+    input.click();
+  };
+
+  const handleExportSelected = async () => {
+    if (selectedItems.length === 0) {
+      toast.error('Please select items to export');
+      return;
+    }
+
+    try {
+      setExporting(true);
+      const token = await getAuthToken();
+      
+      const response = await fetch('/api/export/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          blogId: activeBlogId,
+          filters: {
+            exportAll: false,
+            selectedItems: selectedItems,
+            status: 'all',
+            startDate: '',
+            endDate: '',
+            selectedCategories: [],
+            selectedTags: []
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      // Handle file download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `products-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success(`Successfully exported ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
+      setSelectedItems([]); // Clear selection after export
+
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error(error.message || 'Failed to export products');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportAll = async () => {
+    try {
+      setExporting(true);
+      const token = await getAuthToken();
+      
+      const response = await fetch('/api/export/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          blogId: activeBlogId,
+          filters: {
+            exportAll: true,
+            selectedItems: [],
+            status: 'all',
+            startDate: '',
+            endDate: '',
+            selectedCategories: [],
+            selectedTags: []
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      // Handle file download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `products-export-all-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success(`Successfully exported all ${products.length} product${products.length !== 1 ? 's' : ''}`);
+
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error(error.message || 'Failed to export products');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -231,14 +418,71 @@ export default function ManageProductsPage({ activeBlogId }) {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
         <div className="page-header mb-0">
           <h1 className="page-title mb-2">Manage Products</h1>
+          {selectedItems.length > 0 && (
+            <p className="text-base text-primary font-medium">
+              {selectedItems.length} product{selectedItems.length !== 1 ? 's' : ''} selected
+            </p>
+          )}
         </div>
-        <Link
-          to="/dashboard/create-product"
-          className="btn-primary inline-flex items-center"
-        >
-          <Plus className="h-5 w-5 mr-3" />
-          Add Product
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Link
+            to="/dashboard/create-product"
+            className="btn-primary inline-flex items-center"
+          >
+            <Plus className="h-5 w-5 mr-3" />
+            Add Product
+          </Link>
+          <button
+            onClick={handleImport}
+            disabled={importing}
+            className="btn-secondary inline-flex items-center"
+          >
+            <Upload className="h-5 w-5 mr-3" />
+            {importing ? 'Importing...' : 'Import CSV'}
+          </button>
+          {selectedItems.length > 0 ? (
+            <button
+              onClick={handleExportSelected}
+              disabled={exporting}
+              className="btn-secondary inline-flex items-center"
+            >
+              <Download className="h-5 w-5 mr-3" />
+              {exporting ? 'Exporting...' : `Export Selected (${selectedItems.length})`}
+            </button>
+          ) : (
+            <button
+              onClick={handleExportAll}
+              disabled={exporting || products.length === 0}
+              className="btn-secondary inline-flex items-center"
+            >
+              <Download className="h-5 w-5 mr-3" />
+              {exporting ? 'Exporting...' : 'Export All'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Sample CSV Download */}
+      <div className="card border-green-200 bg-green-50">
+        <div className="card-content p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Package className="h-5 w-5 text-green-600" />
+              <div>
+                <h3 className="text-sm font-medium text-green-800">Need a template?</h3>
+                <p className="text-xs text-green-600">Download the sample CSV to see the expected format</p>
+              </div>
+            </div>
+            <a
+              href="/sample-products.csv"
+              download="sample-products.csv"
+              className="btn-secondary btn-sm inline-flex items-center"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Sample CSV
+            </a>
+          </div>
+        </div>
       </div>
 
       {products.length === 0 ? (
@@ -249,10 +493,20 @@ export default function ManageProductsPage({ activeBlogId }) {
             <p className="text-lg text-muted-foreground mb-8">
               Get started by adding your first product to the catalog.
             </p>
-            <Link to="/dashboard/create-product" className="btn-primary">
-              <Plus className="h-5 w-5 mr-3" />
-              Add Your First Product
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/dashboard/create-product" className="btn-primary">
+                <Plus className="h-5 w-5 mr-3" />
+                Add Your First Product
+              </Link>
+              <button
+                onClick={handleImport}
+                disabled={importing}
+                className="btn-secondary"
+              >
+                <Upload className="h-5 w-5 mr-3" />
+                {importing ? 'Importing...' : 'Import from CSV'}
+              </button>
+            </div>
           </div>
         </div>
       ) : (
@@ -265,8 +519,24 @@ export default function ManageProductsPage({ activeBlogId }) {
               sortable={true}
               pagination={true}
               pageSize={10}
+              selectable={true}
+              selectedItems={selectedItems}
+              onSelectAll={handleSelectAll}
+              onSelectRow={handleSelectRow}
             />
           </div>
+        </div>
+      )}
+
+      {/* Clear Selection Button */}
+      {selectedItems.length > 0 && (
+        <div className="flex justify-center">
+          <button
+            onClick={() => setSelectedItems([])}
+            className="btn-ghost btn-sm"
+          >
+            Clear Selection
+          </button>
         </div>
       )}
 

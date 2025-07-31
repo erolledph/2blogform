@@ -17,7 +17,9 @@ import {
   ChevronRight,
   LogOut,
   Users,
-  Edit
+  Edit,
+  Upload,
+  Download
 } from 'lucide-react';
 
 const navigation = [

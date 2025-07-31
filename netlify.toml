@@ -34,6 +34,26 @@
   status = 200
 
 [[redirects]]
+  from = "/api/import/content"
+  to = "/.netlify/functions/import-content"
+  status = 200
+
+[[redirects]]
+  from = "/api/import/products"
+  to = "/.netlify/functions/import-products"
+  status = 200
+
+[[redirects]]
+  from = "/api/export/content"
+  to = "/.netlify/functions/export-content"
+  status = 200
+
+[[redirects]]
+  from = "/api/export/products"
+  to = "/.netlify/functions/export-products"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
