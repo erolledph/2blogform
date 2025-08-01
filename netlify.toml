@@ -3,6 +3,12 @@
   command = "npm run build"
   functions = "netlify/functions"
 
+[dev]
+  command = "npm run build && npx vite --port 5173"
+  port = 8888
+  targetPort = 5173
+  publish = "dist"
+
 [[redirects]]
   from = "/users/:uid/blogs/:blogId/api/content.json"
   to = "/.netlify/functions/content-api?uid=:uid&blogId=:blogId"
