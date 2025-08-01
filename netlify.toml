@@ -1,13 +1,19 @@
 [build]
   publish = "dist"
   command = "npm run build"
-  functions = "netlify/functions"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
 
 [dev]
   command = "npx vite --port 5173"
   port = 8888
   targetPort = 5173
   publish = "dist"
+  framework = "#auto"
+  autoLaunch = false
+  functions = "netlify/functions"
 
 [[redirects]]
   from = "/users/:uid/blogs/:blogId/api/content.json"
