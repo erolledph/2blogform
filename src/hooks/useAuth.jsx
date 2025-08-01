@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
 
   async function getAuthToken() {
     if (currentUser) {
-      return await getIdToken(currentUser);
+      return await getIdToken(currentUser, true);
     }
     return null;
   }
