@@ -24,50 +24,32 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const auth = admin.auth();
 
-// Convert array to comma-separated string
-function arrayToString(arr) {
-  if (!arr || !Array.isArray(arr)) return '';
-  return arr.join(', ');
-}
-
 // Convert Firestore timestamp to ISO string
 function timestampToISO(timestamp) {
-  if (!timestamp) return '';
+  if (!timestamp) return null;
   return timestamp.toDate().toISOString();
 }
 
-// Generate CSV content
-function generateCSV(data) {
-  if (data.length === 0) {
-    return 'name,slug,description,price,percentOff,imageUrls,productUrl,category,tags,status,createdAt,updatedAt';
-  }
-
-  const headers = [
-    'name', 'slug', 'description', 'price', 'percentOff', 'imageUrls',
-    'productUrl', 'category', 'tags', 'status', 'createdAt', 'updatedAt'
-  ];
-
-  const csvRows = [headers.join(',')];
-
-  data.forEach(item => {
-    const row = [
-      `"${(item.name || '').replace(/"/g, '""')}"`,
-      `"${(item.slug || '').replace(/"/g, '""')}"`,
-      `"${(item.description || '').replace(/"/g, '""')}"`,
-      `"${(item.price || 0)}"`,
-      `"${(item.percentOff || 0)}"`,
-      `"${arrayToString(item.imageUrls).replace(/"/g, '""')}"`,
-      `"${(item.productUrl || '').replace(/"/g, '""')}"`,
-      `"${(item.category || '').replace(/"/g, '""')}"`,
-      `"${arrayToString(item.tags).replace(/"/g, '""')}"`,
-      `"${(item.status || 'draft').replace(/"/g, '""')}"`,
-      `"${timestampToISO(item.createdAt)}"`,
-      `"${timestampToISO(item.updatedAt)}"`
-    ];
-    csvRows.push(row.join(','));
-  });
-
-  return csvRows.join('\n');
+// Process products data for JSON export
+function processProductsForExport(data) {
+  return data.map(item => ({
+    id: item.id,
+    name: item.name || '',
+    slug: item.slug || '',
+    description: item.description || '',
+    price: item.price || 0,
+    percentOff: item.percentOff || 0,
+    imageUrls: item.imageUrls || [],
+    imageUrl: item.imageUrl || '', // Backward compatibility
+    productUrl: item.productUrl || '',
+    category: item.category || '',
+    tags: item.tags || [],
+    status: item.status || 'draft',
+    userId: item.userId,
+    blogId: item.blogId,
+    createdAt: timestampToISO(item.createdAt),
+    updatedAt: timestampToISO(item.updatedAt)
+  }));
 }
 
 exports.handler = async (event, context) => {
@@ -202,18 +184,19 @@ exports.handler = async (event, context) => {
       return dateB - dateA;
     });
 
-    // Generate CSV
-    const csvContent = generateCSV(productsData);
-    const filename = `products-export-${new Date().toISOString().split('T')[0]}.csv`;
+    // Process and generate JSON
+    const processedData = processProductsForExport(productsData);
+    const jsonContent = JSON.stringify(processedData, null, 2);
+    const filename = `products-export-${new Date().toISOString().split('T')[0]}.json`;
 
     return {
       statusCode: 200,
       headers: {
         ...headers,
-        'Content-Type': 'text/csv',
+        'Content-Type': 'application/json',
         'Content-Disposition': `attachment; filename="${filename}"`
       },
-      body: csvContent
+      body: jsonContent
     };
 
   } catch (error) {
