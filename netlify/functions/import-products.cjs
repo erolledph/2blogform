@@ -1,5 +1,6 @@
 const admin = require('firebase-admin');
 const multiparty = require('multiparty');
+const { Readable } = require('stream');
 
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
@@ -161,21 +162,17 @@ exports.handler = async (event, context) => {
     // Parse multipart form data
     const form = new multiparty.Form();
     const { fields, files } = await new Promise((resolve, reject) => {
-      // Create a mock request object for multiparty
-      const req = {
-        headers: event.headers,
-        method: event.httpMethod,
-        url: event.path,
-        // Multiparty expects a stream, so we create one from the body
-        pipe: (dest) => {
-          const bodyBuffer = event.isBase64Encoded 
-            ? Buffer.from(event.body, 'base64') 
-            : Buffer.from(event.body, 'utf8');
-          dest.end(bodyBuffer); // End the stream with the body content
-        }
-      };
+      // Create a readable stream from the event body
+      const reqStream = new Readable();
+      reqStream.push(event.isBase64Encoded
+        ? Buffer.from(event.body, 'base64')
+        : event.body);
+      reqStream.push(null); // Indicate end of stream
+
+      // Attach headers to the stream object as multiparty expects them
+      reqStream.headers = event.headers;
       
-      form.parse(req, (err, fields, files) => {
+      form.parse(reqStream, (err, fields, files) => {
         if (err) reject(err);
         else resolve({ fields, files });
       });
