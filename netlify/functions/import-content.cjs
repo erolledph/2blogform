@@ -1,6 +1,4 @@
 const admin = require('firebase-admin');
-const multiparty = require('multiparty');
-const { Readable } = require('stream');
 
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
@@ -26,59 +24,6 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const auth = admin.auth();
 
-// Robust CSV parser that handles quoted fields and escaped quotes
-function parseCSV(csvText) {
-  const lines = csvText.split('\n').filter(line => line.trim());
-  if (lines.length === 0) return { headers: [], rows: [] };
-  
-  const parseCSVLine = (line) => {
-    const result = [];
-    let currentField = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          // Escaped double quote within a quoted field (e.g., "He said ""Hello""")
-          currentField += '"';
-          i++; // Skip the next quote
-        } else {
-          // Toggle inQuotes state (start or end of a quoted field)
-          inQuotes = !inQuotes;
-        }
-      } else if (char === ',' && !inQuotes) {
-        // End of a field
-        result.push(currentField);
-        currentField = '';
-      } else {
-        currentField += char;
-      }
-    }
-    result.push(currentField); // Add the last field
-    return result;
-  };
-  
-  const headers = parseCSVLine(lines[0]).map(h => h.trim());
-  const rows = lines.slice(1).map((line, index) => {
-    const values = parseCSVLine(line);
-    const row = {};
-    headers.forEach((header, i) => {
-      // If the value was quoted, remove the quotes and then trim. Otherwise, just trim.
-      let val = values[i] !== undefined ? values[i] : '';
-      if (val.startsWith('"') && val.endsWith('"')) {
-        val = val.substring(1, val.length - 1); // Remove surrounding quotes
-      }
-      row[header] = val.trim();
-    });
-    row._rowNumber = index + 2; // +2 because we start from line 2 (after header)
-    return row;
-  });
-  
-  return { headers, rows };
-}
-
 // Generate slug from title
 function generateSlug(title) {
   return title
@@ -89,43 +34,54 @@ function generateSlug(title) {
     .trim('-');
 }
 
-// Parse array input (comma-separated string to array)
-function parseArrayInput(value) {
-  if (!value) return [];
-  return value.split(',').map(item => item.trim()).filter(item => item);
-}
-
-// Validate content row
-function validateContentRow(row) {
+// Validate content item
+function validateContentItem(item, index) {
   const errors = [];
   
   // Required fields
-  if (!row.title || !row.title.trim()) {
+  if (!item.title || !item.title.trim()) {
     errors.push('Missing required field: title');
   }
   
-  if (!row.content || !row.content.trim()) {
+  if (!item.content || !item.content.trim()) {
     errors.push('Missing required field: content');
   }
   
   // Generate slug if missing
-  if (!row.slug || !row.slug.trim()) {
-    if (row.title && row.title.trim()) {
-      row.slug = generateSlug(row.title);
+  if (!item.slug || !item.slug.trim()) {
+    if (item.title && item.title.trim()) {
+      item.slug = generateSlug(item.title);
     } else {
       errors.push('Missing required field: slug (and cannot generate from title)');
     }
   }
   
   // Validate status
-  if (row.status && !['draft', 'published'].includes(row.status.toLowerCase())) {
+  if (item.status && !['draft', 'published'].includes(item.status.toLowerCase())) {
     errors.push('Invalid status: must be "draft" or "published"');
   }
   
   // Set default status if missing
-  if (!row.status) {
-    row.status = 'draft';
+  if (!item.status) {
+    item.status = 'draft';
   }
+  
+  // Ensure arrays are arrays
+  if (item.keywords && !Array.isArray(item.keywords)) {
+    item.keywords = [];
+  }
+  if (item.categories && !Array.isArray(item.categories)) {
+    item.categories = [];
+  }
+  if (item.tags && !Array.isArray(item.tags)) {
+    item.tags = [];
+  }
+  
+  // Ensure strings are strings
+  item.featuredImageUrl = item.featuredImageUrl || '';
+  item.metaDescription = item.metaDescription || '';
+  item.seoTitle = item.seoTitle || '';
+  item.author = item.author || '';
   
   return errors;
 }
@@ -180,26 +136,23 @@ exports.handler = async (event, context) => {
 
     const userId = decodedToken.uid;
 
-    // Parse multipart form data
-    const form = new multiparty.Form();
-    const { fields, files } = await new Promise((resolve, reject) => {
-      // Create a readable stream from the event body
-      const reqStream = new Readable();
-      reqStream.push(event.isBase64Encoded
-        ? Buffer.from(event.body, 'base64')
-        : event.body);
-      reqStream.push(null); // Indicate end of stream
+    // Parse JSON body
+    let requestData;
+    try {
+      requestData = JSON.parse(event.body);
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Invalid JSON format in request body',
+          details: parseError.message
+        })
+      };
+    }
 
-      // Attach headers to the stream object as multiparty expects them
-      reqStream.headers = event.headers;
-      
-      form.parse(reqStream, (err, fields, files) => {
-        if (err) reject(err);
-        else resolve({ fields, files });
-      });
-    });
+    const { blogId, items } = requestData;
 
-    const blogId = fields.blogId && fields.blogId[0];
     if (!blogId) {
       return {
         statusCode: 400,
@@ -208,57 +161,49 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const file = files.file && files.file[0];
-    if (!file) {
+    if (!items || !Array.isArray(items)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'CSV file is required' })
+        body: JSON.stringify({ error: 'items array is required' })
       };
     }
 
-    // Read CSV file
-    const fs = require('fs');
-    const csvContent = fs.readFileSync(file.path, 'utf8');
-    const { headers: csvHeaders, rows } = parseCSV(csvContent);
-
-    // Validate CSV headers
-    const requiredHeaders = ['title', 'content'];
-    const missingHeaders = requiredHeaders.filter(header => !csvHeaders.includes(header));
-    if (missingHeaders.length > 0) {
+    if (items.length === 0) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ 
-          error: `Missing required CSV headers: ${missingHeaders.join(', ')}` 
-        })
+        body: JSON.stringify({ error: 'items array cannot be empty' })
       };
     }
 
-    // Process rows
+    // Process items
     const contentRef = db.collection('users').doc(userId).collection('blogs').doc(blogId).collection('content');
     const batch = db.batch();
     const errors = [];
     let successCount = 0;
 
-    for (const row of rows) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const itemIndex = i + 1; // 1-based indexing for user-friendly error messages
+      
       try {
-        // Validate row
-        const validationErrors = validateContentRow(row);
+        // Validate item
+        const validationErrors = validateContentItem(item, itemIndex);
         if (validationErrors.length > 0) {
           errors.push({
-            row: row._rowNumber,
+            item: itemIndex,
             message: validationErrors.join(', ')
           });
           continue;
         }
 
         // Check for duplicate slug
-        const existingQuery = await contentRef.where('slug', '==', row.slug).limit(1).get();
+        const existingQuery = await contentRef.where('slug', '==', item.slug).limit(1).get();
         if (!existingQuery.empty) {
           errors.push({
-            row: row._rowNumber,
-            message: `Duplicate slug "${row.slug}" - item already exists`
+            item: itemIndex,
+            message: `Duplicate slug "${item.slug}" - item already exists`
           });
           continue;
         }
@@ -266,22 +211,22 @@ exports.handler = async (event, context) => {
         // Prepare content data
         const now = admin.firestore.FieldValue.serverTimestamp();
         const contentData = {
-          title: row.title.trim(),
-          slug: row.slug.trim(),
-          content: row.content.trim(),
-          featuredImageUrl: (row.featuredImageUrl || '').trim(),
-          metaDescription: row.metaDescription || '',
-          seoTitle: row.seoTitle || '',
-          keywords: parseArrayInput(row.keywords),
-          author: row.author || '',
-          categories: parseArrayInput(row.categories),
-          tags: parseArrayInput(row.tags),
-          status: (row.status || 'draft').toLowerCase(),
+          title: item.title.trim(),
+          slug: item.slug.trim(),
+          content: item.content.trim(),
+          featuredImageUrl: item.featuredImageUrl || '',
+          metaDescription: item.metaDescription || '',
+          seoTitle: item.seoTitle || '',
+          keywords: item.keywords || [],
+          author: item.author || '',
+          categories: item.categories || [],
+          tags: item.tags || [],
+          status: (item.status || 'draft').toLowerCase(),
           userId,
           blogId,
           createdAt: now,
           updatedAt: now,
-          publishDate: (row.status || 'draft').toLowerCase() === 'published' ? now : null,
+          publishDate: (item.status || 'draft').toLowerCase() === 'published' ? now : null,
           // Analytics fields
           viewCount: 0,
           clickCount: 0,
@@ -290,7 +235,7 @@ exports.handler = async (event, context) => {
         };
 
         // Debug log to verify featuredImageUrl is being processed correctly
-        console.log(`Processing row ${row._rowNumber}: title="${row.title}", featuredImageUrl="${row.featuredImageUrl || 'EMPTY'}"`);
+        console.log(`Processing item ${itemIndex}: title="${item.title}", featuredImageUrl="${item.featuredImageUrl || 'EMPTY'}"`);
         console.log(`Content data featuredImageUrl: "${contentData.featuredImageUrl}"`);
 
         // Add to batch
@@ -299,9 +244,9 @@ exports.handler = async (event, context) => {
         successCount++;
 
       } catch (error) {
-        console.error(`Error processing row ${row._rowNumber}:`, error);
+        console.error(`Error processing item ${itemIndex}:`, error);
         errors.push({
-          row: row._rowNumber,
+          item: itemIndex,
           message: `Processing error: ${error.message}`
         });
       }
@@ -316,7 +261,7 @@ exports.handler = async (event, context) => {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        totalRows: rows.length,
+        totalItems: items.length,
         successCount,
         errorCount: errors.length,
         errors: errors.slice(0, 50) // Limit error details to prevent large responses
