@@ -31,30 +31,49 @@ function parseCSV(csvText) {
   const lines = csvText.split('\n').filter(line => line.trim());
   if (lines.length === 0) return { headers: [], rows: [] };
   
-  // Regex to split by comma, but not if comma is inside double quotes
-  const csvSplitRegex = /(?:^|,)(?:"([^"]*(?:""[^"]*)*)"|([^,]*))(?:,|$)/g;
-  
-  const parseLine = (line) => {
-    const values = [];
-    let match;
-    while ((match = csvSplitRegex.exec(line)) !== null) {
-      // If the first group (quoted string) matched, use it and unescape quotes
-      if (match[1] !== undefined) {
-        values.push(match[1].replace(/""/g, '"'));
+  // Enhanced CSV parser that properly handles quoted fields
+  const parseCSVLine = (line) => {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    let i = 0;
+    
+    while (i < line.length) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+      
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          // Escaped quote inside quoted field
+          current += '"';
+          i += 2;
+        } else {
+          // Toggle quote state
+          inQuotes = !inQuotes;
+          i++;
+        }
+      } else if (char === ',' && !inQuotes) {
+        // Field separator outside quotes
+        result.push(current.trim());
+        current = '';
+        i++;
       } else {
-        // Otherwise, use the second group (unquoted string)
-        values.push(match[2]);
+        current += char;
+        i++;
       }
     }
-    return values;
+    
+    // Add the last field
+    result.push(current.trim());
+    return result;
   };
-
-  const headers = parseLine(lines[0]).map(h => h.trim());
+  
+  const headers = parseCSVLine(lines[0]).map(h => h.trim());
   const rows = lines.slice(1).map((line, index) => {
-    const values = parseLine(line).map(v => v.trim());
+    const values = parseCSVLine(line);
     const row = {};
     headers.forEach((header, i) => {
-      row[header] = values[i] || '';
+      row[header] = values[i] !== undefined ? values[i].trim() : '';
     });
     row._rowNumber = index + 2; // +2 because we start from line 2 (after header)
     return row;
@@ -253,7 +272,7 @@ exports.handler = async (event, context) => {
           title: row.title.trim(),
           slug: row.slug.trim(),
           content: row.content.trim(),
-          featuredImageUrl: row.featuredImageUrl || '',
+          featuredImageUrl: (row.featuredImageUrl || '').trim(),
           metaDescription: row.metaDescription || '',
           seoTitle: row.seoTitle || '',
           keywords: parseArrayInput(row.keywords),
@@ -272,6 +291,10 @@ exports.handler = async (event, context) => {
           shareCount: 0,
           likeCount: 0
         };
+
+        // Debug log to verify featuredImageUrl is being processed correctly
+        console.log(`Processing row ${row._rowNumber}: title="${row.title}", featuredImageUrl="${row.featuredImageUrl || 'EMPTY'}"`);
+        console.log(`Content data featuredImageUrl: "${contentData.featuredImageUrl}"`);
 
         // Add to batch
         const docRef = contentRef.doc();
