@@ -51,6 +51,9 @@ function generateCSV(data) {
   const csvRows = [headers.join(',')];
 
   data.forEach(item => {
+    // Debug log to verify item data before CSV generation
+    console.log('Processing item for CSV:', item.title, 'Featured Image:', item.featuredImageUrl);
+    
     const row = [
       `"${(item.title || '').replace(/"/g, '""')}"`,
       `"${(item.slug || '').replace(/"/g, '""')}"`,
@@ -157,6 +160,11 @@ exports.handler = async (event, context) => {
       ...doc.data()
     }));
 
+    // Debug log to verify data retrieved from Firestore
+    console.log('Retrieved content data from Firestore:');
+    contentData.forEach(item => {
+      console.log(`- ${item.title}: featuredImageUrl = "${item.featuredImageUrl || 'EMPTY'}"`);
+    });
     // Apply client-side filters (Firestore limitations)
     if (!filters.exportAll) {
       let filteredData = [];

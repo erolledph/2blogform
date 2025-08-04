@@ -172,11 +172,14 @@ export default function CreateContentPage({ activeBlogId }) {
     const finalFormData = {
       ...formData,
       blogId: activeBlogId,
+      featuredImageUrl: formData.featuredImageUrl || '', // Explicitly include featuredImageUrl
       keywords: parseArrayInput(keywordsInput),
       categories: parseArrayInput(categoriesInput),
       tags: parseArrayInput(tagsInput)
     };
 
+    // Debug log to verify featuredImageUrl is included
+    console.log('Submitting content with featuredImageUrl:', finalFormData.featuredImageUrl);
     setLoading(true);
 
     try {
@@ -188,6 +191,8 @@ export default function CreateContentPage({ activeBlogId }) {
         ? { id, ...finalFormData }
         : finalFormData;
 
+      // Debug log to verify the complete body being sent
+      console.log('Request body:', JSON.stringify(body, null, 2));
       const response = await fetch(url, {
         method,
         headers: {
@@ -201,11 +206,14 @@ export default function CreateContentPage({ activeBlogId }) {
         toast.success(isEditing ? 'Content updated successfully' : 'Content created successfully');
         navigate('/dashboard/manage');
       } else {
-        throw new Error('Failed to save content');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.message || `Server error: ${response.status} ${response.statusText}`;
+        console.error('Server response error:', errorData);
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('Error saving content:', error);
-      toast.error('Failed to save content');
+      toast.error(error.message || 'Failed to save content');
     } finally {
       setLoading(false);
     }
