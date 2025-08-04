@@ -26,45 +26,37 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const auth = admin.auth();
 
-// Simple CSV parser
+// Robust CSV parser that handles quoted fields and escaped quotes
 function parseCSV(csvText) {
   const lines = csvText.split('\n').filter(line => line.trim());
   if (lines.length === 0) return { headers: [], rows: [] };
   
-  // Enhanced CSV parser that properly handles quoted fields
   const parseCSVLine = (line) => {
     const result = [];
-    let current = '';
+    let currentField = '';
     let inQuotes = false;
-    let i = 0;
     
-    while (i < line.length) {
+    for (let i = 0; i < line.length; i++) {
       const char = line[i];
-      const nextChar = line[i + 1];
       
       if (char === '"') {
-        if (inQuotes && nextChar === '"') {
-          // Escaped quote inside quoted field
-          current += '"';
-          i += 2;
+        if (inQuotes && line[i + 1] === '"') {
+          // Escaped double quote within a quoted field (e.g., "He said ""Hello""")
+          currentField += '"';
+          i++; // Skip the next quote
         } else {
-          // Toggle quote state
+          // Toggle inQuotes state (start or end of a quoted field)
           inQuotes = !inQuotes;
-          i++;
         }
       } else if (char === ',' && !inQuotes) {
-        // Field separator outside quotes
-        result.push(current.trim());
-        current = '';
-        i++;
+        // End of a field
+        result.push(currentField);
+        currentField = '';
       } else {
-        current += char;
-        i++;
+        currentField += char;
       }
     }
-    
-    // Add the last field
-    result.push(current.trim());
+    result.push(currentField); // Add the last field
     return result;
   };
   
@@ -73,7 +65,12 @@ function parseCSV(csvText) {
     const values = parseCSVLine(line);
     const row = {};
     headers.forEach((header, i) => {
-      row[header] = values[i] !== undefined ? values[i].trim() : '';
+      // If the value was quoted, remove the quotes and then trim. Otherwise, just trim.
+      let val = values[i] !== undefined ? values[i] : '';
+      if (val.startsWith('"') && val.endsWith('"')) {
+        val = val.substring(1, val.length - 1); // Remove surrounding quotes
+      }
+      row[header] = val.trim();
     });
     row._rowNumber = index + 2; // +2 because we start from line 2 (after header)
     return row;
