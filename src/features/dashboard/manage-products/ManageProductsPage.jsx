@@ -55,13 +55,13 @@ export default function ManageProductsPage({ activeBlogId }) {
   const handleImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.csv';
+    input.accept = '.json';
     input.onchange = async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
-      if (!file.name.toLowerCase().endsWith('.csv')) {
-        toast.error('Please select a CSV file');
+      if (!file.name.toLowerCase().endsWith('.json')) {
+        toast.error('Please select a JSON file');
         return;
       }
 
@@ -72,17 +72,44 @@ export default function ManageProductsPage({ activeBlogId }) {
 
       try {
         setImporting(true);
-        const token = await getAuthToken();
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('blogId', activeBlogId);
+        
+        // Read and parse JSON file
+        const fileContent = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = (e) => reject(new Error('Failed to read file'));
+          reader.readAsText(file);
+        });
 
+        let jsonData;
+        try {
+          jsonData = JSON.parse(fileContent);
+        } catch (parseError) {
+          toast.error('Invalid JSON file format');
+          return;
+        }
+
+        if (!Array.isArray(jsonData)) {
+          toast.error('JSON file must contain an array of product items');
+          return;
+        }
+
+        if (jsonData.length === 0) {
+          toast.error('JSON file is empty');
+          return;
+        }
+
+        const token = await getAuthToken();
         const response = await fetch('/api/import/products', {
           method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: formData
+          body: JSON.stringify({
+            blogId: activeBlogId,
+            items: jsonData
+          })
         });
 
         if (!response.ok) {
@@ -93,7 +120,7 @@ export default function ManageProductsPage({ activeBlogId }) {
         const results = await response.json();
         
         if (results.successCount > 0) {
-          toast.success(`Successfully imported ${results.successCount} product${results.successCount !== 1 ? 's' : ''}`);
+          toast.success(`Successfully imported ${results.successCount} of ${results.totalItems} product${results.successCount !== 1 ? 's' : ''}`);
           refetch(); // Refresh the products list
         }
 
@@ -152,7 +179,7 @@ export default function ManageProductsPage({ activeBlogId }) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `products-export-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `products-export-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -204,7 +231,7 @@ export default function ManageProductsPage({ activeBlogId }) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `products-export-all-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `products-export-all-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -438,7 +465,7 @@ export default function ManageProductsPage({ activeBlogId }) {
             className="btn-secondary inline-flex items-center"
           >
             <Upload className="h-5 w-5 mr-3" />
-            {importing ? 'Importing...' : 'Import CSV'}
+            {importing ? 'Importing...' : 'Import JSON'}
           </button>
           {selectedItems.length > 0 ? (
             <button
@@ -468,7 +495,7 @@ export default function ManageProductsPage({ activeBlogId }) {
             <Package className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
             <h3 className="text-2xl font-semibold text-foreground mb-4">No products found</h3>
             <p className="text-lg text-muted-foreground mb-8">
-              Get started by adding your first product to the catalog. Once you have products, you can export them to get a genuine CSV template that matches your data structure.
+              Get started by adding your first product to the catalog. Once you have products, you can export them to get a genuine JSON template that matches your data structure.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/dashboard/create-product" className="btn-primary">
@@ -477,9 +504,9 @@ export default function ManageProductsPage({ activeBlogId }) {
               </Link>
             </div>
             <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="text-sm font-medium text-green-800 mb-2">💡 Pro Tip: Generate Your Own Template</h4>
+              <h4 className="text-sm font-medium text-green-800 mb-2">💡 Pro Tip: Generate Your Own JSON Template</h4>
               <p className="text-sm text-green-700">
-                Create at least one product, then use the "Export All" button to generate a CSV template that perfectly matches your data structure and image references.
+                Create at least one product, then use the "Export All" button to generate a JSON template that perfectly matches your data structure and image references.
               </p>
             </div>
           </div>
