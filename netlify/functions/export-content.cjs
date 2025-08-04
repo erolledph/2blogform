@@ -24,55 +24,38 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const auth = admin.auth();
 
-// Convert array to comma-separated string
-function arrayToString(arr) {
-  if (!arr || !Array.isArray(arr)) return '';
-  return arr.join(', ');
-}
-
 // Convert Firestore timestamp to ISO string
 function timestampToISO(timestamp) {
-  if (!timestamp) return '';
+  if (!timestamp) return null;
   return timestamp.toDate().toISOString();
 }
 
-// Generate CSV content
-function generateCSV(data) {
-  if (data.length === 0) {
-    return 'title,slug,content,featuredImageUrl,metaDescription,seoTitle,keywords,author,categories,tags,status,createdAt,updatedAt';
-  }
-
-  const headers = [
-    'title', 'slug', 'content', 'featuredImageUrl', 'metaDescription', 
-    'seoTitle', 'keywords', 'author', 'categories', 'tags', 'status',
-    'createdAt', 'updatedAt'
-  ];
-
-  const csvRows = [headers.join(',')];
-
-  data.forEach(item => {
-    // Debug log to verify item data before CSV generation
-    console.log('Processing item for CSV:', item.title, 'Featured Image:', item.featuredImageUrl);
+// Process content data for JSON export
+function processContentForExport(data) {
+  return data.map(item => {
+    // Debug log to verify item data before JSON generation
+    console.log('Processing item for JSON:', item.title, 'Featured Image:', item.featuredImageUrl);
     
-    const row = [
-      `"${(item.title || '').replace(/"/g, '""')}"`,
-      `"${(item.slug || '').replace(/"/g, '""')}"`,
-      `"${(item.content || '').replace(/"/g, '""')}"`,
-      `"${(item.featuredImageUrl || '').replace(/"/g, '""')}"`,
-      `"${(item.metaDescription || '').replace(/"/g, '""')}"`,
-      `"${(item.seoTitle || '').replace(/"/g, '""')}"`,
-      `"${arrayToString(item.keywords).replace(/"/g, '""')}"`,
-      `"${(item.author || '').replace(/"/g, '""')}"`,
-      `"${arrayToString(item.categories).replace(/"/g, '""')}"`,
-      `"${arrayToString(item.tags).replace(/"/g, '""')}"`,
-      `"${(item.status || 'draft').replace(/"/g, '""')}"`,
-      `"${timestampToISO(item.createdAt)}"`,
-      `"${timestampToISO(item.updatedAt)}"`
-    ];
-    csvRows.push(row.join(','));
+    return {
+      id: item.id,
+      title: item.title || '',
+      slug: item.slug || '',
+      content: item.content || '',
+      featuredImageUrl: item.featuredImageUrl || '',
+      metaDescription: item.metaDescription || '',
+      seoTitle: item.seoTitle || '',
+      keywords: item.keywords || [],
+      author: item.author || '',
+      categories: item.categories || [],
+      tags: item.tags || [],
+      status: item.status || 'draft',
+      userId: item.userId,
+      blogId: item.blogId,
+      createdAt: timestampToISO(item.createdAt),
+      updatedAt: timestampToISO(item.updatedAt),
+      publishDate: timestampToISO(item.publishDate)
+    };
   });
-
-  return csvRows.join('\n');
 }
 
 exports.handler = async (event, context) => {
@@ -212,18 +195,19 @@ exports.handler = async (event, context) => {
       return dateB - dateA;
     });
 
-    // Generate CSV
-    const csvContent = generateCSV(contentData);
-    const filename = `content-export-${new Date().toISOString().split('T')[0]}.csv`;
+    // Process and generate JSON
+    const processedData = processContentForExport(contentData);
+    const jsonContent = JSON.stringify(processedData, null, 2);
+    const filename = `content-export-${new Date().toISOString().split('T')[0]}.json`;
 
     return {
       statusCode: 200,
       headers: {
         ...headers,
-        'Content-Type': 'text/csv',
+        'Content-Type': 'application/json',
         'Content-Disposition': `attachment; filename="${filename}"`
       },
-      body: csvContent
+      body: jsonContent
     };
 
   } catch (error) {
