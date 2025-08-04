@@ -416,50 +416,25 @@ export default function ManageContentPage({ activeBlogId }) {
         </div>
       </div>
 
-      {/* Sample CSV Download */}
-      <div className="card border-blue-200 bg-blue-50">
-        <div className="card-content p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <FileText className="h-5 w-5 text-blue-600" />
-              <div>
-                <h3 className="text-sm font-medium text-blue-800">Need a template?</h3>
-                <p className="text-xs text-blue-600">Download the sample CSV to see the expected format</p>
-              </div>
-            </div>
-            <a
-              href="/sample-content.csv"
-              download="sample-content.csv"
-              className="btn-secondary btn-sm inline-flex items-center"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Sample CSV
-            </a>
-          </div>
-        </div>
-      </div>
-
       {content.length === 0 ? (
         <div className="card">
           <div className="card-content text-center py-16">
             <FileText className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
             <h3 className="text-2xl font-semibold text-foreground mb-4">No content found</h3>
             <p className="text-lg text-muted-foreground mb-8">
-              Get started by creating your first blog post or importing content from a CSV file.
+              Get started by creating your first blog post. Once you have content, you can export it to get a genuine CSV template that matches your data structure.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/dashboard/create" className="btn-primary">
                 <Plus className="h-5 w-5 mr-3" />
                 Create First Post
               </Link>
-              <button
-                onClick={handleImport}
-                disabled={importing}
-                className="btn-secondary"
-              >
-                <Upload className="h-5 w-5 mr-3" />
-                {importing ? 'Importing...' : 'Import from CSV'}
-              </button>
+            </div>
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Pro Tip: Generate Your Own Template</h4>
+              <p className="text-sm text-blue-700">
+                Create at least one blog post, then use the "Export All" button to generate a CSV template that perfectly matches your data structure and image references.
+              </p>
             </div>
           </div>
         </div>

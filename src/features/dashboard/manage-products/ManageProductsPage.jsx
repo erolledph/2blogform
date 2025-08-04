@@ -462,50 +462,25 @@ export default function ManageProductsPage({ activeBlogId }) {
         </div>
       </div>
 
-      {/* Sample CSV Download */}
-      <div className="card border-green-200 bg-green-50">
-        <div className="card-content p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Package className="h-5 w-5 text-green-600" />
-              <div>
-                <h3 className="text-sm font-medium text-green-800">Need a template?</h3>
-                <p className="text-xs text-green-600">Download the sample CSV to see the expected format</p>
-              </div>
-            </div>
-            <a
-              href="/sample-products.csv"
-              download="sample-products.csv"
-              className="btn-secondary btn-sm inline-flex items-center"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Sample CSV
-            </a>
-          </div>
-        </div>
-      </div>
-
       {products.length === 0 ? (
         <div className="card">
           <div className="card-content text-center py-16">
             <Package className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
             <h3 className="text-2xl font-semibold text-foreground mb-4">No products found</h3>
             <p className="text-lg text-muted-foreground mb-8">
-              Get started by adding your first product to the catalog.
+              Get started by adding your first product to the catalog. Once you have products, you can export them to get a genuine CSV template that matches your data structure.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/dashboard/create-product" className="btn-primary">
                 <Plus className="h-5 w-5 mr-3" />
                 Add Your First Product
               </Link>
-              <button
-                onClick={handleImport}
-                disabled={importing}
-                className="btn-secondary"
-              >
-                <Upload className="h-5 w-5 mr-3" />
-                {importing ? 'Importing...' : 'Import from CSV'}
-              </button>
+            </div>
+            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <h4 className="text-sm font-medium text-green-800 mb-2">💡 Pro Tip: Generate Your Own Template</h4>
+              <p className="text-sm text-green-700">
+                Create at least one product, then use the "Export All" button to generate a CSV template that perfectly matches your data structure and image references.
+              </p>
             </div>
           </div>
         </div>
