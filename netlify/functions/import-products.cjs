@@ -26,17 +26,51 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const auth = admin.auth();
 
-// Simple CSV parser
+// Robust CSV parser that handles quoted fields and escaped quotes
 function parseCSV(csvText) {
   const lines = csvText.split('\n').filter(line => line.trim());
   if (lines.length === 0) return { headers: [], rows: [] };
   
-  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+  const parseCSVLine = (line) => {
+    const result = [];
+    let currentField = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          // Escaped double quote within a quoted field (e.g., "He said ""Hello""")
+          currentField += '"';
+          i++; // Skip the next quote
+        } else {
+          // Toggle inQuotes state (start or end of a quoted field)
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        // End of a field
+        result.push(currentField);
+        currentField = '';
+      } else {
+        currentField += char;
+      }
+    }
+    result.push(currentField); // Add the last field
+    return result;
+  };
+  
+  const headers = parseCSVLine(lines[0]).map(h => h.trim());
   const rows = lines.slice(1).map((line, index) => {
-    const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+    const values = parseCSVLine(line);
     const row = {};
     headers.forEach((header, i) => {
-      row[header] = values[i] || '';
+      // If the value was quoted, remove the quotes and then trim. Otherwise, just trim.
+      let val = values[i] !== undefined ? values[i] : '';
+      if (val.startsWith('"') && val.endsWith('"')) {
+        val = val.substring(1, val.length - 1); // Remove surrounding quotes
+      }
+      row[header] = val.trim();
     });
     row._rowNumber = index + 2; // +2 because we start from line 2 (after header)
     return row;
