@@ -37,6 +37,7 @@
     "netlify-cli": "^17.38.1",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.3.6",
+    "terser": "^5.31.0",  // Add this line
     "vite": "^5.0.8"
   }
 }
