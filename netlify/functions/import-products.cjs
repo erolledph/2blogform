@@ -161,7 +161,21 @@ exports.handler = async (event, context) => {
     // Parse multipart form data
     const form = new multiparty.Form();
     const { fields, files } = await new Promise((resolve, reject) => {
-      form.parse(event, (err, fields, files) => {
+      // Create a mock request object for multiparty
+      const req = {
+        headers: event.headers,
+        method: event.httpMethod,
+        url: event.path,
+        // Multiparty expects a stream, so we create one from the body
+        pipe: (dest) => {
+          const bodyBuffer = event.isBase64Encoded 
+            ? Buffer.from(event.body, 'base64') 
+            : Buffer.from(event.body, 'utf8');
+          dest.end(bodyBuffer); // End the stream with the body content
+        }
+      };
+      
+      form.parse(req, (err, fields, files) => {
         if (err) reject(err);
         else resolve({ fields, files });
       });

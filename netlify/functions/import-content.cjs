@@ -30,9 +30,27 @@ function parseCSV(csvText) {
   const lines = csvText.split('\n').filter(line => line.trim());
   if (lines.length === 0) return { headers: [], rows: [] };
   
-  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+  // Regex to split by comma, but not if comma is inside double quotes
+  const csvSplitRegex = /(?:^|,)(?:"([^"]*(?:""[^"]*)*)"|([^,]*))(?:,|$)/g;
+  
+  const parseLine = (line) => {
+    const values = [];
+    let match;
+    while ((match = csvSplitRegex.exec(line)) !== null) {
+      // If the first group (quoted string) matched, use it and unescape quotes
+      if (match[1] !== undefined) {
+        values.push(match[1].replace(/""/g, '"'));
+      } else {
+        // Otherwise, use the second group (unquoted string)
+        values.push(match[2]);
+      }
+    }
+    return values;
+  };
+
+  const headers = parseLine(lines[0]).map(h => h.trim());
   const rows = lines.slice(1).map((line, index) => {
-    const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+    const values = parseLine(line).map(v => v.trim());
     const row = {};
     headers.forEach((header, i) => {
       row[header] = values[i] || '';
@@ -148,7 +166,21 @@ exports.handler = async (event, context) => {
     // Parse multipart form data
     const form = new multiparty.Form();
     const { fields, files } = await new Promise((resolve, reject) => {
-      form.parse(event, (err, fields, files) => {
+      // Create a mock request object for multiparty
+      const req = {
+        headers: event.headers,
+        method: event.httpMethod,
+        url: event.path,
+        // Multiparty expects a stream, so we create one from the body
+        pipe: (dest) => {
+          const bodyBuffer = event.isBase64Encoded 
+            ? Buffer.from(event.body, 'base64') 
+            : Buffer.from(event.body, 'utf8');
+          dest.end(bodyBuffer); // End the stream with the body content
+        }
+      };
+      
+      form.parse(req, (err, fields, files) => {
         if (err) reject(err);
         else resolve({ fields, files });
       });

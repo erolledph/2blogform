@@ -214,6 +214,7 @@ exports.handler = async (event, context) => {
     }
 
   } catch (error) {
+    console.error('Admin content function error:', error);
     return {
       statusCode: 500,
       headers,
