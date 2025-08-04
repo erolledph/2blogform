@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ref, listAll, getMetadata, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from '@/firebase';
 import { useAuth } from '@/hooks/useAuth';
+import { storageService } from '@/services/storageService';
 import DataTable from '@/components/shared/DataTable';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import Modal from '@/components/shared/Modal';
@@ -39,22 +40,6 @@ export default function FileStoragePage() {
   const [storageStats, setStorageStats] = useState({ totalFiles: 0, totalSize: 0 });
   const { currentUser } = useAuth();
   
-  // Import storage service
-  const [storageService, setStorageService] = useState(null);
-
-  // Load storage service dynamically
-  useEffect(() => {
-    const loadStorageService = async () => {
-      try {
-        const { storageService: service } = await import('@/services/storageService');
-        setStorageService(service);
-      } catch (error) {
-        console.error('Error loading storage service:', error);
-      }
-    };
-    loadStorageService();
-  }, []);
-
   // Initialize user-specific base path
   useEffect(() => {
     if (currentUser?.uid) {
@@ -136,7 +121,7 @@ export default function FileStoragePage() {
       const fileItems = currentItems.filter(item => item.type === 'file');
       
       // Calculate total storage stats for this user only
-      if (currentPath === userBasePath && storageService && currentUser?.uid) {
+      if (currentPath === userBasePath && currentUser?.uid) {
         try {
           const totalUsageBytes = await storageService.getUserTotalStorageUsage(currentUser.uid);
           const allUserFiles = await getAllUserFilesRecursive(ref(storage, userBasePath));
@@ -293,7 +278,6 @@ export default function FileStoragePage() {
   };
 
   const handleUploadSuccess = (uploadResult) => {
-    console.log('Upload successful:', uploadResult);
     setUploadModal({ isOpen: false });
     fetchItems(); // Refresh the current view
   };

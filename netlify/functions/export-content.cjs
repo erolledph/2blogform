@@ -33,9 +33,6 @@ function timestampToISO(timestamp) {
 // Process content data for JSON export
 function processContentForExport(data) {
   return data.map(item => {
-    // Debug log to verify item data before JSON generation
-    console.log('Processing item for JSON:', item.title, 'Featured Image:', item.featuredImageUrl);
-    
     return {
       id: item.id,
       title: item.title || '',
@@ -143,11 +140,6 @@ exports.handler = async (event, context) => {
       ...doc.data()
     }));
 
-    // Debug log to verify data retrieved from Firestore
-    console.log('Retrieved content data from Firestore:');
-    contentData.forEach(item => {
-      console.log(`- ${item.title}: featuredImageUrl = "${item.featuredImageUrl || 'EMPTY'}"`);
-    });
     // Apply client-side filters (Firestore limitations)
     if (!filters.exportAll) {
       let filteredData = [];

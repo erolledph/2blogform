@@ -72,10 +72,6 @@ exports.handler = async (event, context) => {
         // Create new content
         const data = JSON.parse(event.body);
         
-        // Debug log to verify received data
-        console.log('Received content data:', JSON.stringify(data, null, 2));
-        console.log('Featured image URL received:', data.featuredImageUrl);
-        
         if (!data.blogId) {
           return {
             statusCode: 400,
@@ -93,7 +89,7 @@ exports.handler = async (event, context) => {
           title: data.title || '',
           slug: data.slug || '',
           content: data.content || '',
-          featuredImageUrl: data.featuredImageUrl || '', // Explicitly include featuredImageUrl
+          featuredImageUrl: data.featuredImageUrl || '',
           metaDescription: data.metaDescription || '',
           seoTitle: data.seoTitle || '',
           keywords: data.keywords || [],
@@ -108,9 +104,6 @@ exports.handler = async (event, context) => {
           publishDate: data.status === 'published' ? now : null
         };
 
-        // Debug log to verify contentData before saving
-        console.log('Content data to be saved:', JSON.stringify(contentData, null, 2));
-        console.log('Featured image URL to be saved:', contentData.featuredImageUrl);
         const docRef = await contentRef.add(contentData);
         
         return {
@@ -126,10 +119,6 @@ exports.handler = async (event, context) => {
         // Update existing content
         const data = JSON.parse(event.body);
         const { id, blogId, ...updateData } = data;
-        
-        // Debug log to verify received data
-        console.log('Received update data:', JSON.stringify(data, null, 2));
-        console.log('Featured image URL received for update:', data.featuredImageUrl);
         
         if (!id) {
           return {
@@ -167,7 +156,7 @@ exports.handler = async (event, context) => {
           title: updateData.title || '',
           slug: updateData.slug || '',
           content: updateData.content || '',
-          featuredImageUrl: updateData.featuredImageUrl || '', // Explicitly include featuredImageUrl
+          featuredImageUrl: updateData.featuredImageUrl || '',
           metaDescription: updateData.metaDescription || '',
           seoTitle: updateData.seoTitle || '',
           keywords: updateData.keywords || [],
@@ -184,9 +173,6 @@ exports.handler = async (event, context) => {
             : existingData.publishDate
         };
 
-        // Debug log to verify contentData before updating
-        console.log('Content data to be updated:', JSON.stringify(contentData, null, 2));
-        console.log('Featured image URL to be updated:', contentData.featuredImageUrl);
         await docRef.update(contentData);
         
         return {

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/firebase';
 import { useAuth } from '@/hooks/useAuth';
+import { storageService } from '@/services/storageService';
 import { fromBlob } from 'image-resize-compress';
 import InputField from './InputField';
 import LoadingSpinner from './LoadingSpinner';
@@ -30,22 +31,6 @@ export default function ImageUploader({
   const [storageUsage, setStorageUsage] = useState({ used: 0, limit: 100 });
   const [checkingStorage, setCheckingStorage] = useState(false);
 
-  // Import storage service
-  const [storageService, setStorageService] = useState(null);
-
-  // Load storage service dynamically
-  useEffect(() => {
-    const loadStorageService = async () => {
-      try {
-        const { storageService: service } = await import('@/services/storageService');
-        setStorageService(service);
-      } catch (error) {
-        console.error('Error loading storage service:', error);
-      }
-    };
-    loadStorageService();
-  }, []);
-
   // Set user-specific storage path
   useEffect(() => {
     if (currentUser?.uid) {
@@ -68,13 +53,13 @@ export default function ImageUploader({
   const [finalCompressedBlob, setFinalCompressedBlob] = useState(null);
 
   useEffect(() => {
-    if (currentUser?.uid) {
+    if (currentUser?.uid && storageService) {
       checkStorageUsage();
     }
-  }, [currentUser?.uid, storageService]);
+  }, [currentUser?.uid]);
 
   const checkStorageUsage = async () => {
-    if (!storageService || !currentUser?.uid) return;
+    if (!currentUser?.uid) return;
     
     try {
       setCheckingStorage(true);
@@ -201,7 +186,7 @@ export default function ImageUploader({
     }
 
     // Final storage check with actual usage if storage service is available
-    if (storageService && currentUser?.uid) {
+    if (currentUser?.uid) {
       try {
         const uploadCheck = await storageService.canUserUploadFile(
           currentUser.uid,

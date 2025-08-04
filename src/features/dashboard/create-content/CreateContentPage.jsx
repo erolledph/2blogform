@@ -172,14 +172,12 @@ export default function CreateContentPage({ activeBlogId }) {
     const finalFormData = {
       ...formData,
       blogId: activeBlogId,
-      featuredImageUrl: formData.featuredImageUrl || '', // Explicitly include featuredImageUrl
+      featuredImageUrl: formData.featuredImageUrl || '',
       keywords: parseArrayInput(keywordsInput),
       categories: parseArrayInput(categoriesInput),
       tags: parseArrayInput(tagsInput)
     };
 
-    // Debug log to verify featuredImageUrl is included
-    console.log('Submitting content with featuredImageUrl:', finalFormData.featuredImageUrl);
     setLoading(true);
 
     try {
@@ -191,8 +189,6 @@ export default function CreateContentPage({ activeBlogId }) {
         ? { id, ...finalFormData }
         : finalFormData;
 
-      // Debug log to verify the complete body being sent
-      console.log('Request body:', JSON.stringify(body, null, 2));
       const response = await fetch(url, {
         method,
         headers: {

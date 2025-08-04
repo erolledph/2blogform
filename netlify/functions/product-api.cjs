@@ -54,11 +54,6 @@ function calculateDiscountedPrice(price, percentOff) {
 }
 
 exports.handler = async (event, context) => {
-  // Debug: Log the full event object to understand what we're receiving
-  console.log('Event object:', JSON.stringify(event, null, 2));
-  console.log('Event path:', event.path);
-  console.log('Query parameters:', event.queryStringParameters);
-
   // Set CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -95,19 +90,14 @@ exports.handler = async (event, context) => {
     if (pathMatch) {
       uid = pathMatch[1];
       blogId = pathMatch[2];
-      console.log('Extracted from path - uid:', uid, 'blogId:', blogId);
     } else {
       // Fallback to query parameters if path parsing fails
       const queryParams = event.queryStringParameters || {};
       uid = queryParams.uid;
       blogId = queryParams.blogId;
-      console.log('Extracted from query - uid:', uid, 'blogId:', blogId);
     }
     
     if (!uid || !blogId) {
-      console.error('Missing parameters - uid:', uid, 'blogId:', blogId);
-      console.error('Full event path:', event.path);
-      console.error('Query parameters:', event.queryStringParameters);
       return {
         statusCode: 400,
         headers,

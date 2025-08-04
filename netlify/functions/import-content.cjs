@@ -234,10 +234,6 @@ exports.handler = async (event, context) => {
           likeCount: 0
         };
 
-        // Debug log to verify featuredImageUrl is being processed correctly
-        console.log(`Processing item ${itemIndex}: title="${item.title}", featuredImageUrl="${item.featuredImageUrl || 'EMPTY'}"`);
-        console.log(`Content data featuredImageUrl: "${contentData.featuredImageUrl}"`);
-
         // Add to batch
         const docRef = contentRef.doc();
         batch.set(docRef, contentData);
