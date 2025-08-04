@@ -18,6 +18,7 @@ export default function ManageProductsPage({ activeBlogId }) {
   const [selectedItems, setSelectedItems] = useState([]);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [deletingItemId, setDeletingItemId] = useState(null);
   const { getAuthToken, currentUser } = useAuth();
 
   useEffect(() => {
@@ -248,6 +249,7 @@ export default function ManageProductsPage({ activeBlogId }) {
 
   const handleDelete = async (product) => {
     try {
+      setDeletingItemId(product.id);
       const token = await getAuthToken();
       const response = await fetch(`/.netlify/functions/admin-product`, {
         method: 'DELETE',
@@ -268,6 +270,8 @@ export default function ManageProductsPage({ activeBlogId }) {
     } catch (error) {
       console.error('Error deleting product:', error);
       toast.error('Failed to delete product');
+    } finally {
+      setDeletingItemId(null);
     }
   };
 
@@ -413,10 +417,15 @@ export default function ManageProductsPage({ activeBlogId }) {
           </Link>
           <button
             onClick={() => setDeleteModal({ isOpen: true, product: row })}
+            disabled={deletingItemId === row.id}
             className="text-destructive p-2 rounded-md hover:bg-destructive/10 transition-colors duration-200"
             title="Delete"
           >
-            <Trash2 className="h-4 w-4" />
+            {deletingItemId === row.id ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
           </button>
         </div>
       )
@@ -558,15 +567,27 @@ export default function ManageProductsPage({ activeBlogId }) {
           <div className="flex justify-end space-x-4 pt-4">
             <button
               onClick={() => setDeleteModal({ isOpen: false, product: null })}
+              disabled={deletingItemId === deleteModal.product?.id}
               className="btn-secondary"
             >
               Cancel
             </button>
             <button
               onClick={() => handleDelete(deleteModal.product)}
+              disabled={deletingItemId === deleteModal.product?.id}
               className="btn-danger"
             >
-              Delete
+              {deletingItemId === deleteModal.product?.id ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </>
+              )}
             </button>
           </div>
         </div>
