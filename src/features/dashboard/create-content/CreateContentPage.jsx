@@ -1,384 +1,225 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useContent } from '@/hooks/useContent';
-import { analyticsService } from '@/services/analyticsService';
-import DataTable from '@/components/shared/DataTable';
+import { useContentById } from '@/hooks/useContent';
+import SimpleMDE from 'react-simplemde-editor';
+import InputField from '@/components/shared/InputField';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
-import Modal from '@/components/shared/Modal';
-import { Edit, Trash2, Plus, ImageIcon, BarChart3, AlertTriangle, Eye, Upload, Download, FileText, CheckCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import { getStatusBadgeClass } from '@/utils/helpers';
+import ImageGalleryModal from '@/components/shared/ImageGalleryModal';
+import { Save, ArrowLeft, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { generateSlug, parseArrayInput } from '@/utils/helpers';
 import toast from 'react-hot-toast';
+import 'easymde/dist/easymde.min.css';
 
-export default function ManageContentPage({ activeBlogId }) {
-  const { content, loading, error, refetch } = useContent(activeBlogId);
-  const { getAuthToken, currentUser } = useAuth();
-  const [deleteModal, setDeleteModal] = useState({ isOpen: false, content: null });
-  const [analyticsModal, setAnalyticsModal] = useState({ isOpen: false, content: null });
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [importing, setImporting] = useState(false);
-  const [exporting, setExporting] = useState(false);
+export default function CreateContentPage({ activeBlogId }) {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { getAuthToken } = useAuth();
+  const isEditing = Boolean(id);
+  const { content: existingContent, loading: contentLoading } = useContentById(id, activeBlogId);
 
-  const handleSelectAll = (selectAll) => {
-    if (selectAll) {
-      setSelectedItems(content.map(item => item.id));
+  const [formData, setFormData] = useState({
+    title: '',
+    slug: '',
+    content: '',
+    featuredImageUrl: '',
+    metaDescription: '',
+    seoTitle: '',
+    keywords: [],
+    author: '',
+    categories: [],
+    tags: [],
+    status: 'draft'
+  });
+
+  // Separate state for array input fields to improve typing experience
+  const [keywordsInput, setKeywordsInput] = useState('');
+  const [categoriesInput, setCategoriesInput] = useState('');
+  const [tagsInput, setTagsInput] = useState('');
+
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [galleryModal, setGalleryModal] = useState({ isOpen: false });
+
+  // Memoize SimpleMDE options to prevent re-initialization on every render
+  const simpleMDEOptions = useMemo(() => ({
+    spellChecker: false,
+    placeholder: 'Write your content in Markdown...',
+    toolbar: [
+      'bold', 'italic', 'heading', '|',
+      'quote', 'unordered-list', 'ordered-list', '|',
+      'link', 'image', '|',
+      'preview', '|',
+      'guide'
+    ]
+  }), []);
+
+  useEffect(() => {
+    if (isEditing && existingContent) {
+      setFormData({
+        title: existingContent.title || '',
+        slug: existingContent.slug || '',
+        content: existingContent.content || '',
+        featuredImageUrl: existingContent.featuredImageUrl || '',
+        metaDescription: existingContent.metaDescription || '',
+        seoTitle: existingContent.seoTitle || '',
+        keywords: existingContent.keywords || [],
+        author: existingContent.author || '',
+        categories: existingContent.categories || [],
+        tags: existingContent.tags || [],
+        status: existingContent.status || 'draft'
+      });
+
+      // Initialize array input fields with joined values
+      setKeywordsInput((existingContent.keywords || []).join(', '));
+      setCategoriesInput((existingContent.categories || []).join(', '));
+      setTagsInput((existingContent.tags || []).join(', '));
+    }
+  }, [isEditing, existingContent]);
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.title.trim()) {
+      newErrors.title = 'Title is required';
+    }
+    
+    if (!formData.slug.trim()) {
+      newErrors.slug = 'Slug is required';
+    }
+    
+    if (!formData.content.trim()) {
+      newErrors.content = 'Content is required';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+    
+    // Handle title and slug updates in a single state update
+    if (name === 'title' && !isEditing) {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        slug: generateSlug(value)
+      }));
     } else {
-      setSelectedItems([]);
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
     }
   };
 
-  const handleSelectRow = (itemId, isSelected) => {
-    if (isSelected) {
-      setSelectedItems(prev => [...prev, itemId]);
-    } else {
-      setSelectedItems(prev => prev.filter(id => id !== itemId));
-    }
+  const handleKeywordsBlur = () => {
+    const keywordsArray = parseArrayInput(keywordsInput);
+    setFormData(prev => ({
+      ...prev,
+      keywords: keywordsArray
+    }));
   };
 
-  const handleImport = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      if (!file.name.toLowerCase().endsWith('.json')) {
-        toast.error('Please select a JSON file');
-        return;
-      }
-
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('File size must be less than 10MB');
-        return;
-      }
-
-      try {
-        setImporting(true);
-        
-        // Read and parse JSON file
-        const fileContent = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result);
-          reader.onerror = (e) => reject(new Error('Failed to read file'));
-          reader.readAsText(file);
-        });
-
-        let jsonData;
-        try {
-          jsonData = JSON.parse(fileContent);
-        } catch (parseError) {
-          toast.error('Invalid JSON file format');
-          return;
-        }
-
-        if (!Array.isArray(jsonData)) {
-          toast.error('JSON file must contain an array of content items');
-          return;
-        }
-
-        if (jsonData.length === 0) {
-          toast.error('JSON file is empty');
-          return;
-        }
-
-        const token = await getAuthToken();
-        const response = await fetch('/api/import/content', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            blogId: activeBlogId,
-            items: jsonData
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
-
-        const results = await response.json();
-        
-        if (results.successCount > 0) {
-          toast.success(`Successfully imported ${results.successCount} of ${results.totalItems} content item${results.successCount !== 1 ? 's' : ''}`);
-          refetch(); // Refresh the content list
-        }
-
-        if (results.errorCount > 0) {
-          toast.error(`${results.errorCount} item${results.errorCount !== 1 ? 's' : ''} failed to import. Check console for details.`);
-          console.error('Import errors:', results.errors);
-        }
-
-      } catch (error) {
-        a.download = `content-export-all-${new Date().toISOString().split('T')[0]}.json`;
-        toast.error(error.message || 'Failed to import content');
-      } finally {
-        setImporting(false);
-      }
-    };
-    input.click();
+  const handleCategoriesBlur = () => {
+    const categoriesArray = parseArrayInput(categoriesInput);
+    setFormData(prev => ({
+      ...prev,
+      categories: categoriesArray
+    }));
   };
 
-  const handleExportSelected = async () => {
-    if (selectedItems.length === 0) {
-      toast.error('Please select items to export');
+  const handleTagsBlur = () => {
+    const tagsArray = parseArrayInput(tagsInput);
+    setFormData(prev => ({
+      ...prev,
+      tags: tagsArray
+    }));
+  };
+
+  const handleImageSelect = (image) => {
+    setFormData(prev => ({
+      ...prev,
+      featuredImageUrl: image.downloadURL
+    }));
+    toast.success('Featured image selected');
+  };
+
+  const handleRemoveImage = () => {
+    setFormData(prev => ({
+      ...prev,
+      featuredImageUrl: ''
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
       return;
     }
 
+    // Ensure array fields are updated with current input values before submitting
+    const finalFormData = {
+      ...formData,
+      blogId: activeBlogId,
+      featuredImageUrl: formData.featuredImageUrl || '', // Explicitly include featuredImageUrl
+      keywords: parseArrayInput(keywordsInput),
+      categories: parseArrayInput(categoriesInput),
+      tags: parseArrayInput(tagsInput)
+    };
+
+    // Debug log to verify featuredImageUrl is included
+    console.log('Submitting content with featuredImageUrl:', finalFormData.featuredImageUrl);
+    setLoading(true);
+
     try {
-      setExporting(true);
       const token = await getAuthToken();
+      const url = `/.netlify/functions/admin-content`;
       
-      const response = await fetch('/api/export/content', {
-        method: 'POST',
+      const method = isEditing ? 'PUT' : 'POST';
+      const body = isEditing 
+        ? { id, ...finalFormData }
+        : finalFormData;
+
+      // Debug log to verify the complete body being sent
+      console.log('Request body:', JSON.stringify(body, null, 2));
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          blogId: activeBlogId,
-          filters: {
-            exportAll: false,
-            selectedItems: selectedItems,
-            status: 'all',
-            startDate: '',
-            endDate: '',
-            selectedCategories: [],
-            selectedTags: []
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      // Handle file download
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `content-export-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast.success(`Successfully exported ${selectedItems.length} content item${selectedItems.length !== 1 ? 's' : ''}`);
-      setSelectedItems([]); // Clear selection after export
-
-    } catch (error) {
-      console.error('Export error:', error);
-      toast.error(error.message || 'Failed to export content');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleExportAll = async () => {
-    try {
-      setExporting(true);
-      const token = await getAuthToken();
-      
-      const response = await fetch('/api/export/content', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          blogId: activeBlogId,
-          filters: {
-            exportAll: true,
-            selectedItems: [],
-            status: 'all',
-            startDate: '',
-            endDate: '',
-            selectedCategories: [],
-            selectedTags: []
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      // Handle file download
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `content-export-all-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast.success(`Successfully exported all ${content.length} content item${content.length !== 1 ? 's' : ''}`);
-
-    } catch (error) {
-      console.error('Export error:', error);
-      toast.error(error.message || 'Failed to export content');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleDelete = async (contentItem) => {
-    try {
-      const token = await getAuthToken();
-      const response = await fetch(`/.netlify/functions/admin-content`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ id: contentItem.id, blogId: activeBlogId })
+        body: JSON.stringify(body)
       });
 
       if (response.ok) {
-        toast.success('Content deleted successfully');
-        refetch(); // Refresh the list
-        setDeleteModal({ isOpen: false, content: null });
+        toast.success(isEditing ? 'Content updated successfully' : 'Content created successfully');
+        navigate('/dashboard/manage');
       } else {
-        throw new Error('Failed to delete content');
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.message || `Server error: ${response.status} ${response.statusText}`;
+        console.error('Server response error:', errorData);
+        throw new Error(errorMessage);
       }
     } catch (error) {
-      console.error('Error deleting content:', error);
-      toast.error('Failed to delete content');
+      console.error('Error saving content:', error);
+      toast.error(error.message || 'Failed to save content');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleViewAnalytics = (contentItem) => {
-    setAnalyticsModal({ isOpen: true, content: contentItem });
-  };
-
-  const columns = [
-    {
-      key: 'featuredImageUrl',
-      title: 'Image',
-      sortable: false,
-      render: (value, row) => (
-        <div className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0">
-          {value ? (
-            <img
-              src={value}
-              alt={row.title}
-              className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-md border border-border"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
-            />
-          ) : null}
-          <div 
-            className={`w-12 h-12 sm:w-16 sm:h-16 bg-muted rounded-md border border-border flex items-center justify-center ${value ? 'hidden' : 'flex'}`}
-          >
-            <ImageIcon className="h-4 w-4 sm:h-6 sm:w-6 text-muted-foreground" />
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'title',
-      title: 'Title',
-      render: (value, row) => (
-        <div className="flex flex-col min-w-0">
-          <div className="text-sm sm:text-base font-medium text-foreground truncate mb-1">
-            {value}
-          </div>
-          <div className="text-xs sm:text-sm text-muted-foreground truncate">
-            /{row.slug}
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'status',
-      title: 'Status',
-      render: (value) => (
-        <span className={`badge ${getStatusBadgeClass(value)} text-xs sm:text-sm`}>
-          {value}
-        </span>
-      )
-    },
-    {
-      key: 'author',
-      title: 'Author',
-      render: (value) => (
-        <span className="text-sm sm:text-base text-foreground">
-          {value || 'N/A'}
-        </span>
-      )
-    },
-    {
-      key: 'createdAt',
-      title: 'Created',
-      render: (value) => (
-        <span className="text-sm sm:text-base text-foreground">
-          {value ? format(value.toDate(), 'MMM dd, yyyy') : 'N/A'}
-        </span>
-      )
-    },
-    {
-      key: 'viewCount',
-      title: 'Views',
-      render: (value) => (
-        <div className="text-center">
-          <div className="text-sm sm:text-base font-medium text-foreground">{value || 0}</div>
-          <div className="text-xs text-muted-foreground">tracked</div>
-        </div>
-      )
-    },
-    {
-      key: 'actions',
-      title: 'Actions',
-      sortable: false,
-      render: (_, row) => (
-        <div className="flex items-center space-x-1">
-          <a
-            href={`/preview/content/${currentUser?.uid}/${activeBlogId}/${row.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-green-600 p-2 rounded-md hover:bg-green-50 transition-colors duration-200"
-            title="Preview"
-          >
-            <Eye className="h-4 w-4" />
-          </a>
-          <Link
-            to={`/dashboard/edit/${row.id}`}
-            className="text-primary p-2 rounded-md hover:bg-primary/10 transition-colors duration-200"
-            title="Edit"
-          >
-            <Edit className="h-4 w-4" />
-          </Link>
-          <button
-            onClick={() => handleViewAnalytics(row)}
-            className="text-blue-600 p-2 rounded-md hover:bg-blue-50 transition-colors duration-200"
-            title="View Analytics"
-          >
-            <BarChart3 className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setDeleteModal({ isOpen: true, content: row })}
-            className="text-destructive p-2 rounded-md hover:bg-destructive/10 transition-colors duration-200"
-            title="Delete"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      )
-    }
-  ];
-
-  if (loading) {
+  if (contentLoading && isEditing) {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner size="lg" />
@@ -386,268 +227,277 @@ export default function ManageContentPage({ activeBlogId }) {
     );
   }
 
-  if (error) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-destructive">Error loading content: {error}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="section-spacing">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
-        <div className="page-header mb-0">
-          <h1 className="page-title mb-2">Manage Content</h1>
-          {selectedItems.length > 0 && (
-            <p className="text-base text-primary font-medium">
-              {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
-            </p>
-          )}
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Link
-            to="/dashboard/create"
-            className="btn-primary inline-flex items-center"
-          >
-            <Plus className="h-5 w-5 mr-3" />
-            Create New
-          </Link>
-          <button
-            onClick={handleImport}
-            disabled={importing}
-            className="btn-secondary inline-flex items-center"
-          >
-            <Upload className="h-5 w-5 mr-3" />
-            {importing ? 'Importing...' : 'Import JSON'}
-          </button>
-          {selectedItems.length > 0 ? (
-            <button
-              onClick={handleExportSelected}
-              disabled={exporting}
-              className="btn-secondary inline-flex items-center"
-            >
-              <Download className="h-5 w-5 mr-3" />
-              {exporting ? 'Exporting...' : `Export Selected (${selectedItems.length})`}
-            </button>
-          ) : (
-            <button
-              onClick={handleExportAll}
-              disabled={exporting || content.length === 0}
-              className="btn-secondary inline-flex items-center"
-            >
-              <Download className="h-5 w-5 mr-3" />
-              {exporting ? 'Exporting...' : 'Export All'}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {content.length === 0 ? (
-        <div className="card">
-          <div className="card-content text-center py-16">
-            <FileText className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
-            <h3 className="text-2xl font-semibold text-foreground mb-4">No content found</h3>
-            <p className="text-lg text-muted-foreground mb-8">
-              Get started by creating your first blog post. Once you have content, you can export it to get a genuine JSON template that matches your data structure.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/dashboard/create" className="btn-primary">
-                <Plus className="h-5 w-5 mr-3" />
-                Create First Post
-              </Link>
-            </div>
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Pro Tip: Generate Your Own JSON Template</h4>
-              <p className="text-sm text-blue-700">
-                Create at least one blog post, then use the "Export All" button to generate a JSON template that perfectly matches your data structure and image references.
-              </p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="card">
-          <div className="card-content p-0">
-            <DataTable
-              data={content}
-              columns={columns}
-              searchable={true}
-              sortable={true}
-              pagination={true}
-              pageSize={10}
-              selectable={true}
-              selectedItems={selectedItems}
-              onSelectAll={handleSelectAll}
-              onSelectRow={handleSelectRow}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Clear Selection Button */}
-      {selectedItems.length > 0 && (
-        <div className="flex justify-center">
-          <button
-            onClick={() => setSelectedItems([])}
-            className="btn-ghost btn-sm"
-          >
-            Clear Selection
-          </button>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      <Modal
-        isOpen={deleteModal.isOpen}
-        onClose={() => setDeleteModal({ isOpen: false, content: null })}
-        title="Delete Content"
-        size="sm"
-      >
-        <div className="space-y-4">
-          <p className="text-base text-foreground">
-            Are you sure you want to delete "{deleteModal.content?.title}"?
-          </p>
-          <p className="text-sm text-muted-foreground">
-            This action cannot be undone.
-          </p>
-          <div className="flex justify-end space-x-4 pt-4">
-            <button
-              onClick={() => setDeleteModal({ isOpen: false, content: null })}
-              className="btn-secondary"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => handleDelete(deleteModal.content)}
-              className="btn-danger"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Analytics Modal */}
-      <Modal
-        isOpen={analyticsModal.isOpen}
-        onClose={() => setAnalyticsModal({ isOpen: false, content: null })}
-        title={`Analytics: ${analyticsModal.content?.title}`}
-        size="lg"
-      >
-        <ContentAnalyticsModal 
-          contentId={analyticsModal.content?.id}
-          contentTitle={analyticsModal.content?.title}
-          activeBlogId={activeBlogId}
-        />
-      </Modal>
-    </div>
-  );
-}
-
-// Content Analytics Modal Component
-function ContentAnalyticsModal({ contentId, contentTitle, activeBlogId }) {
-  const [analytics, setAnalytics] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState(30);
-  const { currentUser } = useAuth();
-
-  useEffect(() => {
-    if (!contentId || !currentUser?.uid || !activeBlogId) return;
-
-    const fetchAnalytics = async () => {
-      setLoading(true);
-      try {
-        const data = await analyticsService.getContentAnalytics(currentUser.uid, contentId, activeBlogId, period);
-        setAnalytics(data);
-      } catch (error) {
-        console.error('Error fetching analytics:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAnalytics();
-  }, [contentId, period, currentUser?.uid, activeBlogId]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-32">
-        <LoadingSpinner size="md" />
-      </div>
-    );
-  }
-
-  if (!analytics) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-        <p>No analytics data available</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-foreground">Performance Overview</h3>
-        <select
-          value={period}
-          onChange={(e) => setPeriod(Number(e.target.value))}
-          className="input-field w-auto text-sm"
-        >
-          <option value={7}>7 days</option>
-          <option value={30}>30 days</option>
-          <option value={90}>90 days</option>
-        </select>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
-          <div className="text-2xl font-bold text-blue-900">{analytics.totalViews}</div>
-          <div className="text-sm text-blue-600">Total Views</div>
-        </div>
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
-          <div className="text-2xl font-bold text-green-900">{analytics.totalInteractions}</div>
-          <div className="text-sm text-green-600">Interactions</div>
-        </div>
-        <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg text-center">
-          <div className="text-2xl font-bold text-purple-900">{analytics.viewCount}</div>
-          <div className="text-sm text-purple-600">Total Views</div>
-        </div>
-        <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg text-center">
-          <div className="text-2xl font-bold text-orange-900">
-            {Math.round(analytics.totalViews / period)}
-          </div>
-          <div className="text-sm text-orange-600">Avg/Day</div>
-        </div>
-      </div>
-
-      {analytics.analytics && (
-        <div>
-          <h4 className="text-base font-semibold text-foreground mb-3">Activity Pattern</h4>
-          <div className="p-4 bg-muted/30 rounded-lg">
-            <p className="text-sm text-muted-foreground mb-2">
-              Peak viewing hour: {analytics.analytics.peakHour}:00
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Average views per day: {Math.round(analytics.analytics.averageViewsPerDay)}
-            </p>
-          </div>
-        </div>
-      )}
-
-      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-        <div className="flex items-start space-x-3">
-          <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+      {/* Header with Action Buttons */}
+      <div className="page-header">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div>
-            <p className="text-sm text-amber-800 font-medium mb-1">Analytics Note</p>
-            <p className="text-sm text-amber-700">
-              These metrics only track Firebase-connected interactions. For complete analytics, 
-              consider integrating Google Analytics on your static site.
-            </p>
+            <h1 className="page-title">
+              {isEditing ? 'Edit Content' : 'Create New Content'}
+            </h1>
           </div>
         </div>
+        
+        {/* Action Buttons at Top */}
+        <div className="flex flex-col sm:flex-row justify-end space-y-4 sm:space-y-0 sm:space-x-4 pt-6 border-t border-border">
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard/manage')}
+            className="btn-secondary"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="content-form"
+            disabled={loading}
+            className="btn-primary"
+          >
+            <Save className="h-5 w-5 mr-3" />
+            {loading ? 'Saving...' : (isEditing ? 'Update Content' : 'Create Content')}
+          </button>
+        </div>
       </div>
+
+      <form id="content-form" onSubmit={handleSubmit}>
+        {/* Two Column Layout for Wide Screens */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 lg:gap-10">
+          
+          {/* Left Column - Main Content (2/3 width on xl screens) */}
+          <div className="xl:col-span-2 space-y-8">
+            {/* Content Details */}
+            <div className="card">
+              <div className="card-header">
+                <h2 className="card-title">Content Details</h2>
+              </div>
+              <div className="card-content space-y-6">
+                <div className="grid-responsive-2">
+                  <InputField
+                    label="Title"
+                    name="title"
+                    required
+                    placeholder="Enter content title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    error={errors.title}
+                  />
+
+                  <InputField
+                    label="Slug"
+                    name="slug"
+                    required
+                    placeholder="url-friendly-slug"
+                    value={formData.slug}
+                    onChange={handleInputChange}
+                    error={errors.slug}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-base font-medium text-foreground mb-4">
+                    Content <span className="text-destructive">*</span>
+                  </label>
+                  <SimpleMDE
+                    value={formData.content}
+                    onChange={(value) => {
+                      setFormData(prev => ({ ...prev, content: value }));
+                      if (errors.content) {
+                        setErrors(prev => ({ ...prev, content: '' }));
+                      }
+                    }}
+                    options={simpleMDEOptions}
+                  />
+                  {errors.content && (
+                    <p className="mt-2 text-sm text-destructive">{errors.content}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Featured Image */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">Featured Image</h3>
+              </div>
+              <div className="card-content space-y-6">
+                {/* Image Preview */}
+                {formData.featuredImageUrl ? (
+                  <div className="relative border border-border rounded-lg overflow-hidden bg-muted">
+                    <div className="flex justify-center items-center h-48 w-full">
+                      <img
+                        src={formData.featuredImageUrl}
+                        alt="Featured Preview"
+                        className="object-contain max-h-full max-w-full"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
+                      title="Remove image"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border rounded-lg text-center bg-muted/20">
+                    <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground text-base">No featured image selected</p>
+                  </div>
+                )}
+
+                {/* Gallery Selection Button */}
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setGalleryModal({ isOpen: true })}
+                    className="btn-secondary inline-flex items-center"
+                  >
+                    <ImageIcon className="h-5 w-5 mr-3" />
+                    Select from Gallery
+                  </button>
+                </div>
+                
+                {/* Alternative URL Input */}
+                <div className="border-t border-border pt-6">
+                  <h4 className="text-base font-medium text-foreground mb-4">Or enter image URL</h4>
+                  <InputField
+                    label=""
+                    name="featuredImageUrl"
+                    type="url"
+                    placeholder="https://example.com/image.jpg"
+                    value={formData.featuredImageUrl}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Settings (1/3 width on xl screens) */}
+          <div className="space-y-8">
+            {/* Publish Settings */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">Publish Settings</h3>
+              </div>
+              <div className="card-content space-y-6">
+                <div>
+                  <label className="block text-base font-medium text-foreground mb-4">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    className="input-field"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                  </select>
+                </div>
+
+                <InputField
+                  label="Author"
+                  name="author"
+                  placeholder="Author name"
+                  value={formData.author}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
+
+            {/* SEO Settings */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">SEO Settings</h3>
+              </div>
+              <div className="card-content space-y-6">
+                <InputField
+                  label="SEO Title"
+                  name="seoTitle"
+                  placeholder="SEO optimized title"
+                  value={formData.seoTitle}
+                  onChange={handleInputChange}
+                />
+
+                <div>
+                  <label className="block text-base font-medium text-foreground mb-4">
+                    Keywords (comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={keywordsInput}
+                    onChange={(e) => setKeywordsInput(e.target.value)}
+                    onBlur={handleKeywordsBlur}
+                    placeholder="keyword1, keyword2, keyword3"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-base font-medium text-foreground mb-4">
+                    Meta Description
+                  </label>
+                  <textarea
+                    name="metaDescription"
+                    rows={4}
+                    className="input-field resize-none"
+                    value={formData.metaDescription}
+                    onChange={handleInputChange}
+                    placeholder="Brief description for search engines (150-160 characters recommended)"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Organization */}
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">Organization</h3>
+              </div>
+              <div className="card-content space-y-6">
+                <div>
+                  <label className="block text-base font-medium text-foreground mb-4">
+                    Categories (comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={categoriesInput}
+                    onChange={(e) => setCategoriesInput(e.target.value)}
+                    onBlur={handleCategoriesBlur}
+                    placeholder="Web Development, Technology"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-base font-medium text-foreground mb-4">
+                    Tags (comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={tagsInput}
+                    onChange={(e) => setTagsInput(e.target.value)}
+                    onBlur={handleTagsBlur}
+                    placeholder="react, javascript, tutorial"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      {/* Image Gallery Modal */}
+      <ImageGalleryModal
+        isOpen={galleryModal.isOpen}
+        onClose={() => setGalleryModal({ isOpen: false })}
+        onSelectImage={handleImageSelect}
+        title="Select Featured Image"
+      />
     </div>
   );
 }
