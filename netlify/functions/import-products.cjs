@@ -1,6 +1,4 @@
 const admin = require('firebase-admin');
-const multiparty = require('multiparty');
-const { Readable } = require('stream');
 
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
@@ -26,59 +24,6 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const auth = admin.auth();
 
-// Robust CSV parser that handles quoted fields and escaped quotes
-function parseCSV(csvText) {
-  const lines = csvText.split('\n').filter(line => line.trim());
-  if (lines.length === 0) return { headers: [], rows: [] };
-  
-  const parseCSVLine = (line) => {
-    const result = [];
-    let currentField = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          // Escaped double quote within a quoted field (e.g., "He said ""Hello""")
-          currentField += '"';
-          i++; // Skip the next quote
-        } else {
-          // Toggle inQuotes state (start or end of a quoted field)
-          inQuotes = !inQuotes;
-        }
-      } else if (char === ',' && !inQuotes) {
-        // End of a field
-        result.push(currentField);
-        currentField = '';
-      } else {
-        currentField += char;
-      }
-    }
-    result.push(currentField); // Add the last field
-    return result;
-  };
-  
-  const headers = parseCSVLine(lines[0]).map(h => h.trim());
-  const rows = lines.slice(1).map((line, index) => {
-    const values = parseCSVLine(line);
-    const row = {};
-    headers.forEach((header, i) => {
-      // If the value was quoted, remove the quotes and then trim. Otherwise, just trim.
-      let val = values[i] !== undefined ? values[i] : '';
-      if (val.startsWith('"') && val.endsWith('"')) {
-        val = val.substring(1, val.length - 1); // Remove surrounding quotes
-      }
-      row[header] = val.trim();
-    });
-    row._rowNumber = index + 2; // +2 because we start from line 2 (after header)
-    return row;
-  });
-  
-  return { headers, rows };
-}
-
 // Generate slug from name
 function generateSlug(name) {
   return name
@@ -89,56 +34,62 @@ function generateSlug(name) {
     .trim('-');
 }
 
-// Parse array input (comma-separated string to array)
-function parseArrayInput(value) {
-  if (!value) return [];
-  return value.split(',').map(item => item.trim()).filter(item => item);
-}
-
-// Validate product row
-function validateProductRow(row) {
+// Validate product item
+function validateProductItem(item, index) {
   const errors = [];
   
   // Required fields
-  if (!row.name || !row.name.trim()) {
+  if (!item.name || !item.name.trim()) {
     errors.push('Missing required field: name');
   }
   
-  if (!row.description || !row.description.trim()) {
+  if (!item.description || !item.description.trim()) {
     errors.push('Missing required field: description');
   }
   
   // Generate slug if missing
-  if (!row.slug || !row.slug.trim()) {
-    if (row.name && row.name.trim()) {
-      row.slug = generateSlug(row.name);
+  if (!item.slug || !item.slug.trim()) {
+    if (item.name && item.name.trim()) {
+      item.slug = generateSlug(item.name);
     } else {
       errors.push('Missing required field: slug (and cannot generate from name)');
     }
   }
   
   // Validate price
-  if (!row.price || isNaN(parseFloat(row.price)) || parseFloat(row.price) < 0) {
+  if (item.price === undefined || item.price === null || isNaN(parseFloat(item.price)) || parseFloat(item.price) < 0) {
     errors.push('Invalid price: must be a valid number >= 0');
   }
   
   // Validate percentOff
-  if (row.percentOff && (isNaN(parseFloat(row.percentOff)) || parseFloat(row.percentOff) < 0 || parseFloat(row.percentOff) > 100)) {
+  if (item.percentOff !== undefined && item.percentOff !== null && (isNaN(parseFloat(item.percentOff)) || parseFloat(item.percentOff) < 0 || parseFloat(item.percentOff) > 100)) {
     errors.push('Invalid percentOff: must be a number between 0 and 100');
   }
   
   // Validate status
-  if (row.status && !['draft', 'published'].includes(row.status.toLowerCase())) {
+  if (item.status && !['draft', 'published'].includes(item.status.toLowerCase())) {
     errors.push('Invalid status: must be "draft" or "published"');
   }
   
   // Set defaults
-  if (!row.status) {
-    row.status = 'draft';
+  if (!item.status) {
+    item.status = 'draft';
   }
-  if (!row.percentOff) {
-    row.percentOff = '0';
+  if (item.percentOff === undefined || item.percentOff === null) {
+    item.percentOff = 0;
   }
+  
+  // Ensure arrays are arrays
+  if (item.imageUrls && !Array.isArray(item.imageUrls)) {
+    item.imageUrls = [];
+  }
+  if (item.tags && !Array.isArray(item.tags)) {
+    item.tags = [];
+  }
+  
+  // Ensure strings are strings
+  item.productUrl = item.productUrl || '';
+  item.category = item.category || '';
   
   return errors;
 }
@@ -193,26 +144,23 @@ exports.handler = async (event, context) => {
 
     const userId = decodedToken.uid;
 
-    // Parse multipart form data
-    const form = new multiparty.Form();
-    const { fields, files } = await new Promise((resolve, reject) => {
-      // Create a readable stream from the event body
-      const reqStream = new Readable();
-      reqStream.push(event.isBase64Encoded
-        ? Buffer.from(event.body, 'base64')
-        : event.body);
-      reqStream.push(null); // Indicate end of stream
+    // Parse JSON body
+    let requestData;
+    try {
+      requestData = JSON.parse(event.body);
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Invalid JSON format in request body',
+          details: parseError.message
+        })
+      };
+    }
 
-      // Attach headers to the stream object as multiparty expects them
-      reqStream.headers = event.headers;
-      
-      form.parse(reqStream, (err, fields, files) => {
-        if (err) reject(err);
-        else resolve({ fields, files });
-      });
-    });
+    const { blogId, items } = requestData;
 
-    const blogId = fields.blogId && fields.blogId[0];
     if (!blogId) {
       return {
         statusCode: 400,
@@ -221,57 +169,49 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const file = files.file && files.file[0];
-    if (!file) {
+    if (!items || !Array.isArray(items)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'CSV file is required' })
+        body: JSON.stringify({ error: 'items array is required' })
       };
     }
 
-    // Read CSV file
-    const fs = require('fs');
-    const csvContent = fs.readFileSync(file.path, 'utf8');
-    const { headers: csvHeaders, rows } = parseCSV(csvContent);
-
-    // Validate CSV headers
-    const requiredHeaders = ['name', 'description', 'price'];
-    const missingHeaders = requiredHeaders.filter(header => !csvHeaders.includes(header));
-    if (missingHeaders.length > 0) {
+    if (items.length === 0) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ 
-          error: `Missing required CSV headers: ${missingHeaders.join(', ')}` 
-        })
+        body: JSON.stringify({ error: 'items array cannot be empty' })
       };
     }
 
-    // Process rows
+    // Process items
     const productsRef = db.collection('users').doc(userId).collection('blogs').doc(blogId).collection('products');
     const batch = db.batch();
     const errors = [];
     let successCount = 0;
 
-    for (const row of rows) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const itemIndex = i + 1; // 1-based indexing for user-friendly error messages
+      
       try {
-        // Validate row
-        const validationErrors = validateProductRow(row);
+        // Validate item
+        const validationErrors = validateProductItem(item, itemIndex);
         if (validationErrors.length > 0) {
           errors.push({
-            row: row._rowNumber,
+            item: itemIndex,
             message: validationErrors.join(', ')
           });
           continue;
         }
 
         // Check for duplicate slug
-        const existingQuery = await productsRef.where('slug', '==', row.slug).limit(1).get();
+        const existingQuery = await productsRef.where('slug', '==', item.slug).limit(1).get();
         if (!existingQuery.empty) {
           errors.push({
-            row: row._rowNumber,
-            message: `Duplicate slug "${row.slug}" - product already exists`
+            item: itemIndex,
+            message: `Duplicate slug "${item.slug}" - product already exists`
           });
           continue;
         }
@@ -279,16 +219,16 @@ exports.handler = async (event, context) => {
         // Prepare product data
         const now = admin.firestore.FieldValue.serverTimestamp();
         const productData = {
-          name: row.name.trim(),
-          slug: row.slug.trim(),
-          description: row.description.trim(),
-          price: parseFloat(row.price),
-          percentOff: parseFloat(row.percentOff) || 0,
-          imageUrls: parseArrayInput(row.imageUrls),
-          productUrl: row.productUrl || '',
-          category: row.category || '',
-          tags: parseArrayInput(row.tags),
-          status: (row.status || 'draft').toLowerCase(),
+          name: item.name.trim(),
+          slug: item.slug.trim(),
+          description: item.description.trim(),
+          price: parseFloat(item.price),
+          percentOff: parseFloat(item.percentOff) || 0,
+          imageUrls: item.imageUrls || [],
+          productUrl: item.productUrl || '',
+          category: item.category || '',
+          tags: item.tags || [],
+          status: (item.status || 'draft').toLowerCase(),
           userId,
           blogId,
           createdAt: now,
@@ -306,9 +246,9 @@ exports.handler = async (event, context) => {
         successCount++;
 
       } catch (error) {
-        console.error(`Error processing row ${row._rowNumber}:`, error);
+        console.error(`Error processing item ${itemIndex}:`, error);
         errors.push({
-          row: row._rowNumber,
+          item: itemIndex,
           message: `Processing error: ${error.message}`
         });
       }
@@ -323,7 +263,7 @@ exports.handler = async (event, context) => {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        totalRows: rows.length,
+        totalItems: items.length,
         successCount,
         errorCount: errors.length,
         errors: errors.slice(0, 50) // Limit error details to prevent large responses
