@@ -130,7 +130,6 @@ export default function ManageProductsPage({ activeBlogId }) {
         }
 
       } catch (error) {
-        console.error('Import error:', error);
         toast.error(error.message || 'Failed to import products');
       } finally {
         setImporting(false);
