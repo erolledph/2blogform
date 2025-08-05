@@ -509,30 +509,6 @@ export default function FileStoragePage() {
       </div>
 
       {/* Breadcrumb Navigation */}
-      <div className="card">
-        <div className="card-content p-4">
-          <nav className="flex items-center space-x-2 text-sm">
-            <button
-              onClick={navigateToUserRoot}
-              className="flex items-center text-blue-600 hover:text-blue-800"
-            >
-              <Home className="h-4 w-4 mr-1" />
-              My Storage
-            </button>
-            {getBreadcrumbs().slice(1).map((crumb) => (
-              <React.Fragment key={crumb.path}>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                <button
-                  onClick={() => navigateToPath(crumb.path)}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  {crumb.name}
-                </button>
-              </React.Fragment>
-            ))}
-          </nav>
-        </div>
-      </div>
 
       {/* Storage Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
