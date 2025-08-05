@@ -134,7 +134,7 @@ exports.handler = async (event, context) => {
         
         // Validate that paths are within user's storage space
         const userBasePath = `users/${userId}/`;
-        if (!sourcePath.startsWith(userBasePath)) {
+        if (sourcePath && !sourcePath.startsWith(userBasePath)) {
           return {
             statusCode: 403,
             headers,
@@ -472,13 +472,12 @@ exports.handler = async (event, context) => {
           body: JSON.stringify({ error: 'Method not allowed' })
         };
     }
-
   } catch (error) {
-    console.error('Admin storage function error:', error);
+    console.error('Error in handler:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: 'Internal server error',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       })
