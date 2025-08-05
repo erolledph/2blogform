@@ -166,14 +166,25 @@ export default function ImageUploader({
         throw new Error('Invalid original file size');
       }
       
-      const compressionRatio = ((originalSize - compressedSize) / originalSize * 100).toFixed(1);
-      const sizeDifference = originalSize - compressedSize;
+      // Calculate compression ratio with proper validation
+      let compressionRatio = 0;
+      let sizeDifference = 0;
+      
+      if (originalSize > 0 && !isNaN(originalSize) && !isNaN(compressedSize)) {
+        sizeDifference = originalSize - compressedSize;
+        compressionRatio = Math.abs((sizeDifference / originalSize) * 100);
+        
+        // Ensure compressionRatio is a valid number
+        if (isNaN(compressionRatio) || !isFinite(compressionRatio)) {
+          compressionRatio = 0;
+        }
+      }
       
       setCompressedFileSize(compressedSize);
       setCompressionStats({
         originalSize,
         compressedSize,
-        compressionRatio,
+        compressionRatio: compressionRatio.toFixed(1),
         sizeDifference,
         format: outputFormat,
         isLarger: compressedSize > originalSize
@@ -385,7 +396,7 @@ export default function ImageUploader({
               ></div>
             </div>
             <p className="text-xs text-blue-600">
-              Your personal storage space ({userStoragePath})
+              Your personal storage space
             </p>
           </div>
         </div>
@@ -489,7 +500,7 @@ export default function ImageUploader({
                         <div>Format: {outputFormat.toUpperCase()}</div>
                         <div className="font-medium">
                           {compressionStats.isLarger ? 'Increased' : 'Saved'}: {Math.abs(parseFloat(compressionStats.compressionRatio))}% 
-                          ({compressionStats.isLarger ? '+' : ''}{formatBytes(compressionStats.sizeDifference * -1)})
+                          ({compressionStats.isLarger ? '+' : ''}{formatBytes(Math.abs(compressionStats.sizeDifference))})
                         </div>
                       </div>
                       {compressionStats.isLarger && (
@@ -682,7 +693,7 @@ export default function ImageUploader({
               <div className="col-span-2">
                 <span className="font-medium text-amber-800">Size Increase:</span>
                 <div className="text-amber-700">
-                  +{formatBytes((compressedFileSize || 0) - (originalFileSize || 0))} 
+                  +{formatBytes(Math.abs((compressedFileSize || 0) - (originalFileSize || 0)))} 
                   ({Math.abs(parseFloat(compressionStats?.compressionRatio || 0))}% larger)
                 </div>
               </div>
