@@ -380,6 +380,7 @@ export default function ImageGalleryModal({
                               alt={image.name}
                               className="w-full h-full object-cover"
                               loading="lazy"
+                              loading="lazy"
                             />
                           </div>
                           
@@ -461,6 +462,7 @@ export default function ImageGalleryModal({
                               src={image.downloadURL}
                               alt={image.name}
                               className="w-12 h-12 object-cover rounded border border-border"
+                              loading="lazy"
                               loading="lazy"
                             />
                           </div>

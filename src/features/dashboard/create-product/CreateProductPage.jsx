@@ -109,22 +109,44 @@ export default function CreateProductPage({ activeBlogId }) {
     
     if (!formData.name.trim()) {
       newErrors.name = 'Product name is required';
+    } else if (formData.name.length > 200) {
+      newErrors.name = 'Product name must be less than 200 characters';
     }
     
     if (!formData.slug.trim()) {
       newErrors.slug = 'Slug is required';
+    } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
+      newErrors.slug = 'Slug can only contain lowercase letters, numbers, and hyphens';
+    } else if (formData.slug.length > 100) {
+      newErrors.slug = 'Slug must be less than 100 characters';
     }
     
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
+    } else if (formData.description.length > 10000) {
+      newErrors.description = 'Description must be less than 10,000 characters';
     }
 
     if (!formData.price || isNaN(parseFloat(formData.price)) || parseFloat(formData.price) < 0) {
       newErrors.price = 'Valid price is required';
+    } else if (parseFloat(formData.price) > 999999.99) {
+      newErrors.price = 'Price cannot exceed $999,999.99';
     }
 
     if (formData.percentOff && (isNaN(parseFloat(formData.percentOff)) || parseFloat(formData.percentOff) < 0 || parseFloat(formData.percentOff) > 100)) {
       newErrors.percentOff = 'Percent off must be between 0 and 100';
+    }
+
+    if (formData.category && formData.category.length > 100) {
+      newErrors.category = 'Category must be less than 100 characters';
+    }
+
+    if (formData.productUrl && formData.productUrl.length > 500) {
+      newErrors.productUrl = 'Product URL must be less than 500 characters';
+    }
+
+    if (formData.imageUrls && formData.imageUrls.length > 5) {
+      newErrors.imageUrls = 'Maximum 5 images allowed per product';
     }
     
     setErrors(newErrors);

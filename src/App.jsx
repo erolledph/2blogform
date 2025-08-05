@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/hooks/useAuth';
 import LoginPage from '@/features/auth/LoginPage';
+import RegisterPage from '@/features/auth/RegisterPage';
+import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
 import DashboardPage from '@/components/layout/DashboardPage';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
@@ -17,6 +19,8 @@ function App() {
             <div className="min-h-screen bg-neutral-50">
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 {/* Public Preview Routes with user and blog ID */}
                 <Route path="/preview/content/:uid/:blogId/:slug" element={<ContentPreviewPage />} />
                 <Route path="/preview/product/:uid/:blogId/:slug" element={<ProductPreviewPage />} />

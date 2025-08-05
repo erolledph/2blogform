@@ -23,6 +23,31 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
+// Simple in-memory rate limiting (for basic protection)
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 100; // 100 requests per minute per IP
+
+function checkRateLimit(clientIP) {
+  const now = Date.now();
+  const clientData = rateLimitMap.get(clientIP) || { count: 0, resetTime: now + RATE_LIMIT_WINDOW };
+  
+  // Reset if window has passed
+  if (now > clientData.resetTime) {
+    clientData.count = 0;
+    clientData.resetTime = now + RATE_LIMIT_WINDOW;
+  }
+  
+  clientData.count++;
+  rateLimitMap.set(clientIP, clientData);
+  
+  return {
+    allowed: clientData.count <= RATE_LIMIT_MAX_REQUESTS,
+    remaining: Math.max(0, RATE_LIMIT_MAX_REQUESTS - clientData.count),
+    resetTime: clientData.resetTime
+  };
+}
+
 // Helper function to get public app settings for this user (including currency)
 async function getPublicAppSettings(uid) {
   try {
@@ -81,6 +106,27 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    // Basic rate limiting
+    const clientIP = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || 'unknown';
+    const rateLimitResult = checkRateLimit(clientIP);
+    
+    if (!rateLimitResult.allowed) {
+      return {
+        statusCode: 429,
+        headers: {
+          ...headers,
+          'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+          'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString()
+        },
+        body: JSON.stringify({ 
+          error: 'Rate limit exceeded',
+          message: `Too many requests. Limit: ${RATE_LIMIT_MAX_REQUESTS} requests per minute.`
+        })
+      };
+    }
+
     // Extract uid and blogId from the request path using regex
     // Expected path format: /users/{uid}/blogs/{blogId}/api/products.json
     const pathMatch = event.path.match(/\/users\/([^\/]+)\/blogs\/([^\/]+)\/api\/products\.json/);
@@ -113,15 +159,66 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Parse query parameters for filtering, pagination, and sorting
+    const queryParams = event.queryStringParameters || {};
+    const {
+      category,
+      tag,
+      status = 'published',
+      limit,
+      offset = '0',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      minPrice,
+      maxPrice
+    } = queryParams;
+
     // Get public app settings for this user (including currency)
     const appSettings = await getPublicAppSettings(uid);
     const currency = appSettings.currency || '$';
 
     // Query Firestore for published products in the user's blog
     const productsRef = db.collection('users').doc(uid).collection('blogs').doc(blogId).collection('products');
-    const snapshot = await productsRef
-      .where('status', '==', 'published')
-      .get();
+    let query = productsRef;
+
+    // Apply status filter (default to published for public API)
+    if (status && status !== 'all') {
+      query = query.where('status', '==', status);
+    } else {
+      query = query.where('status', '==', 'published');
+    }
+
+    // Apply category filter
+    if (category) {
+      query = query.where('category', '==', category);
+    }
+
+    // Apply tag filter
+    if (tag) {
+      query = query.where('tags', 'array-contains', tag);
+    }
+
+    // Apply sorting (limited by Firestore capabilities)
+    if (sortBy === 'createdAt' || sortBy === 'updatedAt' || sortBy === 'price') {
+      query = query.orderBy(sortBy, sortOrder === 'asc' ? 'asc' : 'desc');
+    }
+
+    // Apply pagination
+    if (limit) {
+      const limitNum = parseInt(limit);
+      if (!isNaN(limitNum) && limitNum > 0 && limitNum <= 100) {
+        query = query.limit(limitNum);
+      }
+    }
+
+    if (offset && offset !== '0') {
+      const offsetNum = parseInt(offset);
+      if (!isNaN(offsetNum) && offsetNum > 0) {
+        query = query.offset(offsetNum);
+      }
+    }
+
+    const snapshot = await query.get();
 
     const products = [];
     snapshot.forEach(doc => {
@@ -161,24 +258,65 @@ exports.handler = async (event, context) => {
       products.push(processedData);
     });
 
-    // Sort by creation date (newest first) manually to ensure consistent ordering
-    products.sort((a, b) => {
-      const dateA = new Date(a.createdAt || 0);
-      const dateB = new Date(b.createdAt || 0);
-      
-      // Primary sort: by creation date (newest first)
-      if (dateB.getTime() !== dateA.getTime()) {
-        return dateB.getTime() - dateA.getTime();
-      }
-      
-      // Secondary sort: by document ID for deterministic ordering when dates are equal
-      return b.id.localeCompare(a.id);
-    });
+    // Apply client-side filters that Firestore doesn't support
+    let filteredProducts = products;
+
+    // Price range filter
+    if (minPrice || maxPrice) {
+      filteredProducts = filteredProducts.filter(product => {
+        const price = product.discountedPrice;
+        if (minPrice && price < parseFloat(minPrice)) return false;
+        if (maxPrice && price > parseFloat(maxPrice)) return false;
+        return true;
+      });
+    }
+
+    // Client-side sorting for fields not supported by Firestore ordering
+    if (sortBy === 'name') {
+      filteredProducts.sort((a, b) => {
+        const comparison = (a.name || '').localeCompare(b.name || '');
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+    } else if (sortBy !== 'createdAt' && sortBy !== 'updatedAt' && sortBy !== 'price') {
+      // Default sort by creation date if sortBy is not supported
+      filteredProducts.sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        
+        if (sortOrder === 'asc') {
+          return dateA.getTime() - dateB.getTime();
+        } else {
+          return dateB.getTime() - dateA.getTime();
+        }
+      });
+    }
 
     return {
       statusCode: 200,
-      headers,
-      body: JSON.stringify(products)
+      headers: {
+        ...headers,
+        'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
+        'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+        'X-RateLimit-Reset': rateLimitResult.resetTime.toString()
+      },
+      body: JSON.stringify({
+        data: filteredProducts,
+        pagination: {
+          total: filteredProducts.length,
+          limit: limit ? parseInt(limit) : null,
+          offset: parseInt(offset),
+          hasMore: limit ? filteredProducts.length === parseInt(limit) : false
+        },
+        filters: {
+          category: category || null,
+          tag: tag || null,
+          status: status || 'published',
+          minPrice: minPrice || null,
+          maxPrice: maxPrice || null,
+          sortBy,
+          sortOrder
+        }
+      })
     };
 
   } catch (error) {

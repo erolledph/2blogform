@@ -115,6 +115,15 @@ exports.handler = async (event, context) => {
         };
       }
 
+      // Validate blogId format
+      if (typeof blogId !== 'string' || !blogId.trim()) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'blogId must be a non-empty string' })
+        };
+      }
+
       // Verify the blog exists and belongs to the user
       const blogRef = db.collection('users').doc(userId).collection('blogs').doc(blogId);
       const blogDoc = await blogRef.get();

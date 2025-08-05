@@ -17,7 +17,8 @@ import {
   Check,
   X,
   HardDrive,
-  Database
+  Database,
+  Trash2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -28,7 +29,9 @@ export default function UserManagementPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editModal, setEditModal] = useState({ isOpen: false, user: null });
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, user: null });
   const [updating, setUpdating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Check if current user is admin
   const isAdmin = currentUser?.role === 'admin';
@@ -139,6 +142,46 @@ export default function UserManagementPage() {
       toast.error(error.message || 'Failed to update user');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleDeleteUser = async (user) => {
+    try {
+      setDeleting(true);
+      
+      const token = await getAuthToken();
+      const response = await fetch('/.netlify/functions/admin-users', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: user.uid
+        })
+      });
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}`;
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      toast.success('User deleted successfully');
+      setDeleteModal({ isOpen: false, user: null });
+      fetchUsers(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error(error.message || 'Failed to delete user');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -421,6 +464,83 @@ export default function UserManagementPage() {
             updating={updating}
             currentUserId={currentUser?.uid}
           />
+        )}
+      </Modal>
+
+      {/* Delete User Modal */}
+      <Modal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, user: null })}
+        title={`Delete User: ${deleteModal.user?.email}`}
+        size="md"
+      >
+        {deleteModal.user && (
+          <div className="space-y-6">
+            <div className="flex items-start space-x-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  Delete User Account
+                </h3>
+                <p className="text-base text-muted-foreground mb-4">
+                  Are you sure you want to delete the account for <strong>{deleteModal.user.email}</strong>?
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-red-800 mb-2">This action will permanently delete:</h4>
+              <ul className="text-sm text-red-700 space-y-1">
+                <li>• The user's account and authentication</li>
+                <li>• All blogs and associated content</li>
+                <li>• All products in their catalogs</li>
+                <li>• All uploaded files and images</li>
+                <li>• All analytics and usage data</li>
+                <li>• All user settings and preferences</li>
+              </ul>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-start space-x-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-amber-800 font-medium">This action cannot be undone</p>
+                  <p className="text-sm text-amber-700">
+                    Make sure you have backed up any important data before proceeding.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-4 pt-4 border-t border-border">
+              <button
+                onClick={() => setDeleteModal({ isOpen: false, user: null })}
+                disabled={deleting}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteUser(deleteModal.user)}
+                disabled={deleting}
+                className="btn-danger"
+              >
+                {deleting ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-2" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete User
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
     </div>

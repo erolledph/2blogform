@@ -19,6 +19,7 @@ export default function ManageProductsPage({ activeBlogId }) {
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState(null);
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const { getAuthToken, currentUser } = useAuth();
 
   useEffect(() => {
@@ -247,6 +248,132 @@ export default function ManageProductsPage({ activeBlogId }) {
     }
   };
 
+  const handleBulkPublish = async () => {
+    if (selectedItems.length === 0) {
+      toast.error('Please select items to publish');
+      return;
+    }
+
+    try {
+      setBulkActionLoading(true);
+      const token = await getAuthToken();
+      
+      const promises = selectedItems.map(async (itemId) => {
+        const response = await fetch(`/.netlify/functions/admin-product`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            id: itemId, 
+            blogId: activeBlogId,
+            status: 'published'
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to publish item ${itemId}`);
+        }
+      });
+
+      await Promise.all(promises);
+      toast.success(`Successfully published ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
+      setSelectedItems([]);
+      refetch();
+    } catch (error) {
+      console.error('Bulk publish error:', error);
+      toast.error('Some products failed to publish');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkUnpublish = async () => {
+    if (selectedItems.length === 0) {
+      toast.error('Please select items to unpublish');
+      return;
+    }
+
+    try {
+      setBulkActionLoading(true);
+      const token = await getAuthToken();
+      
+      const promises = selectedItems.map(async (itemId) => {
+        const response = await fetch(`/.netlify/functions/admin-product`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            id: itemId, 
+            blogId: activeBlogId,
+            status: 'draft'
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to unpublish item ${itemId}`);
+        }
+      });
+
+      await Promise.all(promises);
+      toast.success(`Successfully unpublished ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
+      setSelectedItems([]);
+      refetch();
+    } catch (error) {
+      console.error('Bulk unpublish error:', error);
+      toast.error('Some products failed to unpublish');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedItems.length === 0) {
+      toast.error('Please select items to delete');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setBulkActionLoading(true);
+      const token = await getAuthToken();
+      
+      const promises = selectedItems.map(async (itemId) => {
+        const response = await fetch(`/.netlify/functions/admin-product`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            id: itemId, 
+            blogId: activeBlogId
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to delete item ${itemId}`);
+        }
+      });
+
+      await Promise.all(promises);
+      toast.success(`Successfully deleted ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
+      setSelectedItems([]);
+      refetch();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast.error('Some products failed to delete');
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
   const handleDelete = async (product) => {
     try {
       setDeletingItemId(product.id);
@@ -454,9 +581,34 @@ export default function ManageProductsPage({ activeBlogId }) {
         <div className="page-header mb-0">
           <h1 className="page-title mb-2">Manage Products</h1>
           {selectedItems.length > 0 && (
-            <p className="text-base text-primary font-medium">
-              {selectedItems.length} product{selectedItems.length !== 1 ? 's' : ''} selected
-            </p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <p className="text-base text-primary font-medium">
+                {selectedItems.length} product{selectedItems.length !== 1 ? 's' : ''} selected
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleBulkPublish}
+                  disabled={bulkActionLoading}
+                  className="btn-secondary btn-sm"
+                >
+                  {bulkActionLoading ? 'Publishing...' : 'Publish Selected'}
+                </button>
+                <button
+                  onClick={handleBulkUnpublish}
+                  disabled={bulkActionLoading}
+                  className="btn-secondary btn-sm"
+                >
+                  {bulkActionLoading ? 'Unpublishing...' : 'Unpublish Selected'}
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={bulkActionLoading}
+                  className="btn-danger btn-sm"
+                >
+                  {bulkActionLoading ? 'Deleting...' : 'Delete Selected'}
+                </button>
+              </div>
+            </div>
           )}
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
@@ -526,6 +678,13 @@ export default function ManageProductsPage({ activeBlogId }) {
               data={products}
               columns={columns}
               searchable={true}
+              filterable={true}
+              filterOptions={{
+                statuses: ['draft', 'published'],
+                categories: true,
+                tags: true,
+                dateRange: true
+              }}
               sortable={true}
               pagination={true}
               pageSize={10}
@@ -533,6 +692,10 @@ export default function ManageProductsPage({ activeBlogId }) {
               selectedItems={selectedItems}
               onSelectAll={handleSelectAll}
               onSelectRow={handleSelectRow}
+              onFiltersChange={(filters) => {
+                // Filters are handled internally by DataTable
+                // This callback can be used for additional logic if needed
+              }}
             />
           </div>
         </div>

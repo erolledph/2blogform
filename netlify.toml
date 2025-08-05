@@ -41,6 +41,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/admin/storage"
+  to = "/.netlify/functions/admin-storage"
+  status = 200
+
+[[redirects]]
   from = "/api/import/content"
   to = "/.netlify/functions/import-content"
   status = 200

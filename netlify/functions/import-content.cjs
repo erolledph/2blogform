@@ -38,13 +38,23 @@ function generateSlug(title) {
 function validateContentItem(item, index) {
   const errors = [];
   
+  // Validate item is an object
+  if (!item || typeof item !== 'object') {
+    errors.push('Item must be a valid object');
+    return errors;
+  }
+
   // Required fields
   if (!item.title || !item.title.trim()) {
     errors.push('Missing required field: title');
+  } else if (typeof item.title !== 'string') {
+    errors.push('Title must be a string');
   }
   
   if (!item.content || !item.content.trim()) {
     errors.push('Missing required field: content');
+  } else if (typeof item.content !== 'string') {
+    errors.push('Content must be a string');
   }
   
   // Generate slug if missing

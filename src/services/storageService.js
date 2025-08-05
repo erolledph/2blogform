@@ -1,5 +1,6 @@
-import { ref, listAll, getMetadata } from 'firebase/storage';
+import { ref, listAll, getMetadata, getDownloadURL, uploadBytes, deleteObject } from 'firebase/storage';
 import { storage } from '@/firebase';
+import { useAuth } from '@/hooks/useAuth';
 
 export const storageService = {
   /**
@@ -183,6 +184,321 @@ export const storageService = {
         reason: null,
         error: error.message
       };
+    }
+
+  },
+  /**
+   * Copy a file from source to destination using server-side function
+   * @param {string} sourcePath - Source file path
+   * @param {string} destPath - Destination file path
+   * @param {string} authToken - Authentication token
+   * @returns {Promise<void>}
+   */
+  async copyFile(sourcePath, destPath, authToken) {
+    try {
+      const response = await fetch('/api/admin/storage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          operation: 'copyFile',
+          sourcePath,
+          destPath
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`Error copying file from ${sourcePath} to ${destPath}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Move a file from source to destination using server-side function
+   * @param {string} sourcePath - Source file path
+   * @param {string} destPath - Destination file path
+   * @param {string} authToken - Authentication token
+   * @returns {Promise<void>}
+   */
+  async moveFile(sourcePath, destPath, authToken) {
+    try {
+      const response = await fetch('/api/admin/storage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          operation: 'moveFile',
+          sourcePath,
+          destPath
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`Error moving file from ${sourcePath} to ${destPath}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Rename a file using server-side function
+   * @param {string} sourcePath - Source file path
+   * @param {string} newName - New file name
+   * @param {string} authToken - Authentication token
+   * @returns {Promise<void>}
+   */
+  async renameFile(sourcePath, newName, authToken) {
+    try {
+      const response = await fetch('/api/admin/storage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          operation: 'renameFile',
+          sourcePath,
+          newName
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`Error renaming file ${sourcePath} to ${newName}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create a folder using server-side function
+   * @param {string} folderPath - Path where to create the folder
+   * @param {string} authToken - Authentication token
+   * @returns {Promise<void>}
+   */
+  async createFolder(folderPath, authToken) {
+    try {
+      const response = await fetch('/api/admin/storage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          operation: 'createFolder',
+          destPath: folderPath
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`Error creating folder ${folderPath}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a file using server-side function
+   * @param {string} filePath - File path to delete
+   * @param {string} authToken - Authentication token
+   * @returns {Promise<void>}
+   */
+  async deleteFile(filePath, authToken) {
+    try {
+      const response = await fetch('/api/admin/storage', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          filePath
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`Error deleting file ${filePath}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Recursively delete all contents of a folder
+   * @param {StorageReference} folderRef - Folder reference to delete
+   * @returns {Promise<void>}
+   */
+  async deleteFolderRecursive(folderRef) {
+    try {
+      const result = await listAll(folderRef);
+      
+      // Delete all files in the folder
+      const deleteFilePromises = result.items.map(itemRef => deleteObject(itemRef));
+      await Promise.all(deleteFilePromises);
+      
+      // Recursively delete subfolders
+      const deleteSubfolderPromises = result.prefixes.map(prefixRef => 
+        this.deleteFolderRecursive(prefixRef)
+      );
+      await Promise.all(deleteSubfolderPromises);
+    } catch (error) {
+      console.error(`Error deleting folder ${folderRef.fullPath}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Recursively move a folder and all its contents using server-side operations
+   * @param {string} sourcePath - Source folder path
+   * @param {string} destPath - Destination folder path
+   * @param {string} authToken - Authentication token
+   * @returns {Promise<void>}
+   */
+  async moveFolderRecursive(sourcePath, destPath, authToken) {
+    try {
+      const sourceRef = ref(storage, sourcePath);
+      const result = await listAll(sourceRef);
+      
+      // Move all files in the folder
+      const moveFilePromises = result.items.map(async (itemRef) => {
+        const fileName = itemRef.name;
+        const destFilePath = `${destPath}/${fileName}`;
+        
+        try {
+          await this.moveFile(itemRef.fullPath, destFilePath, authToken);
+        } catch (error) {
+          console.error(`Error moving file ${itemRef.fullPath}:`, error);
+          throw error;
+        }
+      });
+      
+      await Promise.all(moveFilePromises);
+      
+      // Recursively move subfolders
+      const moveSubfolderPromises = result.prefixes.map(async (prefixRef) => {
+        const subfolderName = prefixRef.name;
+        const destSubfolderPath = `${destPath}/${subfolderName}`;
+        
+        try {
+          await this.moveFolderRecursive(prefixRef.fullPath, destSubfolderPath, authToken);
+        } catch (error) {
+          console.error(`Error moving subfolder ${prefixRef.fullPath}:`, error);
+          throw error;
+        }
+      });
+      
+      await Promise.all(moveSubfolderPromises);
+    } catch (error) {
+      console.error(`Error moving folder from ${sourcePath} to ${destPath}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Rename a folder by moving it to a new location
+   * @param {string} folderPath - Current folder path
+   * @param {string} newName - New folder name
+   * @param {string} authToken - Authentication token
+   * @returns {Promise<void>}
+   */
+  async renameFolder(folderPath, newName, authToken) {
+    try {
+      // Validate new name
+      if (!/^[a-zA-Z0-9_-]+$/.test(newName)) {
+        throw new Error('Folder name can only contain letters, numbers, underscores, and hyphens');
+      }
+      
+      // Calculate new path
+      const pathParts = folderPath.split('/');
+      pathParts[pathParts.length - 1] = newName;
+      const newPath = pathParts.join('/');
+      
+      // Check if destination already exists
+      try {
+        const destRef = ref(storage, newPath);
+        const destResult = await listAll(destRef);
+        if (destResult.items.length > 0 || destResult.prefixes.length > 0) {
+          throw new Error('A folder with this name already exists');
+        }
+      } catch (error) {
+        // If listAll fails, the folder doesn't exist, which is what we want
+        if (!error.message.includes('already exists')) {
+          // Continue with the rename operation
+        } else {
+          throw error;
+        }
+      }
+      
+      // Move the folder
+      await this.moveFolderRecursive(folderPath, newPath, authToken);
+    } catch (error) {
+      console.error(`Error renaming folder ${folderPath} to ${newName}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Move a folder to a new parent directory
+   * @param {string} folderPath - Current folder path
+   * @param {string} newParentPath - New parent directory path
+   * @param {string} authToken - Authentication token
+   * @returns {Promise<void>}
+   */
+  async moveFolder(folderPath, newParentPath, authToken) {
+    try {
+      // Get folder name from current path
+      const folderName = folderPath.split('/').pop();
+      const newPath = `${newParentPath}/${folderName}`;
+      
+      // Prevent moving to itself or a subdirectory
+      if (newPath === folderPath) {
+        throw new Error('Cannot move folder to the same location');
+      }
+      
+      if (newPath.startsWith(folderPath + '/')) {
+        throw new Error('Cannot move folder into its own subdirectory');
+      }
+      
+      // Check if destination already exists
+      try {
+        const destRef = ref(storage, newPath);
+        const destResult = await listAll(destRef);
+        if (destResult.items.length > 0 || destResult.prefixes.length > 0) {
+          throw new Error('A folder with this name already exists in the destination');
+        }
+      } catch (error) {
+        // If listAll fails, the folder doesn't exist, which is what we want
+        if (!error.message.includes('already exists')) {
+          // Continue with the move operation
+        } else {
+          throw error;
+        }
+      }
+      
+      // Move the folder
+      await this.moveFolderRecursive(folderPath, newPath, authToken);
+    } catch (error) {
+      console.error(`Error moving folder ${folderPath} to ${newParentPath}:`, error);
+      throw error;
     }
   }
 };

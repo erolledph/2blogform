@@ -46,7 +46,9 @@ export default function ProductPreviewPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const allProductsData = await response.json();
+      const responseData = await response.json();
+      // Handle both old format (array) and new format (object with data property)
+      const allProductsData = Array.isArray(responseData) ? responseData : responseData.data || [];
       const foundProduct = allProductsData.find(item => item.slug === slug);
       
       if (!foundProduct) {
@@ -224,6 +226,7 @@ export default function ProductPreviewPage() {
                           src={imageUrl}
                           alt={`${product.name} ${index + 1}`}
                           className="w-full h-full object-cover"
+                          loading="lazy"
                         />
                       </button>
                     ))}
@@ -298,6 +301,7 @@ export default function ProductPreviewPage() {
                       <span className="text-base text-gray-600 font-medium">
                         You save {formatPrice(savings)}
                       </span>
+                      loading="lazy"
                     </div>
                   </div>
                 ) : (
@@ -473,6 +477,7 @@ export default function ProductPreviewPage() {
                           src={(item.imageUrls && item.imageUrls.length > 0) ? item.imageUrls[0] : item.imageUrl}
                           alt={item.name}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          loading="lazy"
                         />
                       </div>
                     ) : (

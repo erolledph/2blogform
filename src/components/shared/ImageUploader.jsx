@@ -364,7 +364,6 @@ export default function ImageUploader({
   };
 
   return (
-    <>
     <div className={`space-y-6 ${className}`}>
       {/* Storage Usage Display */}
       <div className="card border-blue-200 bg-blue-50">
@@ -620,6 +619,7 @@ export default function ImageUploader({
                   <>
                     <LoadingSpinner size="sm" className="mr-3" />
                     Uploading...
+                    loading="lazy"
                   </>
                 ) : (
                   <>
@@ -755,6 +755,5 @@ export default function ImageUploader({
         </div>
       </Modal>
     </div>
-    </>
   );
 }

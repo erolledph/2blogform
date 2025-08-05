@@ -137,6 +137,75 @@ exports.handler = async (event, context) => {
           };
         }
 
+        // Validate required fields for updates
+        if (updateData.name !== undefined && (typeof updateData.name !== 'string' || !updateData.name.trim())) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Product name must be a non-empty string' })
+          };
+        }
+
+        if (updateData.slug !== undefined && (typeof updateData.slug !== 'string' || !updateData.slug.trim())) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Slug must be a non-empty string' })
+          };
+        }
+
+        if (updateData.description !== undefined && (typeof updateData.description !== 'string' || !updateData.description.trim())) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Description must be a non-empty string' })
+          };
+        }
+
+        // Validate price
+        if (updateData.price !== undefined && (isNaN(parseFloat(updateData.price)) || parseFloat(updateData.price) < 0)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Price must be a valid number >= 0' })
+          };
+        }
+
+        // Validate percentOff
+        if (updateData.percentOff !== undefined && (isNaN(parseFloat(updateData.percentOff)) || parseFloat(updateData.percentOff) < 0 || parseFloat(updateData.percentOff) > 100)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Percent off must be a number between 0 and 100' })
+          };
+        }
+
+        // Validate status
+        if (updateData.status && !['draft', 'published'].includes(updateData.status)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Status must be either "draft" or "published"' })
+          };
+        }
+
+        // Validate arrays
+        if (updateData.imageUrls && !Array.isArray(updateData.imageUrls)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Image URLs must be an array' })
+          };
+        }
+
+        if (updateData.tags && !Array.isArray(updateData.tags)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Tags must be an array' })
+          };
+        }
+
         // Reference to user's blog products collection
         const productsRef = db.collection('users').doc(userId).collection('blogs').doc(blogId).collection('products');
         const docRef = productsRef.doc(id);

@@ -24,6 +24,31 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const auth = admin.auth();
 
+// Simple in-memory rate limiting (for basic protection)
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 100; // 100 requests per minute per IP
+
+function checkRateLimit(clientIP) {
+  const now = Date.now();
+  const clientData = rateLimitMap.get(clientIP) || { count: 0, resetTime: now + RATE_LIMIT_WINDOW };
+  
+  // Reset if window has passed
+  if (now > clientData.resetTime) {
+    clientData.count = 0;
+    clientData.resetTime = now + RATE_LIMIT_WINDOW;
+  }
+  
+  clientData.count++;
+  rateLimitMap.set(clientIP, clientData);
+  
+  return {
+    allowed: clientData.count <= RATE_LIMIT_MAX_REQUESTS,
+    remaining: Math.max(0, RATE_LIMIT_MAX_REQUESTS - clientData.count),
+    resetTime: clientData.resetTime
+  };
+}
+
 exports.handler = async (event, context) => {
   // Set CORS headers
   const headers = {
@@ -47,6 +72,27 @@ exports.handler = async (event, context) => {
   // For GET requests (public content access), skip authentication
   if (httpMethod === 'GET') {
     try {
+      // Basic rate limiting
+      const clientIP = event.headers['x-forwarded-for'] || event.headers['x-real-ip'] || 'unknown';
+      const rateLimitResult = checkRateLimit(clientIP);
+      
+      if (!rateLimitResult.allowed) {
+        return {
+          statusCode: 429,
+          headers: {
+            ...headers,
+            'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+            'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString()
+          },
+          body: JSON.stringify({ 
+            error: 'Rate limit exceeded',
+            message: `Too many requests. Limit: ${RATE_LIMIT_MAX_REQUESTS} requests per minute.`
+          })
+        };
+      }
+
       // Extract uid and blogId from the request path using regex
       // Expected path format: /users/{uid}/blogs/{blogId}/api/content.json
       const pathMatch = event.path.match(/\/users\/([^\/]+)\/blogs\/([^\/]+)\/api\/content\.json/);
@@ -79,11 +125,60 @@ exports.handler = async (event, context) => {
         };
       }
 
+      // Parse query parameters for filtering, pagination, and sorting
+      const queryParams = event.queryStringParameters || {};
+      const {
+        category,
+        tag,
+        status = 'published',
+        limit,
+        offset = '0',
+        sortBy = 'createdAt',
+        sortOrder = 'desc'
+      } = queryParams;
+
       // Query Firestore for published content in the user's blog
       const contentRef = db.collection('users').doc(uid).collection('blogs').doc(blogId).collection('content');
-      const snapshot = await contentRef
-        .where('status', '==', 'published')
-        .get();
+      let query = contentRef;
+
+      // Apply status filter (default to published for public API)
+      if (status && status !== 'all') {
+        query = query.where('status', '==', status);
+      } else {
+        query = query.where('status', '==', 'published');
+      }
+
+      // Apply category filter
+      if (category) {
+        query = query.where('categories', 'array-contains', category);
+      }
+
+      // Apply tag filter
+      if (tag) {
+        query = query.where('tags', 'array-contains', tag);
+      }
+
+      // Apply sorting (limited by Firestore capabilities)
+      if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
+        query = query.orderBy(sortBy, sortOrder === 'asc' ? 'asc' : 'desc');
+      }
+
+      // Apply pagination
+      if (limit) {
+        const limitNum = parseInt(limit);
+        if (!isNaN(limitNum) && limitNum > 0 && limitNum <= 100) {
+          query = query.limit(limitNum);
+        }
+      }
+
+      if (offset && offset !== '0') {
+        const offsetNum = parseInt(offset);
+        if (!isNaN(offsetNum) && offsetNum > 0) {
+          query = query.offset(offsetNum);
+        }
+      }
+
+      const snapshot = await query.get();
 
       const content = [];
       snapshot.forEach(doc => {
@@ -101,24 +196,50 @@ exports.handler = async (event, context) => {
         content.push(processedData);
       });
 
-      // Sort by creation date (newest first) manually to ensure consistent ordering
-      content.sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        
-        // Primary sort: by creation date (newest first)
-        if (dateB.getTime() !== dateA.getTime()) {
-          return dateB.getTime() - dateA.getTime();
-        }
-        
-        // Secondary sort: by document ID for deterministic ordering when dates are equal
-        return b.id.localeCompare(a.id);
-      });
+      // Client-side sorting for fields not supported by Firestore ordering
+      if (sortBy === 'title') {
+        content.sort((a, b) => {
+          const comparison = (a.title || '').localeCompare(b.title || '');
+          return sortOrder === 'asc' ? comparison : -comparison;
+        });
+      } else if (sortBy !== 'createdAt' && sortBy !== 'updatedAt') {
+        // Default sort by creation date if sortBy is not supported
+        content.sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0);
+          const dateB = new Date(b.createdAt || 0);
+          
+          if (sortOrder === 'asc') {
+            return dateA.getTime() - dateB.getTime();
+          } else {
+            return dateB.getTime() - dateA.getTime();
+          }
+        });
+      }
 
       return {
         statusCode: 200,
-        headers,
-        body: JSON.stringify(content)
+        headers: {
+          ...headers,
+          'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
+          'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+          'X-RateLimit-Reset': rateLimitResult.resetTime.toString()
+        },
+        body: JSON.stringify({
+          data: content,
+          pagination: {
+            total: content.length,
+            limit: limit ? parseInt(limit) : null,
+            offset: parseInt(offset),
+            hasMore: limit ? content.length === parseInt(limit) : false
+          },
+          filters: {
+            category: category || null,
+            tag: tag || null,
+            status: status || 'published',
+            sortBy,
+            sortOrder
+          }
+        })
       };
 
     } catch (error) {

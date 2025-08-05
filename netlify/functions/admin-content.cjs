@@ -136,6 +136,65 @@ exports.handler = async (event, context) => {
           };
         }
 
+        // Validate required fields for updates
+        if (updateData.title !== undefined && (typeof updateData.title !== 'string' || !updateData.title.trim())) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Title must be a non-empty string' })
+          };
+        }
+
+        if (updateData.slug !== undefined && (typeof updateData.slug !== 'string' || !updateData.slug.trim())) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Slug must be a non-empty string' })
+          };
+        }
+
+        if (updateData.content !== undefined && (typeof updateData.content !== 'string' || !updateData.content.trim())) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Content must be a non-empty string' })
+          };
+        }
+
+        // Validate status
+        if (updateData.status && !['draft', 'published'].includes(updateData.status)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Status must be either "draft" or "published"' })
+          };
+        }
+
+        // Validate arrays
+        if (updateData.keywords && !Array.isArray(updateData.keywords)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Keywords must be an array' })
+          };
+        }
+
+        if (updateData.categories && !Array.isArray(updateData.categories)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Categories must be an array' })
+          };
+        }
+
+        if (updateData.tags && !Array.isArray(updateData.tags)) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Tags must be an array' })
+          };
+        }
+
         // Reference to user's blog content collection
         const contentRef = db.collection('users').doc(userId).collection('blogs').doc(blogId).collection('content');
         const docRef = contentRef.doc(id);

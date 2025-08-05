@@ -1,4 +1,4 @@
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { blogService } from '@/services/blogService';
@@ -28,6 +28,38 @@ export default function DashboardPage() {
   const [activeBlogId, setActiveBlogId] = useState(null);
   const [blogInitialized, setBlogInitialized] = useState(false);
   
+  // Prevent body scrolling when sidebar is open on mobile
+  useEffect(() => {
+    const handleBodyScroll = () => {
+      if (sidebarOpen && window.innerWidth <= 1023) {
+        document.body.classList.add('no-scroll');
+      } else {
+        document.body.classList.remove('no-scroll');
+      }
+    };
+
+    handleBodyScroll();
+
+    // Clean up on unmount
+    return () => {
+      document.body.classList.remove('no-scroll');
+    };
+  }, [sidebarOpen]);
+
+  // Handle window resize to ensure proper scroll behavior
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 1023) {
+        document.body.classList.remove('no-scroll');
+      } else if (sidebarOpen) {
+        document.body.classList.add('no-scroll');
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [sidebarOpen]);
+
   // Initialize activeBlogId when currentUser changes
   React.useEffect(() => {
     const initializeBlog = async () => {

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useSiteAnalytics, useBackendUsage } from '@/hooks/useAnalytics';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import {
@@ -21,11 +22,55 @@ export default function AnalyticsPage({ activeBlogId }) {
   const { analytics, loading: analyticsLoading, error: analyticsError, refetch } = useSiteAnalytics(activeBlogId, selectedPeriod);
   const { usage, loading: usageLoading, error: usageError } = useBackendUsage(activeBlogId);
 
+  // Chart colors
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'];
+
   const periods = [
     { value: 7, label: '7 days' },
     { value: 30, label: '30 days' },
     { value: 90, label: '90 days' }
   ];
+
+  // Prepare chart data
+  const prepareChartData = () => {
+    if (!analytics?.dailyStats) return [];
+    
+    return Object.entries(analytics.dailyStats)
+      .sort(([a], [b]) => new Date(a) - new Date(b))
+      .map(([date, stats]) => ({
+        date: new Date(date).toLocaleDateString('en', { month: 'short', day: 'numeric' }),
+        fullDate: date,
+        views: stats.views,
+        interactions: stats.interactions
+      }));
+  };
+
+  const prepareReferrerData = () => {
+    if (!analytics?.referrerStats) return [];
+    
+    return Object.entries(analytics.referrerStats)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 8)
+      .map(([name, value]) => ({
+        name: name === 'Direct' ? 'Direct Traffic' : name.length > 20 ? name.substring(0, 20) + '...' : name,
+        value,
+        fullName: name
+      }));
+  };
+
+  const prepareInteractionData = () => {
+    if (!analytics?.interactionStats) return [];
+    
+    return Object.entries(analytics.interactionStats)
+      .map(([name, value]) => ({
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        value
+      }));
+  };
+
+  const chartData = prepareChartData();
+  const referrerData = prepareReferrerData();
+  const interactionData = prepareInteractionData();
 
   if (analyticsLoading || usageLoading) {
     return <LoadingSpinner size="lg" className="h-64" />;
@@ -184,108 +229,221 @@ export default function AnalyticsPage({ activeBlogId }) {
       </div>
 
       {/* Daily Activity Chart */}
-      <div className="card">
-        <div className="card-header">
-          <h2 className="card-title">Daily Activity</h2>
-          <p className="card-description">Views and interactions over the last {selectedPeriod} days</p>
-        </div>
-        <div className="card-content">
-          {analytics?.dailyStats ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-7 gap-2 text-xs text-muted-foreground">
-                {Object.entries(analytics.dailyStats)
-                  .slice(-7)
-                  .map(([date, stats]) => (
-                    <div key={date} className="text-center">
-                      <div className="mb-2">{new Date(date).toLocaleDateString('en', { weekday: 'short' })}</div>
-                      <div className="bg-primary/10 rounded p-2">
-                        <div className="text-sm font-medium text-primary">{stats.views}</div>
-                        <div className="flex justify-center">
-                          <Eye className="h-3 w-3 text-primary" />
-                        </div>
-                      </div>
-                      <div className="bg-green-100 rounded p-2 mt-1">
-                        <div className="text-sm font-medium text-green-600">{stats.interactions}</div>
-                        <div className="flex justify-center">
-                          <MousePointer className="h-3 w-3 text-green-600" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Daily Activity Chart */}
+        <div className="card">
+          <div className="card-header">
+            <h2 className="card-title">Daily Activity Trend</h2>
+            <p className="card-description">Views and interactions over the last {selectedPeriod} days</p>
+          </div>
+          <div className="card-content">
+            {chartData.length > 0 ? (
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#64748b"
+                      fontSize={12}
+                    />
+                    <YAxis stroke="#64748b" fontSize={12} />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                    />
+                    <Legend />
+                    <Area
+                      type="monotone"
+                      dataKey="views"
+                      stackId="1"
+                      stroke="#3b82f6"
+                      fill="#3b82f6"
+                      fillOpacity={0.6}
+                      name="Views"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="interactions"
+                      stackId="1"
+                      stroke="#10b981"
+                      fill="#10b981"
+                      fillOpacity={0.6}
+                      name="Interactions"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No daily activity data available</p>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No daily activity data available</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Traffic Sources Pie Chart */}
+        <div className="card">
+          <div className="card-header">
+            <h2 className="card-title">Traffic Sources</h2>
+            <p className="card-description">Distribution of visitor sources</p>
+          </div>
+          <div className="card-content">
+            {referrerData.length > 0 ? (
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={referrerData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {referrerData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Globe className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No traffic source data available</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Interaction Types Bar Chart */}
+      {interactionData.length > 0 && (
+        <div className="card">
+          <div className="card-header">
+            <h2 className="card-title">User Interactions</h2>
+            <p className="card-description">Types of user interactions with your content</p>
+          </div>
+          <div className="card-content">
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={interactionData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#64748b"
+                    fontSize={12}
+                  />
+                  <YAxis stroke="#64748b" fontSize={12} />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                    }}
+                  />
+                  <Bar dataKey="value" fill="#10b981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Referrer Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Traffic Sources</h3>
-            <p className="card-description">Where your visitors come from</p>
-          </div>
-          <div className="card-content">
-            {analytics?.referrerStats && Object.keys(analytics.referrerStats).length > 0 ? (
-              <div className="space-y-3">
-                {Object.entries(analytics.referrerStats)
-                  .sort(([,a], [,b]) => b - a)
-                  .slice(0, 5)
-                  .map(([referrer, count]) => (
-                    <div key={referrer} className="flex items-center justify-between">
+      {/* Detailed Analytics Tables */}
+      {(referrerData.length > 0 || interactionData.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">Top Traffic Sources</h3>
+              <p className="card-description">Detailed breakdown of visitor sources</p>
+            </div>
+            <div className="card-content">
+              {referrerData.length > 0 ? (
+                <div className="space-y-3">
+                  {referrerData.map((item, index) => (
+                    <div key={item.fullName} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <Globe className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-foreground truncate max-w-xs">
-                          {referrer === 'Direct' ? 'Direct Traffic' : referrer}
+                        <div 
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                        />
+                        <span className="text-sm text-foreground truncate max-w-xs" title={item.fullName}>
+                          {item.name}
                         </span>
                       </div>
-                      <span className="text-sm font-medium text-foreground">{count}</span>
-                    </div>
-                  ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Globe className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No referrer data available</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Interaction Types</h3>
-            <p className="card-description">How users interact with your content</p>
-          </div>
-          <div className="card-content">
-            {analytics?.interactionStats && Object.keys(analytics.interactionStats).length > 0 ? (
-              <div className="space-y-3">
-                {Object.entries(analytics.interactionStats)
-                  .sort(([,a], [,b]) => b - a)
-                  .map(([type, count]) => (
-                    <div key={type} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <MousePointer className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-foreground capitalize">{type}</span>
+                      <div className="text-right">
+                        <span className="text-sm font-medium text-foreground">{item.value}</span>
+                        <div className="text-xs text-muted-foreground">
+                          {((item.value / analytics.totalViews) * 100).toFixed(1)}%
+                        </div>
                       </div>
-                      <span className="text-sm font-medium text-foreground">{count}</span>
                     </div>
                   ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <MousePointer className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No interaction data available</p>
-              </div>
-            )}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Globe className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No referrer data available</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title">Interaction Breakdown</h3>
+              <p className="card-description">How users engage with your content</p>
+            </div>
+            <div className="card-content">
+              {interactionData.length > 0 ? (
+                <div className="space-y-3">
+                  {interactionData.map((item, index) => (
+                    <div key={item.name} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div 
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                        />
+                        <span className="text-sm text-foreground">{item.name}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-medium text-foreground">{item.value}</span>
+                        <div className="text-xs text-muted-foreground">
+                          {((item.value / analytics.totalInteractions) * 100).toFixed(1)}%
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <MousePointer className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No interaction data available</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Firebase Usage */}
       <div className="card">

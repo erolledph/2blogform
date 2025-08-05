@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ref, listAll, getMetadata, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, listAll, getMetadata, getDownloadURL, deleteObject, uploadBytes } from 'firebase/storage';
 import { storage } from '@/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { storageService } from '@/services/storageService';
@@ -7,6 +7,7 @@ import DataTable from '@/components/shared/DataTable';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import Modal from '@/components/shared/Modal';
 import ImageUploader from '@/components/shared/ImageUploader';
+import InputField from '@/components/shared/InputField';
 import { 
   Folder, 
   FileImage, 
@@ -22,7 +23,9 @@ import {
   Home,
   ChevronRight,
   Upload,
-  Plus
+  Plus,
+  Edit,
+  FolderOpen
 } from 'lucide-react';
 import { formatBytes } from '@/utils/helpers';
 import toast from 'react-hot-toast';
@@ -38,7 +41,15 @@ export default function FileStoragePage() {
   const [previewModal, setPreviewModal] = useState({ isOpen: false, file: null });
   const [uploadModal, setUploadModal] = useState({ isOpen: false });
   const [storageStats, setStorageStats] = useState({ totalFiles: 0, totalSize: 0 });
-  const { currentUser } = useAuth();
+  const [createFolderModal, setCreateFolderModal] = useState({ isOpen: false });
+  const [renameModal, setRenameModal] = useState({ isOpen: false, item: null });
+  const [moveModal, setMoveModal] = useState({ isOpen: false, item: null });
+  const [createFolderInMoveModal, setCreateFolderInMoveModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [newItemName, setNewItemName] = useState('');
+  const [selectedDestination, setSelectedDestination] = useState('');
+  const [availableFolders, setAvailableFolders] = useState([]);
+  const { currentUser, getAuthToken } = useAuth();
   
   // Initialize user-specific base path
   useEffect(() => {
@@ -199,6 +210,148 @@ export default function FileStoragePage() {
     return allFiles;
   };
 
+  const createFolder = async () => {
+    if (!newFolderName.trim()) {
+      toast.error('Folder name is required');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(newFolderName)) {
+      toast.error('Folder name can only contain letters, numbers, underscores, and hyphens');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const folderPath = `${currentPath}/${newFolderName.trim()}`;
+      const token = await getAuthToken();
+      
+      await storageService.createFolder(folderPath, token);
+      
+      toast.success('Folder created successfully');
+      
+      // Close the appropriate modal based on context
+      if (createFolderInMoveModal) {
+        setCreateFolderInMoveModal(false);
+        // Refresh available folders for the move modal
+        await fetchAvailableFolders();
+      } else {
+        setCreateFolderModal({ isOpen: false });
+      }
+      
+      setNewFolderName('');
+      fetchItems();
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      toast.error(error.message || 'Failed to create folder');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renameItem = async () => {
+    if (!newItemName.trim() || !renameModal.item) {
+      toast.error('New name is required');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_.-]+$/.test(newItemName)) {
+      toast.error('Name can only contain letters, numbers, underscores, hyphens, and dots');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const item = renameModal.item;
+      const token = await getAuthToken();
+
+      if (item.type === 'file') {
+        await storageService.renameFile(item.fullPath, newItemName.trim(), token);
+      } else {
+        await storageService.renameFolder(item.fullPath, newItemName.trim(), token);
+      }
+      
+      toast.success('Item renamed successfully');
+      setRenameModal({ isOpen: false, item: null });
+      setNewItemName('');
+      fetchItems();
+    } catch (error) {
+      console.error('Error renaming item:', error);
+      toast.error(error.message || 'Failed to rename item');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAvailableFolders = async () => {
+    try {
+      const folders = [];
+      
+      // Add user's public images root folder
+      folders.push({ path: userBasePath, name: 'My Public Images' });
+      
+      // Recursively get all folders
+      const getAllFolders = async (path, prefix = '') => {
+        try {
+          const storageRef = ref(storage, path);
+          const result = await listAll(storageRef);
+          
+          for (const prefixRef of result.prefixes) {
+            // Create relative path from user base path
+            const relativePath = prefixRef.fullPath.replace(userBasePath + '/', '');
+            const folderName = relativePath || prefixRef.name;
+            folders.push({ 
+              path: prefixRef.fullPath, 
+              name: folderName 
+            });
+            
+            // Recursively get subfolders (limit depth to prevent infinite loops)
+            if (prefix.split('/').length < 3) {
+              await getAllFolders(prefixRef.fullPath, folderName);
+            }
+          }
+        } catch (error) {
+          console.warn(`Error listing folders in ${path}:`, error);
+        }
+      };
+      
+      await getAllFolders(userBasePath);
+      setAvailableFolders(folders);
+    } catch (error) {
+      console.error('Error fetching available folders:', error);
+      setAvailableFolders([{ path: userBasePath, name: 'My Public Images' }]);
+    }
+  };
+
+  const moveItem = async () => {
+    if (!selectedDestination || !moveModal.item) {
+      toast.error('Please select a destination folder');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const item = moveModal.item;
+      const token = await getAuthToken();
+
+      if (item.type === 'file') {
+        const destPath = `${selectedDestination}/${item.name}`;
+        await storageService.moveFile(item.fullPath, destPath, token);
+      } else {
+        await storageService.moveFolder(item.fullPath, selectedDestination, token);
+      }
+      
+      toast.success('Item moved successfully');
+      setMoveModal({ isOpen: false, item: null });
+      setSelectedDestination('');
+      fetchItems();
+    } catch (error) {
+      console.error('Error moving item:', error);
+      toast.error(error.message || 'Failed to move item');
+    } finally {
+      setLoading(false);
+    }
+  };
   const navigateToFolder = (folderPath) => {
     // Ensure we stay within user's storage space
     if (!folderPath.startsWith(userBasePath)) {
@@ -415,13 +568,37 @@ export default function FileStoragePage() {
               <button
                 onClick={() => navigateToFolder(row.fullPath)}
                 className="text-blue-600 p-2 rounded hover:bg-blue-50"
+                disabled={loading}
                 title="Open folder"
               >
                 <Folder className="h-4 w-4" />
               </button>
               <button
+                onClick={() => {
+                  setRenameModal({ isOpen: true, item: row });
+                  setNewItemName(row.name);
+                }}
+                className="text-purple-600 p-2 rounded hover:bg-purple-50"
+                disabled={loading}
+                title="Rename folder"
+              >
+                <Edit className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => {
+                  setMoveModal({ isOpen: true, item: row });
+                  fetchAvailableFolders();
+                }}
+                className="text-orange-600 p-2 rounded hover:bg-orange-50"
+                disabled={loading}
+                title="Move folder"
+              >
+                <FolderOpen className="h-4 w-4" />
+              </button>
+              <button
                 onClick={() => setDeleteModal({ isOpen: true, item: row })}
                 className="text-destructive p-2 rounded hover:bg-destructive/10"
+                disabled={loading}
                 title="Delete folder"
               >
                 <Trash2 className="h-4 w-4" />
@@ -438,6 +615,28 @@ export default function FileStoragePage() {
                   <Eye className="h-4 w-4" />
                 </button>
               )}
+              <button
+                onClick={() => {
+                  setRenameModal({ isOpen: true, item: row });
+                  setNewItemName(row.name);
+                }}
+                className="text-purple-600 p-2 rounded hover:bg-purple-50"
+                disabled={loading}
+                title="Rename"
+              >
+                <Edit className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => {
+                  setMoveModal({ isOpen: true, item: row });
+                  fetchAvailableFolders();
+                }}
+                className="text-orange-600 p-2 rounded hover:bg-orange-50"
+                disabled={loading}
+                title="Move"
+              >
+                <FolderOpen className="h-4 w-4" />
+              </button>
               <a
                 href={row.downloadURL}
                 target="_blank"
@@ -490,6 +689,13 @@ export default function FileStoragePage() {
               Back
             </button>
           )}
+          <button
+            onClick={() => setCreateFolderModal({ isOpen: true })}
+            className="btn-secondary inline-flex items-center"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            New Folder
+          </button>
           <button
             onClick={() => setUploadModal({ isOpen: true })}
             className="btn-primary inline-flex items-center"
@@ -712,6 +918,280 @@ export default function FileStoragePage() {
           initialMaxWidth={1920}
           initialMaxHeight={1080}
         />
+      </Modal>
+
+      {/* Create Folder Modal */}
+      <Modal
+        isOpen={createFolderModal.isOpen}
+        onClose={() => {
+          setCreateFolderModal({ isOpen: false });
+          setNewFolderName('');
+        }}
+        title="Create New Folder"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <InputField
+            label="Folder Name"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder="Enter folder name"
+            autoFocus
+          />
+          <p className="text-sm text-muted-foreground">
+            Folder names can only contain letters, numbers, underscores, and hyphens.
+          </p>
+          <div className="flex justify-end space-x-4 pt-4">
+            <button
+              onClick={() => {
+                setCreateFolderModal({ isOpen: false });
+                setNewFolderName('');
+              }}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={createFolder}
+              disabled={!newFolderName.trim()}
+              className="btn-primary"
+            >
+              Create Folder
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Rename Modal */}
+      <Modal
+        isOpen={renameModal.isOpen}
+        onClose={() => {
+          setRenameModal({ isOpen: false, item: null });
+          setNewItemName('');
+        }}
+        title={`Rename ${renameModal.item?.type === 'folder' ? 'Folder' : 'File'}`}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-muted/30 rounded-lg">
+            <p className="text-sm text-foreground">
+              Current name: <span className="font-medium">{renameModal.item?.name}</span>
+            </p>
+          </div>
+          
+          {renameModal.item?.type === 'folder' && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-amber-800 font-medium">Folder Rename Operation</p>
+                  <p className="text-sm text-amber-700">
+                    This will move all files and subfolders to the new location. Large folders may take some time to process.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <InputField
+            label="New Name"
+            value={newItemName}
+            onChange={(e) => setNewItemName(e.target.value)}
+            placeholder="Enter new name"
+            disabled={loading}
+            autoFocus
+          />
+          <p className="text-sm text-muted-foreground">
+            Names can only contain letters, numbers, underscores, hyphens, and dots.
+          </p>
+          <div className="flex justify-end space-x-4 pt-4">
+            <button
+              onClick={() => {
+                setRenameModal({ isOpen: false, item: null });
+                setNewItemName('');
+              }}
+              disabled={loading}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={renameItem}
+              disabled={loading || !newItemName.trim() || newItemName === renameModal.item?.name}
+              className="btn-primary"
+            >
+              {loading ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  {renameModal.item?.type === 'folder' ? 'Moving folder...' : 'Renaming...'}
+                </>
+              ) : (
+                'Rename'
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Move Modal */}
+      <Modal
+        isOpen={moveModal.isOpen}
+        onClose={() => {
+          setMoveModal({ isOpen: false, item: null });
+          setSelectedDestination('');
+          setCreateFolderInMoveModal(false);
+        }}
+        title={`Move ${moveModal.item?.type === 'folder' ? 'Folder' : 'File'}`}
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-muted/30 rounded-lg">
+            <p className="text-sm text-foreground">
+              Moving: <span className="font-medium">{moveModal.item?.name}</span>
+            </p>
+            {moveModal.item?.fullPath && (
+              <p className="text-xs text-muted-foreground mt-1">
+                From: {moveModal.item.fullPath.replace(userBasePath + '/', '') || 'My Public Images'}
+              </p>
+            )}
+          </div>
+          
+          {moveModal.item?.type === 'folder' && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-amber-800 font-medium">Folder Move Operation</p>
+                  <p className="text-sm text-amber-700">
+                    This will move all files and subfolders to the new location. Large folders may take some time to process.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Destination Folder
+            </label>
+            <select
+              value={selectedDestination}
+              onChange={(e) => setSelectedDestination(e.target.value)}
+              disabled={loading}
+              className="input-field"
+            >
+              <option value="">Select destination...</option>
+              {availableFolders
+                .filter(folder => folder.path !== moveModal.item?.fullPath && !folder.path.startsWith(moveModal.item?.fullPath + '/'))
+                .map(folder => (
+                  <option key={folder.path} value={folder.path}>
+                    {folder.name}
+                  </option>
+                ))}
+            </select>
+            
+            {/* Create New Folder Button */}
+            <div className="flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => setCreateFolderInMoveModal(true)}
+                className="btn-secondary btn-sm inline-flex items-center"
+                disabled={loading}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create New Folder Here
+              </button>
+            </div>
+            
+            <p className="text-xs text-muted-foreground text-center">
+              Can't find the right folder? Create a new one in the current location.
+            </p>
+          </div>
+          
+          <div className="flex justify-end space-x-4 pt-4">
+            <button
+              onClick={() => {
+                setMoveModal({ isOpen: false, item: null });
+                setSelectedDestination('');
+                setCreateFolderInMoveModal(false);
+              }}
+              disabled={loading}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={moveItem}
+              disabled={loading || !selectedDestination}
+              className="btn-primary"
+            >
+              {loading ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  {moveModal.item?.type === 'folder' ? 'Moving folder...' : 'Moving file...'}
+                </>
+              ) : (
+                `Move ${moveModal.item?.type === 'folder' ? 'Folder' : 'File'}`
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Create Folder in Move Context Modal */}
+      <Modal
+        isOpen={createFolderInMoveModal}
+        onClose={() => {
+          setCreateFolderInMoveModal(false);
+          setNewFolderName('');
+        }}
+        title="Create New Folder"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+           <p className="text-sm text-blue-800">
+              <strong>Creating folder in:</strong> {currentPath.replace(userBasePath + '/', '') || "My Public Images"}
+           </p>
+          </div>
+          
+          <InputField
+            label="Folder Name"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder="Enter folder name"
+            autoFocus
+          />
+          <p className="text-sm text-muted-foreground">
+            Folder names can only contain letters, numbers, underscores, and hyphens.
+          </p>
+          
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-700">
+              💡 After creating the folder, it will automatically appear in the destination list above.
+            </p>
+          </div>
+          
+          <div className="flex justify-end space-x-4 pt-4">
+            <button
+              onClick={() => {
+                setCreateFolderInMoveModal(false);
+                setNewFolderName('');
+              }}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={createFolder}
+              disabled={!newFolderName.trim()}
+              className="btn-primary"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Folder
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

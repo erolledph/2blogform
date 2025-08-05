@@ -29,7 +29,7 @@ exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
     'Content-Type': 'application/json'
   };
 
@@ -270,6 +270,88 @@ exports.handler = async (event, context) => {
     }
 
   } catch (error) {
+    case 'DELETE': {
+      // Delete user account and all associated data
+      const data = JSON.parse(event.body);
+      const { userId } = data;
+      
+      if (!userId) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'User ID is required' })
+        };
+      }
+
+      // Validate userId format
+      if (typeof userId !== 'string' || !userId.trim()) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'userId must be a non-empty string' })
+        };
+      }
+
+      // Prevent admin from deleting themselves
+      if (userId === requestingUserId) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Cannot delete your own account' })
+        };
+      }
+
+      try {
+        // Verify the target user exists
+        const targetUser = await auth.getUser(userId);
+
+        // Delete user's Firestore data
+        const userDocRef = db.collection('users').doc(userId);
+        
+        // Delete all subcollections (blogs, userSettings, appSettings)
+        const subcollections = ['blogs', 'userSettings', 'appSettings'];
+        
+        for (const subcollection of subcollections) {
+          const subcollectionRef = userDocRef.collection(subcollection);
+          await deleteCollection(subcollectionRef);
+        }
+        
+        // Delete the main user document
+        await userDocRef.delete();
+        
+        // Delete user from Firebase Auth
+        await auth.deleteUser(userId);
+        
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ 
+            success: true,
+            message: 'User account and all associated data deleted successfully'
+          })
+        };
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        
+        if (error.code === 'auth/user-not-found') {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'User not found' })
+          };
+        }
+
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ 
+            error: 'Failed to delete user account',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+          })
+        };
+      }
+    }
+
     console.error('Admin users function error:', error);
     
     // Provide more detailed error information

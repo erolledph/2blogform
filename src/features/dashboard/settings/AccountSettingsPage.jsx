@@ -8,9 +8,18 @@ import toast from 'react-hot-toast';
 export default function AccountSettingsPage() {
   const { currentUser } = useAuth();
   const [currency, setCurrency] = useState('$');
+  const [displayName, setDisplayName] = useState('');
+  const [profileData, setProfileData] = useState({
+    displayName: '',
+    bio: '',
+    website: '',
+    location: ''
+  });
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const currencyOptions = [
     { value: '$', label: 'US Dollar ($)' },
@@ -65,6 +74,13 @@ export default function AccountSettingsPage() {
       setInitialLoading(true);
       const settings = await settingsService.getUserSettings(currentUser.uid);
       setCurrency(settings.currency || '$');
+      setDisplayName(settings.displayName || '');
+      setProfileData({
+        displayName: settings.displayName || '',
+        bio: settings.bio || '',
+        website: settings.website || '',
+        location: settings.location || ''
+      });
     } catch (error) {
       console.error('Error fetching user settings:', error);
       toast.error('Failed to load user settings');
@@ -106,6 +122,50 @@ export default function AccountSettingsPage() {
     }
   };
 
+  const handleProfileSave = async (e) => {
+    e.preventDefault();
+    
+    if (!currentUser?.uid) {
+      toast.error('User not authenticated');
+      return;
+    }
+
+    setProfileLoading(true);
+
+    try {
+      await settingsService.setUserSettings(currentUser.uid, {
+        displayName: profileData.displayName.trim(),
+        bio: profileData.bio.trim(),
+        website: profileData.website.trim(),
+        location: profileData.location.trim()
+      });
+      
+      setProfileSaved(true);
+      toast.success('Profile updated successfully!');
+      
+      // Reset saved state after 2 seconds
+      setTimeout(() => setProfileSaved(false), 2000);
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      toast.error('Failed to save profile');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleProfileInputChange = (e) => {
+    const { name, value } = e.target;
+    setProfileData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Reset saved state when user makes changes
+    if (profileSaved) {
+      setProfileSaved(false);
+    }
+  };
+
   if (initialLoading) {
     return (
       <div className="section-spacing">
@@ -123,9 +183,91 @@ export default function AccountSettingsPage() {
     <div className="section-spacing">
       <div className="page-header">
         <h1 className="page-title">Account Settings</h1>
+        <p className="page-description">
+          Manage your account information and preferences
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        {/* Profile Information */}
+        <div className="card">
+          <div className="card-header">
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <User className="h-8 w-8 text-blue-600" />
+              </div>
+              <h2 className="card-title">Profile Information</h2>
+            </div>
+            <p className="card-description">
+              Update your personal information and bio
+            </p>
+          </div>
+          <div className="card-content">
+            <form onSubmit={handleProfileSave} className="space-y-6">
+              <InputField
+                label="Display Name"
+                name="displayName"
+                value={profileData.displayName}
+                onChange={handleProfileInputChange}
+                placeholder="Your full name"
+                disabled={profileLoading}
+              />
+              
+              <div>
+                <label className="block text-base font-medium text-foreground mb-4">
+                  Bio
+                </label>
+                <textarea
+                  name="bio"
+                  rows={3}
+                  className="input-field resize-none"
+                  value={profileData.bio}
+                  onChange={handleProfileInputChange}
+                  placeholder="Tell us about yourself..."
+                  disabled={profileLoading}
+                />
+              </div>
+              
+              <InputField
+                label="Website"
+                name="website"
+                type="url"
+                value={profileData.website}
+                onChange={handleProfileInputChange}
+                placeholder="https://yourwebsite.com"
+                disabled={profileLoading}
+              />
+              
+              <InputField
+                label="Location"
+                name="location"
+                value={profileData.location}
+                onChange={handleProfileInputChange}
+                placeholder="City, Country"
+                disabled={profileLoading}
+              />
+              
+              <button
+                type="submit"
+                disabled={profileLoading}
+                className="btn-primary w-full flex items-center justify-center space-x-2"
+              >
+                {profileSaved ? (
+                  <>
+                    <Check className="h-4 w-4" />
+                    <span>Saved!</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    <span>{profileLoading ? 'Saving...' : 'Save Profile'}</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+
         {/* User Information */}
         <div className="card">
           <div className="card-header">
@@ -135,6 +277,9 @@ export default function AccountSettingsPage() {
               </div>
               <h2 className="card-title">User Information</h2>
             </div>
+            <p className="card-description">
+              Your account details and system information
+            </p>
           </div>
           <div className="card-content space-y-6">
             <InputField
@@ -159,7 +304,7 @@ export default function AccountSettingsPage() {
             
             <InputField
               label="Role"
-              value="Administrator"
+              value={currentUser?.role === 'admin' ? 'Administrator' : 'User'}
               disabled
               className="opacity-75 cursor-not-allowed"
             />
@@ -230,7 +375,7 @@ export default function AccountSettingsPage() {
           </div>
         </div>
 
-        {/* Additional Settings Placeholder */}
+        {/* Additional Settings */}
         <div className="card">
           <div className="card-header">
             <h2 className="card-title">Additional Settings</h2>
@@ -240,6 +385,21 @@ export default function AccountSettingsPage() {
           </div>
           <div className="card-content">
             <div className="space-y-6">
+              {/* Account Limits */}
+              <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="text-base font-semibold text-blue-800 mb-4">Account Limits</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-blue-700">Max Blogs:</span>
+                    <div className="text-blue-600">{currentUser?.maxBlogs || 1}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-blue-700">Storage Limit:</span>
+                    <div className="text-blue-600">{currentUser?.totalStorageMB || 100} MB</div>
+                  </div>
+                </div>
+              </div>
+              
               {/* Version Information */}
               <div className="p-6 bg-muted/30 rounded-lg border border-border">
                 <div className="flex items-center justify-between">
@@ -254,9 +414,29 @@ export default function AccountSettingsPage() {
                 </div>
               </div>
               
-              {/* Future Settings Placeholder */}
-              <div className="text-center py-8 text-muted-foreground">
-                <p>Additional configuration options will be added here as the application grows.</p>
+              {/* Account Statistics */}
+              <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
+                <h3 className="text-base font-semibold text-green-800 mb-4">Account Statistics</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-green-700">Member Since:</span>
+                    <div className="text-green-600">
+                      {currentUser?.metadata?.creationTime 
+                        ? new Date(currentUser.metadata.creationTime).toLocaleDateString()
+                        : 'N/A'
+                      }
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-green-700">Last Sign In:</span>
+                    <div className="text-green-600">
+                      {currentUser?.metadata?.lastSignInTime 
+                        ? new Date(currentUser.metadata.lastSignInTime).toLocaleDateString()
+                        : 'N/A'
+                      }
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

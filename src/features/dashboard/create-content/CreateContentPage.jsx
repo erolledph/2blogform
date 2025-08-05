@@ -85,14 +85,34 @@ export default function CreateContentPage({ activeBlogId }) {
     
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
+    } else if (formData.title.length > 200) {
+      newErrors.title = 'Title must be less than 200 characters';
     }
     
     if (!formData.slug.trim()) {
       newErrors.slug = 'Slug is required';
+    } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
+      newErrors.slug = 'Slug can only contain lowercase letters, numbers, and hyphens';
+    } else if (formData.slug.length > 100) {
+      newErrors.slug = 'Slug must be less than 100 characters';
     }
     
     if (!formData.content.trim()) {
       newErrors.content = 'Content is required';
+    } else if (formData.content.length > 50000) {
+      newErrors.content = 'Content must be less than 50,000 characters';
+    }
+
+    if (formData.metaDescription && formData.metaDescription.length > 160) {
+      newErrors.metaDescription = 'Meta description should be less than 160 characters';
+    }
+
+    if (formData.seoTitle && formData.seoTitle.length > 60) {
+      newErrors.seoTitle = 'SEO title should be less than 60 characters';
+    }
+
+    if (formData.author && formData.author.length > 100) {
+      newErrors.author = 'Author name must be less than 100 characters';
     }
     
     setErrors(newErrors);

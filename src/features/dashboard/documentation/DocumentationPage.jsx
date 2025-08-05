@@ -19,39 +19,42 @@ export default function DocumentationPage({ activeBlogId }) {
   const productsApiEndpoint = `${window.location.origin}/users/${uid}/blogs/${blogId}/api/products.json`;
 
   const codeExamples = {
-    javascript: `// Fetch all published content
-fetch('${apiEndpoint}')
+    javascript: `// Fetch all published content with pagination
+fetch('${apiEndpoint}?limit=10&offset=0')
   .then(response => response.json())
   .then(data => {
-    console.log('All content:', data);
+    console.log('Content:', data.data);
+    console.log('Pagination:', data.pagination);
+    console.log('Applied filters:', data.filters);
   })
   .catch(error => {
     console.error('Error:', error);
   });
 
-// Fetch specific content by slug
-fetch('${apiEndpoint}')
+// Fetch content by category with sorting
+fetch('${apiEndpoint}?category=Technology&sortBy=title&sortOrder=asc')
   .then(response => response.json())
   .then(data => {
-    const specificContent = data.find(item => item.slug === 'your-slug-here');
+    const specificContent = data.data.find(item => item.slug === 'your-slug-here');
     console.log('Specific content:', specificContent);
   });`,
 
-    productsJavascript: `// Fetch all published products
-fetch('${productsApiEndpoint}')
+    productsJavascript: `// Fetch products with price range and pagination
+fetch('${productsApiEndpoint}?minPrice=50&maxPrice=200&limit=10')
   .then(response => response.json())
   .then(data => {
-    console.log('All products:', data);
+    console.log('Products:', data.data);
+    console.log('Pagination:', data.pagination);
   })
   .catch(error => {
     console.error('Error:', error);
   });
 
-// Fetch specific product by slug
-fetch('${productsApiEndpoint}')
+// Fetch products by category and tag
+fetch('${productsApiEndpoint}?category=Electronics&tag=wireless&sortBy=price&sortOrder=asc')
   .then(response => response.json())
   .then(data => {
-    const specificProduct = data.find(item => item.slug === 'your-product-slug');
+    const specificProduct = data.data.find(item => item.slug === 'your-product-slug');
     console.log('Specific product:', specificProduct);
   });`,
     nodejs: `const https = require('https');
@@ -350,30 +353,47 @@ if products:
       <div className="card">
         <div className="card-header">
           <h2 className="card-title">Content API Response Format</h2>
+          <p className="card-description">
+            Enhanced response format with pagination and filtering support
+          </p>
         </div>
         <div className="card-content">
           <div className="bg-muted rounded-lg p-6 overflow-x-auto">
             <pre className="text-sm text-foreground whitespace-pre-wrap">
 {`[
-  {
-    "id": "generated-id-123",
-    "title": "The Clever Idea: Next.js, Firebase & Cloudflare",
-    "slug": "the-clever-idea-nextjs-firebase-cloudflare",
-    "content": "# The Clever Idea\\n\\nThis is the **body** of my post in Markdown...",
-    "featuredImageUrl": "https://example.com/images/featured-image.jpg",
-    "metaDescription": "Explore a clever architecture for your Next.js blog...",
-    "seoTitle": "Clever Next.js Blog Architecture | MySite",
-    "keywords": ["nextjs", "firebase", "cloudflare", "blog"],
-    "author": "Your Name",
-    "categories": ["Web Development", "Cloud"],
-    "tags": ["nextjs", "firebase", "cloudflare", "blogging", "seo"],
+  "data": [
+    {
+      "id": "generated-id-123",
+      "title": "The Clever Idea: Next.js, Firebase & Cloudflare",
+      "slug": "the-clever-idea-nextjs-firebase-cloudflare",
+      "content": "# The Clever Idea\\n\\nThis is the **body** of my post in Markdown...",
+      "featuredImageUrl": "https://example.com/images/featured-image.jpg",
+      "metaDescription": "Explore a clever architecture for your Next.js blog...",
+      "seoTitle": "Clever Next.js Blog Architecture | MySite",
+      "keywords": ["nextjs", "firebase", "cloudflare", "blog"],
+      "author": "Your Name",
+      "categories": ["Web Development", "Cloud"],
+      "tags": ["nextjs", "firebase", "cloudflare", "blogging", "seo"],
+      "status": "published",
+      "userId": "${uid}",
+      "blogId": "${blogId}",
+      "publishDate": "2025-06-27T10:00:00Z",
+      "createdAt": "2025-06-27T09:30:00Z",
+      "updatedAt": "2025-06-27T10:15:00Z"
+    }
+  ],
+  "pagination": {
+    "total": 1,
+    "limit": null,
+    "offset": 0,
+    "hasMore": false
+  },
+  "filters": {
+    "category": null,
+    "tag": null,
     "status": "published",
-    "userId": "${uid}",
-    "blogId": "${blogId}",
-    "contentUrl": "https://your-custom-domain.com/post/the-clever-idea-nextjs-firebase-cloudflare",
-    "publishDate": "2025-06-27T10:00:00Z",
-    "createdAt": "2025-06-27T09:30:00Z",
-    "updatedAt": "2025-06-27T10:15:00Z"
+    "sortBy": "createdAt",
+    "sortOrder": "desc"
   }
 ]`}
             </pre>
@@ -386,39 +406,56 @@ if products:
         <div className="card-header">
           <h2 className="card-title">Products API Response Format</h2>
           <p className="card-description">
-            The API returns an array of product objects with the following structure:
+            Enhanced response format with pagination, filtering, and pricing calculations
           </p>
         </div>
         <div className="card-content">
           <div className="bg-muted rounded-lg p-6 overflow-x-auto">
             <pre className="text-sm text-foreground whitespace-pre-wrap">
 {`[
-  {
-    "id": "generated-id-456",
-    "name": "Premium Wireless Headphones",
-    "slug": "premium-wireless-headphones",
-    "description": "# Premium Audio Experience\\n\\nHigh-quality wireless headphones...",
-    "price": 199.99,
-    "percentOff": 15,
-    "originalPrice": 199.99,
-    "discountedPrice": 169.99,
-    "savings": 30.00,
-    "currency": "$",
-    "imageUrl": "https://example.com/images/main-image.jpg",
-    "imageUrls": [
-      "https://example.com/images/main-image.jpg",
-      "https://example.com/images/side-view.jpg",
-      "https://example.com/images/detail-view.jpg",
-      "https://example.com/images/packaging.jpg"
-    ],
-    "productUrl": "https://example.com/buy/premium-wireless-headphones",
-    "category": "Electronics",
-    "tags": ["audio", "wireless", "premium", "headphones"],
+  "data": [
+    {
+      "id": "generated-id-456",
+      "name": "Premium Wireless Headphones",
+      "slug": "premium-wireless-headphones",
+      "description": "# Premium Audio Experience\\n\\nHigh-quality wireless headphones...",
+      "price": 199.99,
+      "percentOff": 15,
+      "originalPrice": 199.99,
+      "discountedPrice": 169.99,
+      "savings": 30.00,
+      "currency": "$",
+      "imageUrl": "https://example.com/images/main-image.jpg",
+      "imageUrls": [
+        "https://example.com/images/main-image.jpg",
+        "https://example.com/images/side-view.jpg",
+        "https://example.com/images/detail-view.jpg",
+        "https://example.com/images/packaging.jpg"
+      ],
+      "productUrl": "https://example.com/buy/premium-wireless-headphones",
+      "category": "Electronics",
+      "tags": ["audio", "wireless", "premium", "headphones"],
+      "status": "published",
+      "userId": "${uid}",
+      "blogId": "${blogId}",
+      "createdAt": "2025-06-27T09:30:00Z",
+      "updatedAt": "2025-06-27T10:15:00Z"
+    }
+  ],
+  "pagination": {
+    "total": 1,
+    "limit": null,
+    "offset": 0,
+    "hasMore": false
+  },
+  "filters": {
+    "category": null,
+    "tag": null,
     "status": "published",
-    "userId": "${uid}",
-    "blogId": "${blogId}",
-    "createdAt": "2025-06-27T09:30:00Z",
-    "updatedAt": "2025-06-27T10:15:00Z"
+    "minPrice": null,
+    "maxPrice": null,
+    "sortBy": "createdAt",
+    "sortOrder": "desc"
   }
 ]`}
             </pre>
@@ -429,6 +466,63 @@ if products:
       {/* Code Examples */}
       <div className="space-y-6">
         <h2 className="text-3xl font-bold text-foreground mb-8">Code Examples</h2>
+
+        {/* API Query Parameters */}
+        <div className="card">
+          <div className="card-header">
+            <h3 className="card-title">API Query Parameters</h3>
+            <p className="card-description">
+              Filter, sort, and paginate your API responses
+            </p>
+          </div>
+          <div className="card-content">
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-semibold text-foreground mb-3">Content API Parameters</h4>
+                <div className="bg-muted rounded-lg p-4 overflow-x-auto">
+                  <pre className="text-sm text-foreground whitespace-pre-wrap">
+{`# Filter by category
+${apiEndpoint}?category=Technology
+
+# Filter by tag
+${apiEndpoint}?tag=javascript
+
+# Pagination
+${apiEndpoint}?limit=10&offset=20
+
+# Sort by title (ascending)
+${apiEndpoint}?sortBy=title&sortOrder=asc
+
+# Combined filters
+${apiEndpoint}?category=Technology&tag=javascript&limit=5&sortBy=createdAt&sortOrder=desc`}
+                  </pre>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="text-lg font-semibold text-foreground mb-3">Products API Parameters</h4>
+                <div className="bg-muted rounded-lg p-4 overflow-x-auto">
+                  <pre className="text-sm text-foreground whitespace-pre-wrap">
+{`# Filter by category
+${productsApiEndpoint}?category=Electronics
+
+# Filter by tag
+${productsApiEndpoint}?tag=wireless
+
+# Price range filter
+${productsApiEndpoint}?minPrice=50&maxPrice=200
+
+# Sort by price (ascending)
+${productsApiEndpoint}?sortBy=price&sortOrder=asc
+
+# Combined filters
+${productsApiEndpoint}?category=Electronics&minPrice=100&maxPrice=500&limit=10&sortBy=price&sortOrder=asc`}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Content API Examples */}
         <h3 className="text-2xl font-bold text-foreground mb-6">Content API Examples</h3>
@@ -648,10 +742,13 @@ if products:
               <h4 className="text-sm font-semibold text-green-800 mb-2">🌐 Integration Features</h4>
               <ul className="text-sm text-green-700 space-y-1">
                 <li>• CORS enabled - can be called directly from browser applications</li>
-                <li>• No rate limiting on public endpoints</li>
+                <li>• Rate limiting: 100 requests per minute per IP address</li>
                 <li>• Images served from global CDN for optimal performance</li>
                 <li>• Content includes SEO metadata (title, description, keywords)</li>
                 <li>• Products include pricing with user-specific currency settings</li>
+                <li>• Advanced filtering by category, tags, price range, and date</li>
+                <li>• Pagination support with limit and offset parameters</li>
+                <li>• Flexible sorting by multiple fields</li>
               </ul>
             </div>
             

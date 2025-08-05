@@ -25,7 +25,9 @@ export default function ContentPreviewPage() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const allContentData = await response.json();
+      const responseData = await response.json();
+      // Handle both old format (array) and new format (object with data property)
+      const allContentData = Array.isArray(responseData) ? responseData : responseData.data || [];
       const foundContent = allContentData.find(item => item.slug === slug);
       
       if (!foundContent) {
@@ -315,6 +317,7 @@ export default function ContentPreviewPage() {
                         src={item.featuredImageUrl}
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        loading="lazy"
                       />
                     </div>
                   ) : (
