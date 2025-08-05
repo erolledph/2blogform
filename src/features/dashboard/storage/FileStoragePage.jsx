@@ -268,6 +268,7 @@ export default function FileStoragePage() {
       if (item.type === 'file') {
         await storageService.renameFile(item.fullPath, newItemName.trim(), token);
       } else {
+        // For folders, use the renameFolder function
         await storageService.renameFolder(item.fullPath, newItemName.trim(), token);
       }
       
@@ -338,6 +339,7 @@ export default function FileStoragePage() {
         const destPath = `${selectedDestination}/${item.name}`;
         await storageService.moveFile(item.fullPath, destPath, token);
       } else {
+        // For folders, use the moveFolder function
         await storageService.moveFolder(item.fullPath, selectedDestination, token);
       }
       
@@ -398,11 +400,14 @@ export default function FileStoragePage() {
   const handleDelete = async (item) => {
     try {
       if (item.type === 'folder') {
-        // For folders, we need to delete all files inside recursively
-        await deleteFolder(item.ref);
+        // Use server-side folder deletion
+        const token = await getAuthToken();
+        await storageService.deleteFile(item.fullPath, token, true);
         toast.success('Folder deleted successfully');
       } else {
-        await deleteObject(item.ref);
+        // Use server-side file deletion
+        const token = await getAuthToken();
+        await storageService.deleteFile(item.fullPath, token, false);
         toast.success('File deleted successfully');
       }
       
@@ -412,18 +417,6 @@ export default function FileStoragePage() {
       console.error('Error deleting item:', error);
       toast.error(`Failed to delete ${item.type}`);
     }
-  };
-
-  const deleteFolder = async (folderRef) => {
-    const result = await listAll(folderRef);
-    
-    // Delete all files in the folder
-    const deleteFilePromises = result.items.map(itemRef => deleteObject(itemRef));
-    await Promise.all(deleteFilePromises);
-    
-    // Recursively delete subfolders
-    const deleteSubfolderPromises = result.prefixes.map(prefixRef => deleteFolder(prefixRef));
-    await Promise.all(deleteSubfolderPromises);
   };
 
   const handlePreview = (file) => {
