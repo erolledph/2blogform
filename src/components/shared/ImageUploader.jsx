@@ -505,7 +505,7 @@ export default function ImageUploader({
                       </div>
                       {compressionStats.isLarger && (
                         <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-800">
-                          ⚠ The optimized file is larger than the original. You'll be prompted before upload.
+                          ⚠ The optimized file is larger than the original. Try adjusting the quality percentage, as compression may be malfunctioning.
                         </div>
                       )}
                     </div>
