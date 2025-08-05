@@ -591,11 +591,11 @@ export default function ImageUploader({
 
           {/* Upload Button */}
           {selectedFile && (
-            <div className="flex items-center space-x-4 pt-4 border-t border-border">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-4 border-t border-border">
               <button
                 onClick={handleInitiateUpload}
                 disabled={isProcessing || !newFileName.trim()}
-                className="btn-primary"
+                className="btn-primary w-full sm:w-auto"
               >
                 {isProcessing ? (
                   <>
@@ -613,7 +613,7 @@ export default function ImageUploader({
               <button
                 onClick={resetForm}
                 disabled={isProcessing}
-                className="btn-secondary"
+                className="btn-secondary w-full sm:w-auto"
               >
                 Cancel
               </button>
@@ -715,13 +715,13 @@ export default function ImageUploader({
           <div className="flex justify-end space-x-4 pt-4 border-t border-border">
             <button
               onClick={handleCancelUpload}
-              className="btn-secondary"
+              className="btn-secondary w-full sm:w-auto"
             >
               Cancel & Adjust Settings
             </button>
             <button
               onClick={handleConfirmUpload}
-              className="btn-primary"
+              className="btn-primary w-full sm:w-auto"
             >
               <Upload className="h-4 w-4 mr-2" />
               Proceed with Upload
