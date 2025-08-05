@@ -149,8 +149,23 @@ export default function ImageUploader({
         outputFormat
       );
 
+      // Validate compressed blob
+      if (!compressedBlob) {
+        throw new Error('Compression failed: No blob returned');
+      }
+
+      if (typeof compressedBlob.size !== 'number' || isNaN(compressedBlob.size) || compressedBlob.size < 0) {
+        throw new Error('Compression failed: Invalid blob size');
+      }
+
       const compressedSize = compressedBlob.size;
       const originalSize = file.size;
+      
+      // Validate original size to prevent division by zero
+      if (!originalSize || originalSize <= 0) {
+        throw new Error('Invalid original file size');
+      }
+      
       const compressionRatio = ((originalSize - compressedSize) / originalSize * 100).toFixed(1);
       const sizeDifference = originalSize - compressedSize;
       
@@ -166,7 +181,11 @@ export default function ImageUploader({
 
     } catch (error) {
       console.error('Error in compression preview:', error);
-      toast.error('Failed to preview compression');
+      toast.error(`Failed to preview compression: ${error.message}`);
+      
+      // Reset compression stats on error
+      setCompressedFileSize(null);
+      setCompressionStats(null);
     } finally {
       setCompressing(false);
     }
