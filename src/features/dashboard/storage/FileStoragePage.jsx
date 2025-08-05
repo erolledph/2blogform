@@ -606,9 +606,6 @@ export default function FileStoragePage() {
                     ⚠️ Contact an administrator to increase your storage limit if you need more space.
                   </p>
                 )}
-                <p>
-                  All your files are stored securely in your private space with automatic backups and global CDN delivery for public images.
-                </p>
               </div>
               
               {/* Storage Progress Bar */}
