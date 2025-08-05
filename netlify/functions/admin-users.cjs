@@ -24,41 +24,6 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const auth = admin.auth();
 
-// Helper function to delete all documents in a collection
-async function deleteCollection(collectionRef, batchSize = 100) {
-  const query = collectionRef.limit(batchSize);
-  
-  return new Promise((resolve, reject) => {
-    deleteQueryBatch(query, resolve, reject);
-  });
-}
-
-async function deleteQueryBatch(query, resolve, reject) {
-  try {
-    const snapshot = await query.get();
-    
-    if (snapshot.size === 0) {
-      resolve();
-      return;
-    }
-    
-    // Delete documents in a batch
-    const batch = db.batch();
-    snapshot.docs.forEach((doc) => {
-      batch.delete(doc.ref);
-    });
-    
-    await batch.commit();
-    
-    // Recurse on the next process tick to avoid blocking
-    process.nextTick(() => {
-      deleteQueryBatch(query, resolve, reject);
-    });
-  } catch (error) {
-    reject(error);
-  }
-}
-
 exports.handler = async (event, context) => {
   // Set CORS headers
   const headers = {
@@ -296,170 +261,6 @@ exports.handler = async (event, context) => {
         }
       }
 
-      case 'DELETE': {
-        // Delete user account and all associated data
-        const data = JSON.parse(event.body);
-        const { userId } = data;
-        
-        if (!userId) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'User ID is required' })
-          };
-        }
-
-        // Validate userId format
-        if (typeof userId !== 'string' || !userId.trim()) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'User ID must be a non-empty string' })
-          };
-        }
-
-        // Prevent self-deletion
-        if (userId === requestingUserId) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ 
-              error: 'Cannot delete your own account',
-              code: 'SELF_DELETION_FORBIDDEN'
-            })
-          };
-        }
-
-        try {
-          // Verify the target user exists
-          const userRecord = await auth.getUser(userId);
-          
-          console.log(`Admin ${requestingUserId} is deleting user ${userId} (${userRecord.email})`);
-
-          // Step 1: Delete all user's blogs and their content/products
-          const blogsRef = db.collection('users').doc(userId).collection('blogs');
-          const blogsSnapshot = await blogsRef.get();
-          
-          for (const blogDoc of blogsSnapshot.docs) {
-            const blogId = blogDoc.id;
-            console.log(`Deleting blog ${blogId} for user ${userId}`);
-            
-            // Delete all content in this blog
-            const contentRef = blogsRef.doc(blogId).collection('content');
-            await deleteCollection(contentRef);
-            
-            // Delete all products in this blog
-            const productsRef = blogsRef.doc(blogId).collection('products');
-            await deleteCollection(productsRef);
-            
-            // Delete the blog document itself
-            await blogDoc.ref.delete();
-          }
-
-          // Step 2: Delete user settings
-          const userSettingsRef = db.collection('users').doc(userId).collection('userSettings').doc('preferences');
-          const userSettingsDoc = await userSettingsRef.get();
-          if (userSettingsDoc.exists) {
-            await userSettingsRef.delete();
-          }
-
-          // Step 3: Delete user's app settings
-          const appSettingsRef = db.collection('users').doc(userId).collection('appSettings').doc('public');
-          const appSettingsDoc = await appSettingsRef.get();
-          if (appSettingsDoc.exists) {
-            await appSettingsRef.delete();
-          }
-
-          // Step 4: Delete user's analytics data (pageViews and interactions)
-          // Note: These are global collections, so we filter by userId
-          const pageViewsRef = db.collection('pageViews').where('userId', '==', userId);
-          const pageViewsSnapshot = await pageViewsRef.get();
-          if (!pageViewsSnapshot.empty) {
-            const pageViewsBatch = db.batch();
-            pageViewsSnapshot.docs.forEach(doc => {
-              pageViewsBatch.delete(doc.ref);
-            });
-            await pageViewsBatch.commit();
-          }
-
-          const interactionsRef = db.collection('interactions').where('userId', '==', userId);
-          const interactionsSnapshot = await interactionsRef.get();
-          if (!interactionsSnapshot.empty) {
-            const interactionsBatch = db.batch();
-            interactionsSnapshot.docs.forEach(doc => {
-              interactionsBatch.delete(doc.ref);
-            });
-            await interactionsBatch.commit();
-          }
-
-          // Step 5: Delete the main user document
-          await db.collection('users').doc(userId).delete();
-
-          // Step 6: Delete user's Firebase Storage files
-          const bucket = admin.storage().bucket();
-          
-          try {
-            // Delete public images
-            await bucket.deleteFiles({
-              prefix: `users/${userId}/public_images/`,
-              force: true
-            });
-            console.log(`Deleted public images for user ${userId}`);
-          } catch (storageError) {
-            console.warn(`Error deleting public images for user ${userId}:`, storageError.message);
-            // Continue with deletion even if storage cleanup fails
-          }
-
-          try {
-            // Delete private files
-            await bucket.deleteFiles({
-              prefix: `users/${userId}/private/`,
-              force: true
-            });
-            console.log(`Deleted private files for user ${userId}`);
-          } catch (storageError) {
-            console.warn(`Error deleting private files for user ${userId}:`, storageError.message);
-            // Continue with deletion even if storage cleanup fails
-          }
-
-          // Step 7: Delete user from Firebase Authentication (do this last)
-          await auth.deleteUser(userId);
-          
-          console.log(`Successfully deleted user ${userId} and all associated data`);
-          
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ 
-              success: true,
-              message: 'User and all associated data deleted successfully',
-              deletedUserId: userId,
-              deletedUserEmail: userRecord.email
-            })
-          };
-        } catch (error) {
-          console.error('Error during user deletion:', error);
-          
-          if (error.code === 'auth/user-not-found') {
-            return {
-              statusCode: 404,
-              headers,
-              body: JSON.stringify({ error: 'User not found' })
-            };
-          }
-
-          return {
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({ 
-              error: 'Failed to delete user completely',
-              details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-              code: error.code
-            })
-          };
-        }
-      }
-
       default:
         return {
           statusCode: 405,
@@ -469,6 +270,88 @@ exports.handler = async (event, context) => {
     }
 
   } catch (error) {
+    case 'DELETE': {
+      // Delete user account and all associated data
+      const data = JSON.parse(event.body);
+      const { userId } = data;
+      
+      if (!userId) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'User ID is required' })
+        };
+      }
+
+      // Validate userId format
+      if (typeof userId !== 'string' || !userId.trim()) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'userId must be a non-empty string' })
+        };
+      }
+
+      // Prevent admin from deleting themselves
+      if (userId === requestingUserId) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Cannot delete your own account' })
+        };
+      }
+
+      try {
+        // Verify the target user exists
+        const targetUser = await auth.getUser(userId);
+
+        // Delete user's Firestore data
+        const userDocRef = db.collection('users').doc(userId);
+        
+        // Delete all subcollections (blogs, userSettings, appSettings)
+        const subcollections = ['blogs', 'userSettings', 'appSettings'];
+        
+        for (const subcollection of subcollections) {
+          const subcollectionRef = userDocRef.collection(subcollection);
+          await deleteCollection(subcollectionRef);
+        }
+        
+        // Delete the main user document
+        await userDocRef.delete();
+        
+        // Delete user from Firebase Auth
+        await auth.deleteUser(userId);
+        
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ 
+            success: true,
+            message: 'User account and all associated data deleted successfully'
+          })
+        };
+      } catch (error) {
+        console.error('Error deleting user:', error);
+        
+        if (error.code === 'auth/user-not-found') {
+          return {
+            statusCode: 404,
+            headers,
+            body: JSON.stringify({ error: 'User not found' })
+          };
+        }
+
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ 
+            error: 'Failed to delete user account',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+          })
+        };
+      }
+    }
+
     console.error('Admin users function error:', error);
     
     // Provide more detailed error information
