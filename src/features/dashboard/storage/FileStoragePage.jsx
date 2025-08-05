@@ -599,7 +599,7 @@ export default function FileStoragePage() {
                   <strong>Remaining:</strong> {formatBytes(((currentUser?.totalStorageMB || 100) * 1024 * 1024) - storageStats.totalSize)}
                 </p>
                 <p>
-                  This is your personal storage space, isolated from other users. Storage is shared across all your blogs ({currentUser?.maxBlogs || 1} blog{(currentUser?.maxBlogs || 1) > 1 ? 's' : ''} allowed).
+                 Storage is shared across all your blogs ({currentUser?.maxBlogs || 1} blog{(currentUser?.maxBlogs || 1) > 1 ? 's' : ''} allowed).
                 </p>
                 {((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100)) > 0.9 && (
                   <p className="font-medium">
