@@ -6,7 +6,9 @@ import SimpleMDE from 'react-simplemde-editor';
 import InputField from '@/components/shared/InputField';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ImageGalleryModal from '@/components/shared/ImageGalleryModal';
-import { Save, ArrowLeft, Image as ImageIcon, Trash2 } from 'lucide-react';
+import ImageUploader from '@/components/shared/ImageUploader';
+import Modal from '@/components/shared/Modal';
+import { Save, ArrowLeft, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 import { generateSlug, parseArrayInput } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 import 'easymde/dist/easymde.min.css';
@@ -40,6 +42,7 @@ export default function CreateContentPage({ activeBlogId }) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [galleryModal, setGalleryModal] = useState({ isOpen: false });
+  const [uploadModal, setUploadModal] = useState({ isOpen: false });
 
   // Memoize SimpleMDE options to prevent re-initialization on every render
   const simpleMDEOptions = useMemo(() => ({
@@ -344,7 +347,7 @@ export default function CreateContentPage({ activeBlogId }) {
                 )}
 
                 {/* Gallery Selection Button */}
-                <div className="flex justify-center">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <button
                     type="button"
                     onClick={() => setGalleryModal({ isOpen: true })}
@@ -352,6 +355,14 @@ export default function CreateContentPage({ activeBlogId }) {
                   >
                     <ImageIcon className="h-5 w-5 mr-3" />
                     Select from Gallery
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUploadModal({ isOpen: true })}
+                    className="btn-secondary inline-flex items-center"
+                  >
+                    <Upload className="h-5 w-5 mr-3" />
+                    Upload New Image
                   </button>
                 </div>
                 
@@ -494,6 +505,33 @@ export default function CreateContentPage({ activeBlogId }) {
         onSelectImage={handleImageSelect}
         title="Select Featured Image"
       />
+
+      {/* Image Upload Modal */}
+      <Modal
+        isOpen={uploadModal.isOpen}
+        onClose={() => setUploadModal({ isOpen: false })}
+        title="Upload & Optimize Featured Image"
+        size="xl"
+      >
+        <ImageUploader
+          onUploadSuccess={(uploadResult) => {
+            setFormData(prev => ({
+              ...prev,
+              featuredImageUrl: uploadResult.downloadURL
+            }));
+            setUploadModal({ isOpen: false });
+            toast.success('Featured image uploaded successfully');
+          }}
+          onUploadError={(error) => {
+            console.error('Upload error:', error);
+            toast.error('Failed to upload image');
+          }}
+          maxFileSize={10 * 1024 * 1024} // 10MB
+          initialQuality={80}
+          initialMaxWidth={1920}
+          initialMaxHeight={1080}
+        />
+      </Modal>
     </div>
   );
 }

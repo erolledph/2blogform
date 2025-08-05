@@ -7,7 +7,9 @@ import SimpleMDE from 'react-simplemde-editor';
 import InputField from '@/components/shared/InputField';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import ImageGalleryModal from '@/components/shared/ImageGalleryModal';
-import { Save, ArrowLeft, DollarSign, Percent, Image as ImageIcon, Trash2, Plus } from 'lucide-react';
+import ImageUploader from '@/components/shared/ImageUploader';
+import Modal from '@/components/shared/Modal';
+import { Save, ArrowLeft, DollarSign, Percent, Image as ImageIcon, Trash2, Plus, Upload } from 'lucide-react';
 import { generateSlug, parseArrayInput } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 import 'easymde/dist/easymde.min.css';
@@ -38,6 +40,7 @@ export default function CreateProductPage({ activeBlogId }) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [galleryModal, setGalleryModal] = useState({ isOpen: false });
+  const [uploadModal, setUploadModal] = useState({ isOpen: false });
 
   // Memoize SimpleMDE options
   const simpleMDEOptions = useMemo(() => ({
@@ -377,7 +380,7 @@ export default function CreateProductPage({ activeBlogId }) {
                 
                 {/* Add Images Button */}
                 {formData.imageUrls.length < 5 && (
-                  <div className="flex justify-center">
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <button
                       type="button"
                       onClick={() => setGalleryModal({ isOpen: true })}
@@ -385,6 +388,14 @@ export default function CreateProductPage({ activeBlogId }) {
                     >
                       <Plus className="h-5 w-5 mr-3" />
                       Add Images ({formData.imageUrls.length}/5)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUploadModal({ isOpen: true })}
+                      className="btn-secondary inline-flex items-center"
+                    >
+                      <Upload className="h-5 w-5 mr-3" />
+                      Upload New Image
                     </button>
                   </div>
                 )}
@@ -558,6 +569,37 @@ export default function CreateProductPage({ activeBlogId }) {
         maxSelections={5 - formData.imageUrls.length}
         title="Select Product Images"
       />
+
+      {/* Image Upload Modal */}
+      <Modal
+        isOpen={uploadModal.isOpen}
+        onClose={() => setUploadModal({ isOpen: false })}
+        title="Upload & Optimize Product Image"
+        size="xl"
+      >
+        <ImageUploader
+          onUploadSuccess={(uploadResult) => {
+            if (formData.imageUrls.length < 5) {
+              setFormData(prev => ({
+                ...prev,
+                imageUrls: [...prev.imageUrls, uploadResult.downloadURL]
+              }));
+              setUploadModal({ isOpen: false });
+              toast.success(`Product image uploaded successfully (${formData.imageUrls.length + 1}/5)`);
+            } else {
+              toast.error('Maximum of 5 images allowed per product');
+            }
+          }}
+          onUploadError={(error) => {
+            console.error('Upload error:', error);
+            toast.error('Failed to upload image');
+          }}
+          maxFileSize={10 * 1024 * 1024} // 10MB
+          initialQuality={80}
+          initialMaxWidth={1920}
+          initialMaxHeight={1080}
+        />
+      </Modal>
     </div>
   );
 }
