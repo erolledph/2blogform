@@ -413,24 +413,42 @@ export default function ImageUploader({
         <div className="card-content space-y-6">
           {/* File Input */}
           <div>
-            <label className="block text-base font-medium text-foreground mb-4">
+            <label htmlFor="image-upload-input" className="block text-base font-medium text-foreground mb-4">
               Select Image File
             </label>
-            <div className="relative">
+            <label 
+                htmlFor="image-upload-input" 
+                className="relative block border-2 border-border border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors hover:border-primary/50"
+              >
+              {/* This is the hidden file input */}
               <input
                 id="image-upload-input"
                 type="file"
                 accept="image/*"
                 onChange={handleFileSelect}
-                className="input-field"
+                className="sr-only"
                 disabled={isProcessing}
               />
+              
+              {/* This is the custom UI that acts as the upload button */}
+              <div className="flex flex-col items-center justify-center space-y-2">
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                  <Upload className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-foreground">
+                  <span className="text-primary font-semibold">Click to upload</span> or drag and drop
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {selectedFile ? `File Selected: ${selectedFile.name}` : `No file selected`}
+                </p>
+              </div>
+
               {isProcessing && (
                 <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-md">
                   <LoadingSpinner size="sm" />
                 </div>
               )}
-            </div>
+            </label>
             <p className="text-sm text-muted-foreground mt-2">
               Supported formats: JPEG, PNG, GIF, BMP, TIFF. Max size: {formatBytes(maxFileSize)}
             </p>
@@ -600,12 +618,12 @@ export default function ImageUploader({
                 {isProcessing ? (
                   <>
                     <LoadingSpinner size="sm" className="mr-3" />
-                   Uploading...
+                    Uploading...
                   </>
                 ) : (
                   <>
                     <Upload className="h-5 w-5 mr-3" />
-                   Upload Optimized Image
+                    Upload Optimized Image
                   </>
                 )}
               </button>
@@ -621,7 +639,14 @@ export default function ImageUploader({
           )}
         </div>
       </div>
-
+      
+      {/* Optimization Settings (DUPLICATE SECTION - REMOVE) */}
+      {/* The content below this comment seems to be a duplicate of the previous card, which is the source of the error.
+          The error occurs because you have two `div` elements next to each other at the root without a parent container. */}
+      {/* <div className="card">
+        ... duplicated content
+      </div> */}
+      
       {/* Format Information */}
       <div className="card">
         <div className="card-header">
@@ -653,7 +678,6 @@ export default function ImageUploader({
               <ul className="text-sm text-purple-700 space-y-1">
                 <li>• Lossless compression</li>
                 <li>• Supports transparency</li>
-                <li>• Larger file sizes</li>
               </ul>
             </div>
           </div>
