@@ -1,38 +1,9 @@
 [build]
-  publish = "dist"
-  command = "npm run build"
-
-[dev]
-  command = "npx vite --port 5173"
-  port = 8889
-  targetPort = 5173
-  publish = "dist"
-  framework = "#auto"
-  autoLaunch = false
+  functions = "netlify/functions"
 
 [[redirects]]
-  from = "/users/:uid/blogs/:blogId/api/content.json"
-  to = "/.netlify/functions/content-api?uid=:uid&blogId=:blogId"
-  status = 200
-
-[[redirects]]
-  from = "/users/:uid/blogs/:blogId/api/products.json"
-  to = "/.netlify/functions/product-api?uid=:uid&blogId=:blogId"
-  status = 200
-
-[[redirects]]
-  from = "/api/admin/content"
-  to = "/.netlify/functions/admin-content"
-  status = 200
-
-[[redirects]]
-  from = "/api/admin/products"
-  to = "/.netlify/functions/admin-product"
-  status = 200
-
-[[redirects]]
-  from = "/api/admin/users"
-  to = "/.netlify/functions/admin-users"
+  from = "/api/admin/storage"
+  to = "/.netlify/functions/admin-storage"
   status = 200
 
 [[redirects]]
@@ -41,18 +12,28 @@
   status = 200
 
 [[redirects]]
-  from = "/api/admin/storage"
-  to = "/.netlify/functions/admin-storage"
+  from = "/api/admin/users"
+  to = "/.netlify/functions/admin-users"
   status = 200
 
 [[redirects]]
-  from = "/api/import/content"
-  to = "/.netlify/functions/import-content"
+  from = "/api/admin/content"
+  to = "/.netlify/functions/admin-content"
   status = 200
 
 [[redirects]]
-  from = "/api/import/products"
-  to = "/.netlify/functions/import-products"
+  from = "/api/admin/product"
+  to = "/.netlify/functions/admin-product"
+  status = 200
+
+[[redirects]]
+  from = "/api/content"
+  to = "/.netlify/functions/content-api"
+  status = 200
+
+[[redirects]]
+  from = "/api/product"
+  to = "/.netlify/functions/product-api"
   status = 200
 
 [[redirects]]
@@ -61,8 +42,18 @@
   status = 200
 
 [[redirects]]
+  from = "/api/import/content"
+  to = "/.netlify/functions/import-content"
+  status = 200
+
+[[redirects]]
   from = "/api/export/products"
   to = "/.netlify/functions/export-products"
+  status = 200
+
+[[redirects]]
+  from = "/api/import/products"
+  to = "/.netlify/functions/import-products"
   status = 200
 
 [[redirects]]
