@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { Calendar, User, Tag, ArrowLeft, Eye, Clock, FileText, Share2, Bookmark } from 'lucide-react';
-import SkeletonLoader from '@/components/shared/SkeletonLoader';
+import { ContentPreviewSkeleton } from '@/components/shared/SkeletonLoader';
 import { FeaturedImage, GalleryImage } from '@/components/shared/ProgressiveImage';
 
 export default function ContentPreviewPage() {
@@ -67,25 +67,6 @@ export default function ContentPreviewPage() {
     return `${minutes} min read`;
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="max-w-4xl w-full mx-auto px-4 space-y-8">
-          {/* Header skeleton */}
-          <div className="space-y-4">
-            <SkeletonLoader width="3/4" height="xl" />
-            <SkeletonLoader width="1/2" />
-          </div>
-          
-          {/* Content skeleton */}
-          <div className="space-y-6">
-            <SkeletonLoader type="image" className="w-full h-64" />
-            <SkeletonLoader lines={8} />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -110,7 +91,6 @@ export default function ContentPreviewPage() {
     );
   }
 
-  const relatedContent = getRelatedContent();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
@@ -139,6 +119,9 @@ export default function ContentPreviewPage() {
       </header>
 
       {/* Main Content */}
+      {loading ? (
+        <ContentPreviewSkeleton />
+      ) : (
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
         <article className="max-w-4xl mx-auto">
           {/* Article Header */}
@@ -304,85 +287,105 @@ export default function ContentPreviewPage() {
           </footer>
         </article>
 
-        {/* Enhanced Related Content Section */}
-        {relatedContent.length > 0 && (
-          <section className="mt-20 sm:mt-24 lg:mt-32">
-            <div className="text-center mb-12 sm:mb-16">
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">More Articles</h2>
-              <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
-                Discover more insights and stories from our collection
-              </p>
-            </div>
+          {/* Enhanced Related Content Section */}
+          <RelatedContentSection 
+            allContent={allContent}
+            currentContentId={content?.id}
+            uid={uid}
+            blogId={blogId}
+            formatDate={formatDate}
+          />
+      </main>
+      )}
+    </div>
+  );
+}
+
+// Separate component for related content to avoid re-rendering during loading
+function RelatedContentSection({ allContent, currentContentId, uid, blogId, formatDate }) {
+  const relatedContent = allContent
+    .filter(item => item.id !== currentContentId && item.status === 'published')
+    .slice(0, 6);
+
+  if (relatedContent.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="mt-20 sm:mt-24 lg:mt-32">
+      <div className="text-center mb-12 sm:mb-16">
+        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">More Articles</h2>
+        <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
+          Discover more insights and stories from our collection
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10">
+        {relatedContent.map((item) => (
+          <Link
+            key={item.id}
+            to={`/preview/content/${uid}/${blogId}/${item.slug}`}
+            className="group block bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
+          >
+            {item.featuredImageUrl ? (
+              <GalleryImage
+                src={item.featuredImageUrl}
+                alt={item.title}
+                className="aspect-[4/3] group-hover:scale-110 transition-transform duration-500"
+              />
+            ) : (
+              <div className="aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                <FileText className="h-16 w-16 text-gray-400" />
+              </div>
+            )}
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10">
-              {relatedContent.map((item) => (
-                <Link
-                  key={item.id}
-                  to={`/preview/content/${uid}/${blogId}/${item.slug}`}
-                  className="group block bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
-                >
-                  {item.featuredImageUrl ? (
-                    <GalleryImage
-                      src={item.featuredImageUrl}
-                      alt={item.title}
-                      className="aspect-[4/3] group-hover:scale-110 transition-transform duration-500"
-                    />
-                  ) : (
-                    <div className="aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                      <FileText className="h-16 w-16 text-gray-400" />
+            <div className="p-6 sm:p-8">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4 group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
+                {item.title}
+              </h3>
+              
+              {item.metaDescription && (
+                <p className="text-base sm:text-lg text-gray-600 mb-4 sm:mb-6 line-clamp-3 leading-relaxed">
+                  {item.metaDescription}
+                </p>
+              )}
+              
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-gray-500">
+                <div className="flex items-center space-x-4">
+                  {item.author && (
+                    <div className="flex items-center">
+                      <User className="h-4 w-4 mr-1" />
+                      <span>{item.author}</span>
                     </div>
                   )}
-                  
-                  <div className="p-6 sm:p-8">
-                    <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4 group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight">
-                      {item.title}
-                    </h3>
-                    
-                    {item.metaDescription && (
-                      <p className="text-base sm:text-lg text-gray-600 mb-4 sm:mb-6 line-clamp-3 leading-relaxed">
-                        {item.metaDescription}
-                      </p>
-                    )}
-                    
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-sm text-gray-500">
-                      <div className="flex items-center space-x-4">
-                        {item.author && (
-                          <div className="flex items-center">
-                            <User className="h-4 w-4 mr-1" />
-                            <span>{item.author}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          <span>{formatDate(item.createdAt)}</span>
-                        </div>
-                      </div>
-                      
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                        item.status === 'published' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {item.status}
-                      </span>
-                    </div>
+                  <div className="flex items-center">
+                    <Calendar className="h-4 w-4 mr-1" />
+                    <span>{formatDate(item.createdAt)}</span>
                   </div>
-                </Link>
-              ))}
+                </div>
+                
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                  item.status === 'published' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {item.status}
+                </span>
+              </div>
             </div>
-            
-            <div className="text-center mt-12 sm:mt-16">
-              <Link
-                to="/dashboard/manage"
-                className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl text-lg"
-              >
-                View All Articles
-                <ArrowLeft className="ml-3 h-6 w-6 transform rotate-180" />
-              </Link>
-            </div>
-          </section>
-        )}
-      </main>
-    </div>
+          </Link>
+        ))}
+      </div>
+      
+      <div className="text-center mt-12 sm:mt-16">
+        <Link
+          to="/dashboard/manage"
+          className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl text-lg"
+        >
+          View All Articles
+          <ArrowLeft className="ml-3 h-6 w-6 transform rotate-180" />
+        </Link>
+      </div>
+    </section>
   );
 }

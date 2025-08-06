@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { settingsService } from '@/services/settingsService';
 import InputField from '@/components/shared/InputField';
 import LoadingButton from '@/components/shared/LoadingButton';
+import { AccountSettingsSkeleton } from '@/components/shared/SkeletonLoader';
 import { User, DollarSign, Save, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -173,18 +174,6 @@ export default function AccountSettingsPage() {
     }
   };
 
-  if (initialLoading) {
-    return (
-      <div className="section-spacing">
-        <div className="page-header">
-          <h1 className="page-title">Account Settings</h1>
-        </div>
-        <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="section-spacing">
@@ -195,237 +184,241 @@ export default function AccountSettingsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        {/* Profile Information */}
-        <div className="card">
-          <div className="card-header">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <User className="h-8 w-8 text-blue-600" />
+      {initialLoading ? (
+        <AccountSettingsSkeleton />
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          {/* Profile Information */}
+          <div className="card">
+            <div className="card-header">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <User className="h-8 w-8 text-blue-600" />
+                </div>
+                <h2 className="card-title">Profile Information</h2>
               </div>
-              <h2 className="card-title">Profile Information</h2>
+              <p className="card-description">
+                Update your personal information and bio
+              </p>
             </div>
-            <p className="card-description">
-              Update your personal information and bio
-            </p>
-          </div>
-          <div className="card-content">
-            <form onSubmit={handleProfileSave} className="space-y-6">
-              <InputField
-                label="Display Name"
-                name="displayName"
-                value={profileData.displayName}
-                onChange={handleProfileInputChange}
-                placeholder="Your full name"
-                disabled={profileLoading}
-              />
-              
-              <div>
-                <label className="block text-base font-medium text-foreground mb-4">
-                  Bio
-                </label>
-                <textarea
-                  name="bio"
-                  rows={3}
-                  className="input-field resize-none"
-                  value={profileData.bio}
+            <div className="card-content">
+              <form onSubmit={handleProfileSave} className="space-y-6">
+                <InputField
+                  label="Display Name"
+                  name="displayName"
+                  value={profileData.displayName}
                   onChange={handleProfileInputChange}
-                  placeholder="Tell us about yourself..."
+                  placeholder="Your full name"
                   disabled={profileLoading}
                 />
-              </div>
-              
-              <InputField
-                label="Website"
-                name="website"
-                type="url"
-                value={profileData.website}
-                onChange={handleProfileInputChange}
-                placeholder="https://yourwebsite.com"
-                disabled={profileLoading}
-              />
-              
-              <InputField
-                label="Location"
-                name="location"
-                value={profileData.location}
-                onChange={handleProfileInputChange}
-                placeholder="City, Country"
-                disabled={profileLoading}
-              />
-              
-              <LoadingButton
-                type="submit"
-                loading={profileLoading}
-                loadingText="Saving..."
-                variant="primary"
-                className="w-full"
-                icon={profileSaved ? Check : Save}
-              >
-                {profileSaved ? 'Saved!' : 'Save Profile'}
-              </LoadingButton>
-            </form>
-          </div>
-        </div>
-
-        {/* User Information */}
-        <div className="card">
-          <div className="card-header">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <User className="h-8 w-8 text-primary" />
-              </div>
-              <h2 className="card-title">User Information</h2>
-            </div>
-            <p className="card-description">
-              Your account details and system information
-            </p>
-          </div>
-          <div className="card-content space-y-6">
-            <InputField
-              label="Email Address"
-              value={currentUser?.email || 'Not available'}
-              disabled
-              className="opacity-75 cursor-not-allowed"
-            />
-            <p className="text-sm text-muted-foreground">
-              Your email address cannot be changed from this interface
-            </p>
-            
-            <InputField
-              label="User ID"
-              value={currentUser?.uid || 'Not available'}
-              disabled
-              className="opacity-75 cursor-not-allowed"
-            />
-            <p className="text-sm text-muted-foreground">
-              Your unique user identifier used in API endpoints
-            </p>
-            
-            <InputField
-              label="Role"
-              value={currentUser?.role === 'admin' ? 'Administrator' : 'User'}
-              disabled
-              className="opacity-75 cursor-not-allowed"
-            />
-            <p className="text-sm text-muted-foreground">
-              Your current role in the system
-            </p>
-          </div>
-        </div>
-
-        {/* Currency Settings */}
-        <div className="card">
-          <div className="card-header">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <DollarSign className="h-8 w-8 text-green-600" />
-              </div>
-              <h2 className="card-title">Currency Settings</h2>
-            </div>
-            <p className="card-description">
-              Choose your preferred currency symbol for displaying prices and financial data
-            </p>
-          </div>
-          <div className="card-content">
-            <form onSubmit={handleSave} className="space-y-6">
-              <div>
-                <label htmlFor="currency" className="block text-sm font-medium text-foreground mb-2">
-                  Currency Symbol
-                </label>
-                <select
-                  id="currency"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className="input-field w-full"
+                
+                <div>
+                  <label className="block text-base font-medium text-foreground mb-4">
+                    Bio
+                  </label>
+                  <textarea
+                    name="bio"
+                    rows={3}
+                    className="input-field resize-none"
+                    value={profileData.bio}
+                    onChange={handleProfileInputChange}
+                    placeholder="Tell us about yourself..."
+                    disabled={profileLoading}
+                  />
+                </div>
+                
+                <InputField
+                  label="Website"
+                  name="website"
+                  type="url"
+                  value={profileData.website}
+                  onChange={handleProfileInputChange}
+                  placeholder="https://yourwebsite.com"
+                  disabled={profileLoading}
+                />
+                
+                <InputField
+                  label="Location"
+                  name="location"
+                  value={profileData.location}
+                  onChange={handleProfileInputChange}
+                  placeholder="City, Country"
+                  disabled={profileLoading}
+                />
+                
+                <LoadingButton
+                  type="submit"
+                  loading={profileLoading}
+                  loadingText="Saving..."
+                  variant="primary"
+                  className="w-full"
+                  icon={profileSaved ? Check : Save}
                 >
-                  {currencyOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="p-4 bg-muted/30 rounded-lg border border-border">
-                <h4 className="text-sm font-medium text-foreground mb-2">Preview</h4>
-                <p className="text-base text-muted-foreground">
-                  Sample price: <span className="font-semibold text-foreground">{currency}99.99</span>
-                </p>
-              </div>
-              
-              <LoadingButton
-                type="submit"
-                loading={loading}
-                loadingText="Saving..."
-                variant="primary"
-                icon={saved ? Check : Save}
-              >
-                {saved ? 'Saved!' : 'Save Settings'}
-              </LoadingButton>
-            </form>
+                  {profileSaved ? 'Saved!' : 'Save Profile'}
+                </LoadingButton>
+              </form>
+            </div>
           </div>
-        </div>
 
-        {/* Additional Settings */}
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">Additional Settings</h2>
-            <p className="card-description">
-              System information and additional configuration options
-            </p>
+          {/* User Information */}
+          <div className="card">
+            <div className="card-header">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <User className="h-8 w-8 text-primary" />
+                </div>
+                <h2 className="card-title">User Information</h2>
+              </div>
+              <p className="card-description">
+                Your account details and system information
+              </p>
+            </div>
+            <div className="card-content space-y-6">
+              <InputField
+                label="Email Address"
+                value={currentUser?.email || 'Not available'}
+                disabled
+                className="opacity-75 cursor-not-allowed"
+              />
+              <p className="text-sm text-muted-foreground">
+                Your email address cannot be changed from this interface
+              </p>
+              
+              <InputField
+                label="User ID"
+                value={currentUser?.uid || 'Not available'}
+                disabled
+                className="opacity-75 cursor-not-allowed"
+              />
+              <p className="text-sm text-muted-foreground">
+                Your unique user identifier used in API endpoints
+              </p>
+              
+              <InputField
+                label="Role"
+                value={currentUser?.role === 'admin' ? 'Administrator' : 'User'}
+                disabled
+                className="opacity-75 cursor-not-allowed"
+              />
+              <p className="text-sm text-muted-foreground">
+                Your current role in the system
+              </p>
+            </div>
           </div>
-          <div className="card-content">
-            <div className="space-y-6">
-              {/* Account Limits */}
-              <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
-                <h3 className="text-base font-semibold text-blue-800 mb-4">Account Limits</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium text-blue-700">Max Blogs:</span>
-                    <div className="text-blue-600">{currentUser?.maxBlogs || 1}</div>
-                  </div>
-                  <div>
-                    <span className="font-medium text-blue-700">Storage Limit:</span>
-                    <div className="text-blue-600">{currentUser?.totalStorageMB || 100} MB</div>
-                  </div>
+
+          {/* Currency Settings */}
+          <div className="card">
+            <div className="card-header">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <DollarSign className="h-8 w-8 text-green-600" />
                 </div>
+                <h2 className="card-title">Currency Settings</h2>
               </div>
-              
-              {/* Version Information */}
-              <div className="p-6 bg-muted/30 rounded-lg border border-border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-semibold text-foreground mb-2">System Information</h3>
-                    <p className="text-sm text-muted-foreground">Current application version and build details</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-primary">v2.0.0</div>
-                    <div className="text-sm text-muted-foreground">User-Isolated CMS</div>
-                  </div>
+              <p className="card-description">
+                Choose your preferred currency symbol for displaying prices and financial data
+              </p>
+            </div>
+            <div className="card-content">
+              <form onSubmit={handleSave} className="space-y-6">
+                <div>
+                  <label htmlFor="currency" className="block text-sm font-medium text-foreground mb-2">
+                    Currency Symbol
+                  </label>
+                  <select
+                    id="currency"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    className="input-field w-full"
+                  >
+                    {currencyOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              </div>
-              
-              {/* Account Statistics */}
-              <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
-                <h3 className="text-base font-semibold text-green-800 mb-4">Account Statistics</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium text-green-700">Member Since:</span>
-                    <div className="text-green-600">
-                      {currentUser?.metadata?.creationTime 
-                        ? new Date(currentUser.metadata.creationTime).toLocaleDateString()
-                        : 'N/A'
-                      }
+                
+                <div className="p-4 bg-muted/30 rounded-lg border border-border">
+                  <h4 className="text-sm font-medium text-foreground mb-2">Preview</h4>
+                  <p className="text-base text-muted-foreground">
+                    Sample price: <span className="font-semibold text-foreground">{currency}99.99</span>
+                  </p>
+                </div>
+                
+                <LoadingButton
+                  type="submit"
+                  loading={loading}
+                  loadingText="Saving..."
+                  variant="primary"
+                  icon={saved ? Check : Save}
+                >
+                  {saved ? 'Saved!' : 'Save Settings'}
+                </LoadingButton>
+              </form>
+            </div>
+          </div>
+
+          {/* Additional Settings */}
+          <div className="card">
+            <div className="card-header">
+              <h2 className="card-title">Additional Settings</h2>
+              <p className="card-description">
+                System information and additional configuration options
+              </p>
+            </div>
+            <div className="card-content">
+              <div className="space-y-6">
+                {/* Account Limits */}
+                <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="text-base font-semibold text-blue-800 mb-4">Account Limits</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-blue-700">Max Blogs:</span>
+                      <div className="text-blue-600">{currentUser?.maxBlogs || 1}</div>
+                    </div>
+                    <div>
+                      <span className="font-medium text-blue-700">Storage Limit:</span>
+                      <div className="text-blue-600">{currentUser?.totalStorageMB || 100} MB</div>
                     </div>
                   </div>
-                  <div>
-                    <span className="font-medium text-green-700">Last Sign In:</span>
-                    <div className="text-green-600">
-                      {currentUser?.metadata?.lastSignInTime 
-                        ? new Date(currentUser.metadata.lastSignInTime).toLocaleDateString()
-                        : 'N/A'
-                      }
+                </div>
+                
+                {/* Version Information */}
+                <div className="p-6 bg-muted/30 rounded-lg border border-border">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-semibold text-foreground mb-2">System Information</h3>
+                      <p className="text-sm text-muted-foreground">Current application version and build details</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-primary">v2.0.0</div>
+                      <div className="text-sm text-muted-foreground">User-Isolated CMS</div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Account Statistics */}
+                <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
+                  <h3 className="text-base font-semibold text-green-800 mb-4">Account Statistics</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-green-700">Member Since:</span>
+                      <div className="text-green-600">
+                        {currentUser?.metadata?.creationTime 
+                          ? new Date(currentUser.metadata.creationTime).toLocaleDateString()
+                          : 'N/A'
+                        }
+                      </div>
+                    </div>
+                    <div>
+                      <span className="font-medium text-green-700">Last Sign In:</span>
+                      <div className="text-green-600">
+                        {currentUser?.metadata?.lastSignInTime 
+                          ? new Date(currentUser.metadata.lastSignInTime).toLocaleDateString()
+                          : 'N/A'
+                        }
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -433,7 +426,7 @@ export default function AccountSettingsPage() {
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
