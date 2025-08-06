@@ -18,7 +18,8 @@ if (!admin.apps.length) {
   try {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      projectId: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph"
+      projectId: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph",
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "admin-cms-ph.firebasestorage.app"
     });
     console.log('Firebase Admin SDK initialized successfully');
   } catch (initError) {
