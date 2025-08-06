@@ -235,7 +235,7 @@ export default function CreateProductPage({ activeBlogId }) {
 
     try {
       const token = await getAuthToken();
-      const url = `/api/admin/products`;
+      const url = `/api/admin/product`;
       
       const method = isEditing ? 'PUT' : 'POST';
       const body = isEditing 
