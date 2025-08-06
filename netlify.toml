@@ -57,6 +57,16 @@
   status = 200
 
 [[redirects]]
+  from = "/users/:uid/blogs/:blogId/api/content.json"
+  to = "/.netlify/functions/content-api"
+  status = 200
+
+[[redirects]]
+  from = "/users/:uid/blogs/:blogId/api/products.json"
+  to = "/.netlify/functions/product-api"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
