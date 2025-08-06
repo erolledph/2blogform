@@ -619,7 +619,6 @@ export default function ImageUploader({
                   <>
                     <LoadingSpinner size="sm" className="mr-3" />
                     Uploading...
-                    loading="lazy"
                   </>
                 ) : (
                   <>
