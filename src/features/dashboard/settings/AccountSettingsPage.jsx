@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { settingsService } from '@/services/settingsService';
 import InputField from '@/components/shared/InputField';
+import LoadingButton from '@/components/shared/LoadingButton';
 import { User, DollarSign, Save, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AccountSettingsPage() {
-  const { currentUser } = useAuth();
+  const { currentUser, invalidateUserSettingsCache } = useAuth();
   const [currency, setCurrency] = useState('$');
   const [displayName, setDisplayName] = useState('');
   const [profileData, setProfileData] = useState({
@@ -109,6 +110,9 @@ export default function AccountSettingsPage() {
         currency
       });
       
+      // Invalidate user settings cache to ensure fresh data on next fetch
+      invalidateUserSettingsCache(currentUser.uid);
+      
       setSaved(true);
       toast.success('Settings saved successfully!');
       
@@ -139,6 +143,9 @@ export default function AccountSettingsPage() {
         website: profileData.website.trim(),
         location: profileData.location.trim()
       });
+      
+      // Invalidate user settings cache
+      invalidateUserSettingsCache(currentUser.uid);
       
       setProfileSaved(true);
       toast.success('Profile updated successfully!');
@@ -247,23 +254,16 @@ export default function AccountSettingsPage() {
                 disabled={profileLoading}
               />
               
-              <button
+              <LoadingButton
                 type="submit"
-                disabled={profileLoading}
-                className="btn-primary w-full flex items-center justify-center space-x-2"
+                loading={profileLoading}
+                loadingText="Saving..."
+                variant="primary"
+                className="w-full"
+                icon={profileSaved ? Check : Save}
               >
-                {profileSaved ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    <span>Saved!</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4" />
-                    <span>{profileLoading ? 'Saving...' : 'Save Profile'}</span>
-                  </>
-                )}
-              </button>
+                {profileSaved ? 'Saved!' : 'Save Profile'}
+              </LoadingButton>
             </form>
           </div>
         </div>
@@ -354,23 +354,15 @@ export default function AccountSettingsPage() {
                 </p>
               </div>
               
-              <button
+              <LoadingButton
                 type="submit"
-                disabled={loading}
-                className="btn-primary flex items-center space-x-2"
+                loading={loading}
+                loadingText="Saving..."
+                variant="primary"
+                icon={saved ? Check : Save}
               >
-                {saved ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    <span>Saved!</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4" />
-                    <span>{loading ? 'Saving...' : 'Save Settings'}</span>
-                  </>
-                )}
-              </button>
+                {saved ? 'Saved!' : 'Save Settings'}
+              </LoadingButton>
             </form>
           </div>
         </div>

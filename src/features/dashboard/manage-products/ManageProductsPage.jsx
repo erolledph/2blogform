@@ -4,7 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProducts } from '@/hooks/useProducts';
 import { settingsService } from '@/services/settingsService';
 import DataTable from '@/components/shared/DataTable';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import LoadingButton from '@/components/shared/LoadingButton';
+import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import { Edit, Trash2, Plus, ImageIcon, DollarSign, Package, ExternalLink, Eye, Upload, Download, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
@@ -12,7 +13,7 @@ import { getStatusBadgeClass } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 
 export default function ManageProductsPage({ activeBlogId }) {
-  const { products, loading, error, refetch } = useProducts(activeBlogId);
+  const { products, setProducts, loading, error, refetch } = useProducts(activeBlogId);
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, product: null });
   const [userCurrency, setUserCurrency] = useState('$');
   const [selectedItems, setSelectedItems] = useState([]);
@@ -123,7 +124,7 @@ export default function ManageProductsPage({ activeBlogId }) {
         
         if (results.successCount > 0) {
           toast.success(`Successfully imported ${results.successCount} of ${results.totalItems} product${results.successCount !== 1 ? 's' : ''}`);
-          refetch(); // Refresh the products list
+          refetch(); // Only refetch for imports since we need to get new data
         }
 
         if (results.errorCount > 0) {
@@ -254,8 +255,16 @@ export default function ManageProductsPage({ activeBlogId }) {
       return;
     }
 
+    setBulkActionLoading(true);
+    const originalProducts = [...products];
+
+    // Optimistic UI update
+    const updatedProducts = products.map(item =>
+      selectedItems.includes(item.id) ? { ...item, status: 'published' } : item
+    );
+    setProducts(updatedProducts);
+
     try {
-      setBulkActionLoading(true);
       const token = await getAuthToken();
       
       const promises = selectedItems.map(async (itemId) => {
@@ -280,10 +289,10 @@ export default function ManageProductsPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully published ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
-      refetch();
     } catch (error) {
       console.error('Bulk publish error:', error);
       toast.error('Some products failed to publish');
+      setProducts(originalProducts); // Rollback on error
     } finally {
       setBulkActionLoading(false);
     }
@@ -295,8 +304,16 @@ export default function ManageProductsPage({ activeBlogId }) {
       return;
     }
 
+    setBulkActionLoading(true);
+    const originalProducts = [...products];
+
+    // Optimistic UI update
+    const updatedProducts = products.map(item =>
+      selectedItems.includes(item.id) ? { ...item, status: 'draft' } : item
+    );
+    setProducts(updatedProducts);
+
     try {
-      setBulkActionLoading(true);
       const token = await getAuthToken();
       
       const promises = selectedItems.map(async (itemId) => {
@@ -321,10 +338,10 @@ export default function ManageProductsPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully unpublished ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
-      refetch();
     } catch (error) {
       console.error('Bulk unpublish error:', error);
       toast.error('Some products failed to unpublish');
+      setProducts(originalProducts); // Rollback on error
     } finally {
       setBulkActionLoading(false);
     }
@@ -340,8 +357,14 @@ export default function ManageProductsPage({ activeBlogId }) {
       return;
     }
 
+    setBulkActionLoading(true);
+    const originalProducts = [...products];
+
+    // Optimistic UI update
+    const updatedProducts = products.filter(item => !selectedItems.includes(item.id));
+    setProducts(updatedProducts);
+
     try {
-      setBulkActionLoading(true);
       const token = await getAuthToken();
       
       const promises = selectedItems.map(async (itemId) => {
@@ -365,18 +388,24 @@ export default function ManageProductsPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully deleted ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
-      refetch();
     } catch (error) {
       console.error('Bulk delete error:', error);
       toast.error('Some products failed to delete');
+      setProducts(originalProducts); // Rollback on error
     } finally {
       setBulkActionLoading(false);
     }
   };
 
   const handleDelete = async (product) => {
+    setDeletingItemId(product.id);
+    const originalProducts = [...products];
+
+    // Optimistic UI update
+    const updatedProducts = products.filter(item => item.id !== product.id);
+    setProducts(updatedProducts);
+
     try {
-      setDeletingItemId(product.id);
       const token = await getAuthToken();
       const response = await fetch(`/.netlify/functions/admin-product`, {
         method: 'DELETE',
@@ -389,7 +418,6 @@ export default function ManageProductsPage({ activeBlogId }) {
 
       if (response.ok) {
         toast.success('Product deleted successfully');
-        refetch(); // Refresh the list
         setDeleteModal({ isOpen: false, product: null });
       } else {
         throw new Error('Failed to delete product');
@@ -397,6 +425,7 @@ export default function ManageProductsPage({ activeBlogId }) {
     } catch (error) {
       console.error('Error deleting product:', error);
       toast.error('Failed to delete product');
+      setProducts(originalProducts); // Rollback on error
     } finally {
       setDeletingItemId(null);
     }
@@ -549,7 +578,7 @@ export default function ManageProductsPage({ activeBlogId }) {
             title="Delete"
           >
             {deletingItemId === row.id ? (
-              <LoadingSpinner size="sm" />
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive"></div>
             ) : (
               <Trash2 className="h-4 w-4" />
             )}
@@ -561,8 +590,16 @@ export default function ManageProductsPage({ activeBlogId }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" />
+      <div className="section-spacing">
+        <div className="page-header">
+          <h1 className="page-title">Manage Products</h1>
+          <p className="page-description">Loading your products...</p>
+        </div>
+        <div className="card">
+          <div className="card-content p-0">
+            <TableSkeleton rows={8} columns={6} />
+          </div>
+        </div>
       </div>
     );
   }
@@ -612,39 +649,40 @@ export default function ManageProductsPage({ activeBlogId }) {
           )}
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
-          <Link
-            to="/dashboard/create-product"
-            className="btn-primary inline-flex items-center"
-          >
+          <Link to="/dashboard/create-product" className="btn-primary inline-flex items-center">
             <Plus className="h-5 w-5 mr-3" />
             Add Product
           </Link>
-          <button
+          <LoadingButton
             onClick={handleImport}
-            disabled={importing}
-            className="btn-secondary inline-flex items-center"
+            loading={importing}
+            loadingText="Importing..."
+            variant="secondary"
+            icon={Upload}
           >
-            <Upload className="h-5 w-5 mr-3" />
-            {importing ? 'Importing...' : 'Import JSON'}
-          </button>
+            Import JSON
+          </LoadingButton>
           {selectedItems.length > 0 ? (
-            <button
+            <LoadingButton
               onClick={handleExportSelected}
-              disabled={exporting}
-              className="btn-secondary inline-flex items-center"
+              loading={exporting}
+              loadingText="Exporting..."
+              variant="secondary"
+              icon={Download}
             >
-              <Download className="h-5 w-5 mr-3" />
-              {exporting ? 'Exporting...' : `Export Selected (${selectedItems.length})`}
-            </button>
+              Export Selected ({selectedItems.length})
+            </LoadingButton>
           ) : (
-            <button
+            <LoadingButton
               onClick={handleExportAll}
-              disabled={exporting || products.length === 0}
-              className="btn-secondary inline-flex items-center"
+              loading={exporting}
+              disabled={products.length === 0}
+              loadingText="Exporting..."
+              variant="secondary"
+              icon={Download}
             >
-              <Download className="h-5 w-5 mr-3" />
-              {exporting ? 'Exporting...' : 'Export All'}
-            </button>
+              Export All
+            </LoadingButton>
           )}
         </div>
       </div>
@@ -741,10 +779,10 @@ export default function ManageProductsPage({ activeBlogId }) {
               className="btn-danger"
             >
               {deletingItemId === deleteModal.product?.id ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive-foreground mr-2"></div>
                   Deleting...
-                </>
+                </div>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />

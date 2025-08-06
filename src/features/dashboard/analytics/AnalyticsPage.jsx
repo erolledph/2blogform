@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useSiteAnalytics, useBackendUsage } from '@/hooks/useAnalytics';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import { useCachedData } from '@/hooks/useCache';
+import SkeletonLoader, { StatCardSkeleton } from '@/components/shared/SkeletonLoader';
 import {
   BarChart3,
   TrendingUp,
@@ -19,8 +20,36 @@ import {
 
 export default function AnalyticsPage({ activeBlogId }) {
   const [selectedPeriod, setSelectedPeriod] = useState(30);
-  const { analytics, loading: analyticsLoading, error: analyticsError, refetch } = useSiteAnalytics(activeBlogId, selectedPeriod);
-  const { usage, loading: usageLoading, error: usageError } = useBackendUsage(activeBlogId);
+  
+  // Use cached analytics data with 2-minute TTL
+  const {
+    data: analytics,
+    loading: analyticsLoading,
+    error: analyticsError,
+    refetch: refetchAnalytics
+  } = useCachedData(
+    `analytics-${activeBlogId}-${selectedPeriod}`,
+    () => import('@/services/analyticsService').then(({ analyticsService }) => 
+      analyticsService.getSiteAnalytics(activeBlogId, activeBlogId, selectedPeriod)
+    ),
+    [activeBlogId, selectedPeriod],
+    2 * 60 * 1000 // 2 minutes TTL
+  );
+
+  // Use cached usage data with 5-minute TTL
+  const {
+    data: usage,
+    loading: usageLoading,
+    error: usageError,
+    refetch: refetchUsage
+  } = useCachedData(
+    `usage-${activeBlogId}`,
+    () => import('@/services/analyticsService').then(({ analyticsService }) => 
+      analyticsService.getBackendUsage(activeBlogId, activeBlogId)
+    ),
+    [activeBlogId],
+    5 * 60 * 1000 // 5 minutes TTL
+  );
 
   // Chart colors
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316'];
@@ -31,6 +60,10 @@ export default function AnalyticsPage({ activeBlogId }) {
     { value: 90, label: '90 days' }
   ];
 
+  const handleRefresh = () => {
+    refetchAnalytics();
+    refetchUsage();
+  };
   // Prepare chart data
   const prepareChartData = () => {
     if (!analytics?.dailyStats) return [];
@@ -72,9 +105,6 @@ export default function AnalyticsPage({ activeBlogId }) {
   const referrerData = prepareReferrerData();
   const interactionData = prepareInteractionData();
 
-  if (analyticsLoading || usageLoading) {
-    return <LoadingSpinner size="lg" className="h-64" />;
-  }
 
   if (analyticsError || usageError) {
     return (
@@ -102,7 +132,7 @@ export default function AnalyticsPage({ activeBlogId }) {
               </option>
             ))}
           </select>
-          <button onClick={refetch} className="btn-secondary">
+          <button onClick={handleRefresh} className="btn-secondary">
             Refresh
           </button>
         </div>
@@ -136,59 +166,67 @@ export default function AnalyticsPage({ activeBlogId }) {
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="card border-blue-200 bg-blue-50">
-          <div className="card-content p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-600 mb-2">Total Views</p>
-                <p className="text-3xl font-bold text-blue-900">{analytics?.totalViews || 0}</p>
-                <p className="text-xs text-blue-600 mt-1">Last {selectedPeriod} days</p>
+        {analyticsLoading ? (
+          Array.from({ length: 4 }).map((_, index) => (
+            <StatCardSkeleton key={index} />
+          ))
+        ) : (
+          <>
+            <div className="card border-blue-200 bg-blue-50">
+              <div className="card-content p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-blue-600 mb-2">Total Views</p>
+                    <p className="text-3xl font-bold text-blue-900">{analytics?.totalViews || 0}</p>
+                    <p className="text-xs text-blue-600 mt-1">Last {selectedPeriod} days</p>
+                  </div>
+                  <Eye className="h-8 w-8 text-blue-600" />
+                </div>
               </div>
-              <Eye className="h-8 w-8 text-blue-600" />
             </div>
-          </div>
-        </div>
 
-        <div className="card border-green-200 bg-green-50">
-          <div className="card-content p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-600 mb-2">Interactions</p>
-                <p className="text-3xl font-bold text-green-900">{analytics?.totalInteractions || 0}</p>
-                <p className="text-xs text-green-600 mt-1">Clicks, shares, etc.</p>
+            <div className="card border-green-200 bg-green-50">
+              <div className="card-content p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-green-600 mb-2">Interactions</p>
+                    <p className="text-3xl font-bold text-green-900">{analytics?.totalInteractions || 0}</p>
+                    <p className="text-xs text-green-600 mt-1">Clicks, shares, etc.</p>
+                  </div>
+                  <MousePointer className="h-8 w-8 text-green-600" />
+                </div>
               </div>
-              <MousePointer className="h-8 w-8 text-green-600" />
             </div>
-          </div>
-        </div>
 
-        <div className="card border-purple-200 bg-purple-50">
-          <div className="card-content p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-purple-600 mb-2">Unique Sessions</p>
-                <p className="text-3xl font-bold text-purple-900">{analytics?.uniqueSessions || 0}</p>
-                <p className="text-xs text-purple-600 mt-1">Estimated unique visitors</p>
+            <div className="card border-purple-200 bg-purple-50">
+              <div className="card-content p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-purple-600 mb-2">Unique Sessions</p>
+                    <p className="text-3xl font-bold text-purple-900">{analytics?.uniqueSessions || 0}</p>
+                    <p className="text-xs text-purple-600 mt-1">Estimated unique visitors</p>
+                  </div>
+                  <Users className="h-8 w-8 text-purple-600" />
+                </div>
               </div>
-              <Users className="h-8 w-8 text-purple-600" />
             </div>
-          </div>
-        </div>
 
-        <div className="card border-orange-200 bg-orange-50">
-          <div className="card-content p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-orange-600 mb-2">Avg. Daily Views</p>
-                <p className="text-3xl font-bold text-orange-900">
-                  {Math.round((analytics?.totalViews || 0) / selectedPeriod)}
-                </p>
-                <p className="text-xs text-orange-600 mt-1">Per day average</p>
+            <div className="card border-orange-200 bg-orange-50">
+              <div className="card-content p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-orange-600 mb-2">Avg. Daily Views</p>
+                    <p className="text-3xl font-bold text-orange-900">
+                      {Math.round((analytics?.totalViews || 0) / selectedPeriod)}
+                    </p>
+                    <p className="text-xs text-orange-600 mt-1">Per day average</p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-orange-600" />
+                </div>
               </div>
-              <TrendingUp className="h-8 w-8 text-orange-600" />
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* Top Content */}
@@ -198,7 +236,22 @@ export default function AnalyticsPage({ activeBlogId }) {
           <p className="card-description">Most viewed articles based on Firebase tracking</p>
         </div>
         <div className="card-content">
-          {analytics?.topContent?.length > 0 ? (
+          {analyticsLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <SkeletonLoader type="avatar" className="w-8 h-8 rounded-full" />
+                    <div className="space-y-2">
+                      <SkeletonLoader width="3/4" />
+                      <SkeletonLoader width="1/2" height="sm" />
+                    </div>
+                  </div>
+                  <SkeletonLoader width="1/4" />
+                </div>
+              ))}
+            </div>
+          ) : analytics?.topContent?.length > 0 ? (
             <div className="space-y-4">
               {analytics.topContent.slice(0, 5).map((content, index) => (
                 <div key={content.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
@@ -237,7 +290,11 @@ export default function AnalyticsPage({ activeBlogId }) {
             <p className="card-description">Views and interactions over the last {selectedPeriod} days</p>
           </div>
           <div className="card-content">
-            {chartData.length > 0 ? (
+            {analyticsLoading ? (
+              <div className="h-80 flex items-center justify-center">
+                <SkeletonLoader type="card" className="w-full h-full" />
+              </div>
+            ) : chartData.length > 0 ? (
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData}>
@@ -294,7 +351,11 @@ export default function AnalyticsPage({ activeBlogId }) {
             <p className="card-description">Distribution of visitor sources</p>
           </div>
           <div className="card-content">
-            {referrerData.length > 0 ? (
+            {analyticsLoading ? (
+              <div className="h-80 flex items-center justify-center">
+                <SkeletonLoader type="card" className="w-full h-full" />
+              </div>
+            ) : referrerData.length > 0 ? (
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>

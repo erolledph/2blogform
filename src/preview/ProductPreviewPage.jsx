@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { ArrowLeft, Eye, Package, Calendar, Star, ShoppingCart, Truck, Shield, RotateCcw, Heart, Share2 } from 'lucide-react';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import SkeletonLoader from '@/components/shared/SkeletonLoader';
+import { GalleryImage } from '@/components/shared/ProgressiveImage';
 
 export default function ProductPreviewPage() {
   const { uid, blogId, slug } = useParams();
@@ -121,7 +122,27 @@ export default function ProductPreviewPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <LoadingSpinner size="lg" />
+        <div className="max-w-7xl w-full mx-auto px-4 space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Image skeleton */}
+            <div className="space-y-4">
+              <SkeletonLoader type="image" className="w-full aspect-square" />
+              <div className="grid grid-cols-4 gap-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <SkeletonLoader key={i} type="image" className="aspect-square" />
+                ))}
+              </div>
+            </div>
+            
+            {/* Content skeleton */}
+            <div className="space-y-6">
+              <SkeletonLoader width="3/4" height="xl" />
+              <SkeletonLoader width="1/2" height="lg" />
+              <SkeletonLoader lines={4} />
+              <SkeletonLoader type="button" className="w-full h-12" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -189,13 +210,11 @@ export default function ProductPreviewPage() {
             <div className="space-y-6 order-1 lg:order-1">
               {/* Main Image */}
               {productImages.length > 0 ? (
-                <div className="aspect-square w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 shadow-lg">
-                  <img
-                    src={productImages[selectedImageIndex]}
-                    alt={product.name}
-                    className="w-full h-full object-cover transition-opacity duration-300 hover:scale-105 transition-transform duration-500"
-                  />
-                </div>
+                <GalleryImage
+                  src={productImages[selectedImageIndex]}
+                  alt={product.name}
+                  className="aspect-square w-full border border-gray-200 bg-gray-50 shadow-lg hover:scale-105 transition-transform duration-500"
+                />
               ) : (
                 <div className="aspect-square w-full bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl border border-gray-200 flex items-center justify-center shadow-lg">
                   <Package className="h-24 w-24 text-gray-400" />
@@ -213,22 +232,17 @@ export default function ProductPreviewPage() {
                     'grid-cols-5'
                   }`}>
                     {productImages.map((imageUrl, index) => (
-                      <button
+                      <GalleryImage
                         key={index}
-                        onClick={() => setSelectedImageIndex(index)}
-                        className={`aspect-square overflow-hidden rounded-xl border-2 transition-all duration-200 shadow-md hover:shadow-lg ${
+                        src={imageUrl}
+                        alt={`${product.name} ${index + 1}`}
+                        className={`aspect-square rounded-xl border-2 transition-all duration-200 shadow-md hover:shadow-lg ${
                           selectedImageIndex === index 
                             ? 'border-blue-500 ring-4 ring-blue-200 scale-105' 
                             : 'border-gray-200 hover:border-gray-300 hover:scale-102'
                         }`}
-                      >
-                        <img
-                          src={imageUrl}
-                          alt={`${product.name} ${index + 1}`}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </button>
+                        onClick={() => setSelectedImageIndex(index)}
+                      />
                     ))}
                   </div>
                   

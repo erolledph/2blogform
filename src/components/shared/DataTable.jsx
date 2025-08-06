@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useEffect } from 'react';
 import { ChevronUp, ChevronDown, Search, Filter, Check, Grid, List, Calendar, Tag, X } from 'lucide-react';
+import SkeletonLoader, { TableSkeleton } from './SkeletonLoader';
 
 export default function DataTable({
   data = [],
@@ -16,7 +17,8 @@ export default function DataTable({
   selectedItems = [],
   onSelectAll = null,
   onSelectRow = null,
-  onFiltersChange = null
+  onFiltersChange = null,
+  loading = false
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -261,6 +263,10 @@ export default function DataTable({
 
   // Render table view
   const renderTableView = () => {
+    if (loading) {
+      return <TableSkeleton rows={pageSize} columns={columns.length} />;
+    }
+
     return (
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-border">
@@ -490,7 +496,7 @@ export default function DataTable({
       {isMobile && viewMode === 'cards' ? renderCardsView() : renderTableView()}
 
       {/* Pagination */}
-      {pagination && totalPages > 1 && (
+      {pagination && totalPages > 1 && !loading && (
         <div className="px-4 sm:px-6 py-4 border-t border-border">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="text-sm text-muted-foreground">
@@ -529,7 +535,7 @@ export default function DataTable({
         </div>
       )}
 
-      {paginatedData.length === 0 && (
+      {paginatedData.length === 0 && !loading && (
         <div className="text-center py-8 text-muted-foreground">
           <p className="text-base">No data available</p>
           {searchTerm && (

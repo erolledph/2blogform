@@ -253,7 +253,8 @@ export default function CreateProductPage({ activeBlogId }) {
 
       if (response.ok) {
         toast.success(isEditing ? 'Product updated successfully' : 'Product created successfully');
-        navigate('/dashboard/manage-products');
+        // Navigate immediately without waiting
+        setTimeout(() => navigate('/dashboard/manage-products'), 100);
       } else {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error || errorData.message || `Server error: ${response.status} ${response.statusText}`;

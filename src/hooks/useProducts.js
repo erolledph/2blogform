@@ -1,12 +1,36 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { productsService } from '@/services/productsService';
+import { useCachedData } from '@/hooks/useCache';
 
 export function useProducts(blogId) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { currentUser } = useAuth();
+
+  // Use cached data with 3-minute TTL for products
+  const {
+    data: cachedProducts,
+    loading: cacheLoading,
+    error: cacheError,
+    refetch: refetchCached,
+    invalidate
+  } = useCachedData(
+    `products-${currentUser?.uid}-${blogId}`,
+    () => productsService.fetchAllProducts(currentUser?.uid, blogId),
+    [currentUser?.uid, blogId],
+    3 * 60 * 1000 // 3 minutes TTL
+  );
+
+  // Update local state when cached data changes
+  useEffect(() => {
+    if (cachedProducts) {
+      setProducts(cachedProducts);
+    }
+    setLoading(cacheLoading);
+    setError(cacheError);
+  }, [cachedProducts, cacheLoading, cacheError]);
 
   const fetchProducts = async () => {
     if (!currentUser?.uid || !blogId) {
@@ -20,6 +44,8 @@ export function useProducts(blogId) {
       setError(null);
       const data = await productsService.fetchAllProducts(currentUser.uid, blogId);
       setProducts(data);
+      // Update cache with fresh data
+      invalidate();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -27,15 +53,13 @@ export function useProducts(blogId) {
     }
   };
 
-  useEffect(() => {
-    fetchProducts();
-  }, [currentUser?.uid, blogId]);
-
   return {
     products,
+    setProducts,
     loading,
     error,
-    refetch: fetchProducts
+    refetch: refetchCached,
+    invalidateCache: invalidate
   };
 }
 

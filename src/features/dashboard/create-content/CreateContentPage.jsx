@@ -223,7 +223,8 @@ export default function CreateContentPage({ activeBlogId }) {
 
       if (response.ok) {
         toast.success(isEditing ? 'Content updated successfully' : 'Content created successfully');
-        navigate('/dashboard/manage');
+        // Navigate immediately without waiting
+        setTimeout(() => navigate('/dashboard/manage'), 100);
       } else {
         const errorData = await response.json().catch(() => ({}));
         const errorMessage = errorData.error || errorData.message || `Server error: ${response.status} ${response.statusText}`;

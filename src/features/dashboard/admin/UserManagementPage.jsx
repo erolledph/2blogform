@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import DataTable from '@/components/shared/DataTable';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import LoadingButton from '@/components/shared/LoadingButton';
+import { TableSkeleton, StatCardSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import InputField from '@/components/shared/InputField';
 import { 
@@ -105,6 +106,13 @@ export default function UserManagementPage() {
   };
 
   const handleUpdateUser = async (userId, updates) => {
+    const originalUsers = [...users];
+    
+    // Optimistic UI update
+    const updatedUsers = users.map(user => 
+      user.uid === userId ? { ...user, ...updates } : user
+    );
+    setUsers(updatedUsers);
     try {
       setUpdating(true);
       
@@ -136,16 +144,21 @@ export default function UserManagementPage() {
 
       toast.success('User updated successfully');
       setEditModal({ isOpen: false, user: null });
-      fetchUsers(); // Refresh the list
     } catch (error) {
       console.error('Error updating user:', error);
       toast.error(error.message || 'Failed to update user');
+      setUsers(originalUsers); // Rollback on error
     } finally {
       setUpdating(false);
     }
   };
 
   const handleDeleteUser = async (user) => {
+    const originalUsers = [...users];
+    
+    // Optimistic UI update - remove user immediately
+    const updatedUsers = users.filter(u => u.uid !== user.uid);
+    setUsers(updatedUsers);
     try {
       setDeleting(true);
       
@@ -176,10 +189,10 @@ export default function UserManagementPage() {
 
       toast.success('User deleted successfully');
       setDeleteModal({ isOpen: false, user: null });
-      fetchUsers(); // Refresh the list
     } catch (error) {
       console.error('Error deleting user:', error);
       toast.error(error.message || 'Failed to delete user');
+      setUsers(originalUsers); // Rollback on error
     } finally {
       setDeleting(false);
     }
@@ -341,9 +354,21 @@ export default function UserManagementPage() {
       <div className="section-spacing">
         <div className="page-header">
           <h1 className="page-title">User Management</h1>
+          <p className="page-description">Loading user data...</p>
         </div>
-        <div className="flex items-center justify-center h-64">
-          <LoadingSpinner size="lg" />
+        
+        {/* Stats Overview Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <StatCardSkeleton key={index} />
+          ))}
+        </div>
+        
+        {/* Table Skeleton */}
+        <div className="card">
+          <div className="card-content p-0">
+            <TableSkeleton rows={10} columns={7} />
+          </div>
         </div>
       </div>
     );
@@ -528,10 +553,10 @@ export default function UserManagementPage() {
                 className="btn-danger"
               >
                 {deleting ? (
-                  <>
-                    <LoadingSpinner size="sm" className="mr-2" />
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive-foreground mr-2"></div>
                     Deleting...
-                  </>
+                  </div>
                 ) : (
                   <>
                     <Trash2 className="h-4 w-4 mr-2" />
@@ -791,21 +816,19 @@ function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
 
       {/* Action Buttons */}
       <div className="flex justify-end space-x-4 pt-4 border-t border-border">
-        <button
-          type="button"
+        <LoadingButton
           onClick={onCancel}
-          disabled={updating}
-          className="btn-secondary"
+          variant="secondary"
         >
           Cancel
-        </button>
-        <button
-          type="submit"
-          disabled={updating}
-          className="btn-primary"
+        </LoadingButton>
+        <LoadingButton
+          loading={updating}
+          loadingText="Updating..."
+          variant="primary"
         >
-          {updating ? 'Updating...' : 'Save Changes'}
-        </button>
+          Save Changes
+        </LoadingButton>
       </div>
     </form>
   );

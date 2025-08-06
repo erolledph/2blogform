@@ -3,7 +3,8 @@ import { ref, listAll, getMetadata, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import Modal from './Modal';
-import LoadingSpinner from './LoadingSpinner';
+import SkeletonLoader from './SkeletonLoader';
+import { GalleryImage } from './ProgressiveImage';
 import { 
   Search, 
   Grid, 
@@ -312,8 +313,15 @@ export default function ImageGalleryModal({
         {/* Content Area */}
         <div className="max-h-96 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <LoadingSpinner size="md" />
+            <div className="space-y-6">
+              <div>
+                <div className="w-32 h-4 bg-muted animate-pulse rounded mb-3"></div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <SkeletonLoader key={index} type="image" className="aspect-square" />
+                  ))}
+                </div>
+              </div>
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="text-center py-8">
@@ -374,14 +382,11 @@ export default function ImageGalleryModal({
                           }`}
                           onClick={() => handleImageSelect(image)}
                         >
-                          <div className="aspect-square">
-                            <img
-                              src={image.downloadURL}
-                              alt={image.name}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          </div>
+                          <GalleryImage
+                            src={image.downloadURL}
+                            alt={image.name}
+                            className="aspect-square"
+                          />
                           
                           {/* Selection indicator */}
                           {multiSelect && (
@@ -456,14 +461,11 @@ export default function ImageGalleryModal({
                           }`}
                           onClick={() => handleImageSelect(image)}
                         >
-                          <div className="w-12 h-12 flex-shrink-0">
-                            <img
-                              src={image.downloadURL}
-                              alt={image.name}
-                              className="w-12 h-12 object-cover rounded border border-border"
-                              loading="lazy"
-                            />
-                          </div>
+                          <GalleryImage
+                            src={image.downloadURL}
+                            alt={image.name}
+                            className="w-12 h-12 flex-shrink-0 rounded border border-border"
+                          />
                           
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground truncate">{image.name}</p>

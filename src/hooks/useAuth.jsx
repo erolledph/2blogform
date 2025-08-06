@@ -7,6 +7,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '@/firebase';
 import { settingsService } from '@/services/settingsService';
+import { useCache } from './useCache';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -20,12 +21,15 @@ export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastNotificationCheck, setLastNotificationCheck] = useState(null);
+  const cache = useCache();
 
   function login(email, password) {
     return signInWithEmailAndPassword(auth, email, password);
   }
 
   function logout() {
+    // Clear cache on logout
+    cache.clear();
     return signOut(auth);
   }
 
@@ -117,6 +121,8 @@ export function AuthProvider({ children }) {
         setCurrentUser(null);
         setUserProfile(null);
         setLastNotificationCheck(null);
+        // Clear cache when user logs out
+        cache.clear();
       }
       setLoading(false);
     });
@@ -124,12 +130,37 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
+  // Function to invalidate user settings cache (call when settings are updated)
+  const invalidateUserSettingsCache = (uid) => {
+    const cacheKey = `user-settings-${uid}`;
+    cache.delete(cacheKey);
+  };
+
+  // Cached user settings fetch
+  const fetchUserSettingsWithCache = async (uid) => {
+    const cacheKey = `user-settings-${uid}`;
+    
+    // Check cache first
+    if (cache.has(cacheKey)) {
+      return cache.get(cacheKey);
+    }
+    
+    // Fetch fresh data
+    const userSettings = await settingsService.getUserSettings(uid);
+    
+    // Cache for 2 minutes (settings don't change frequently)
+    cache.set(cacheKey, userSettings, 2 * 60 * 1000);
+    
+    return userSettings;
+  };
+
   const value = {
     currentUser: currentUser ? { ...currentUser, ...userProfile } : null,
     login,
     logout,
-    getAuthToken
-  };
+    getAuthToken,
+    invalidateUserSettingsCache
+  }
 
   return (
     <AuthContext.Provider value={value}>

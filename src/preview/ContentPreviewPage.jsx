@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { Calendar, User, Tag, ArrowLeft, Eye, Clock, FileText, Share2, Bookmark } from 'lucide-react';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import SkeletonLoader from '@/components/shared/SkeletonLoader';
+import { FeaturedImage, GalleryImage } from '@/components/shared/ProgressiveImage';
 
 export default function ContentPreviewPage() {
   const { uid, blogId, slug } = useParams();
@@ -69,7 +70,19 @@ export default function ContentPreviewPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <LoadingSpinner size="lg" />
+        <div className="max-w-4xl w-full mx-auto px-4 space-y-8">
+          {/* Header skeleton */}
+          <div className="space-y-4">
+            <SkeletonLoader width="3/4" height="xl" />
+            <SkeletonLoader width="1/2" />
+          </div>
+          
+          {/* Content skeleton */}
+          <div className="space-y-6">
+            <SkeletonLoader type="image" className="w-full h-64" />
+            <SkeletonLoader lines={8} />
+          </div>
+        </div>
       </div>
     );
   }
@@ -212,14 +225,11 @@ export default function ContentPreviewPage() {
           {/* Featured Image */}
           {content?.featuredImageUrl && (
             <div className="mb-12 sm:mb-16 lg:mb-20">
-              <div className="relative overflow-hidden rounded-2xl shadow-2xl">
-                <img
-                  src={content.featuredImageUrl}
-                  alt={content.title}
-                  className="w-full h-auto max-h-[70vh] object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-              </div>
+              <FeaturedImage
+                src={content.featuredImageUrl}
+                alt={content.title}
+                className="max-h-[70vh] shadow-2xl"
+              />
             </div>
           )}
 
@@ -312,14 +322,11 @@ export default function ContentPreviewPage() {
                   className="group block bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
                 >
                   {item.featuredImageUrl ? (
-                    <div className="aspect-[4/3] overflow-hidden">
-                      <img
-                        src={item.featuredImageUrl}
-                        alt={item.title}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        loading="lazy"
-                      />
-                    </div>
+                    <GalleryImage
+                      src={item.featuredImageUrl}
+                      alt={item.title}
+                      className="aspect-[4/3] group-hover:scale-110 transition-transform duration-500"
+                    />
                   ) : (
                     <div className="aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                       <FileText className="h-16 w-16 text-gray-400" />

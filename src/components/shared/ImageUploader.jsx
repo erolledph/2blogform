@@ -304,8 +304,8 @@ export default function ImageUploader({
       // Reset form
       resetForm();
 
-      // Refresh storage usage
-      await checkStorageUsage();
+      // Refresh storage usage in background without blocking UI
+      checkStorageUsage();
 
       // Callback for parent component
       if (onUploadSuccess) {

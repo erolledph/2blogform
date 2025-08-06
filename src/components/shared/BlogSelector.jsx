@@ -42,7 +42,7 @@ export default function BlogSelector({ activeBlogId, setActiveBlogId }) {
   const handleBlogSelect = (blogId) => {
     setActiveBlogId(blogId);
     setDropdownOpen(false);
-    toast.success('Blog switched successfully');
+    // Remove toast for blog switching to reduce UI noise
   };
 
   const getActiveBlog = () => {

@@ -4,7 +4,8 @@ import { storage } from '@/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { storageService } from '@/services/storageService';
 import DataTable from '@/components/shared/DataTable';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import LoadingButton from '@/components/shared/LoadingButton';
+import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import InputField from '@/components/shared/InputField';
@@ -221,9 +222,26 @@ export default function FileStoragePage() {
       return;
     }
 
+    const originalItems = [...items];
+    const folderPath = `${currentPath}/${newFolderName.trim()}`;
+    
+    // Optimistic UI update - add folder immediately
+    const newFolder = {
+      id: folderPath,
+      name: newFolderName.trim(),
+      fullPath: folderPath,
+      type: 'folder',
+      size: 0,
+      timeCreated: null
+    };
+    const updatedItems = [...items, newFolder].sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    setItems(updatedItems);
     try {
-      setLoading(true);
-      const folderPath = `${currentPath}/${newFolderName.trim()}`;
       const token = await getAuthToken();
       
       await storageService.createFolder(folderPath, token);
@@ -240,12 +258,12 @@ export default function FileStoragePage() {
       }
       
       setNewFolderName('');
-      fetchItems();
     } catch (error) {
       console.error('Error creating folder:', error);
       toast.error(error.message || 'Failed to create folder');
+      setItems(originalItems); // Rollback on error
     } finally {
-      setLoading(false);
+      // No need to set loading false since we're not using page-level loading
     }
   };
 
@@ -260,9 +278,17 @@ export default function FileStoragePage() {
       return;
     }
 
+    const originalItems = [...items];
+    const item = renameModal.item;
+    
+    // Optimistic UI update
+    const updatedItems = items.map(currentItem => 
+      currentItem.id === item.id 
+        ? { ...currentItem, name: newItemName.trim() }
+        : currentItem
+    );
+    setItems(updatedItems);
     try {
-      setLoading(true);
-      const item = renameModal.item;
       const token = await getAuthToken();
 
       if (item.type === 'file') {
@@ -275,12 +301,12 @@ export default function FileStoragePage() {
       toast.success('Item renamed successfully');
       setRenameModal({ isOpen: false, item: null });
       setNewItemName('');
-      fetchItems();
     } catch (error) {
       console.error('Error renaming item:', error);
       toast.error(error.message || 'Failed to rename item');
+      setItems(originalItems); // Rollback on error
     } finally {
-      setLoading(false);
+      // No need to set loading false since we're not using page-level loading
     }
   };
 
@@ -330,9 +356,13 @@ export default function FileStoragePage() {
       return;
     }
 
+    const originalItems = [...items];
+    const item = moveModal.item;
+    
+    // Optimistic UI update - remove item from current view
+    const updatedItems = items.filter(currentItem => currentItem.id !== item.id);
+    setItems(updatedItems);
     try {
-      setLoading(true);
-      const item = moveModal.item;
       const token = await getAuthToken();
 
       if (item.type === 'file') {
@@ -346,12 +376,12 @@ export default function FileStoragePage() {
       toast.success('Item moved successfully');
       setMoveModal({ isOpen: false, item: null });
       setSelectedDestination('');
-      fetchItems();
     } catch (error) {
       console.error('Error moving item:', error);
       toast.error(error.message || 'Failed to move item');
+      setItems(originalItems); // Rollback on error
     } finally {
-      setLoading(false);
+      // No need to set loading false since we're not using page-level loading
     }
   };
   const navigateToFolder = (folderPath) => {
@@ -398,6 +428,11 @@ export default function FileStoragePage() {
   };
 
   const handleDelete = async (item) => {
+    const originalItems = [...items];
+    
+    // Optimistic UI update - remove item immediately
+    const updatedItems = items.filter(currentItem => currentItem.id !== item.id);
+    setItems(updatedItems);
     try {
       if (item.type === 'folder') {
         // Use server-side folder deletion
@@ -412,10 +447,10 @@ export default function FileStoragePage() {
       }
       
       setDeleteModal({ isOpen: false, item: null });
-      fetchItems(); // Refresh the current view
     } catch (error) {
       console.error('Error deleting item:', error);
       toast.error(`Failed to delete ${item.type}`);
+      setItems(originalItems); // Rollback on error
     }
   };
 
@@ -424,8 +459,27 @@ export default function FileStoragePage() {
   };
 
   const handleUploadSuccess = (uploadResult) => {
+    // Optimistic UI update - add new file to items
+    const newFile = {
+      id: uploadResult.fullPath,
+      name: uploadResult.fileName,
+      fullPath: uploadResult.fullPath,
+      type: 'file',
+      size: uploadResult.size,
+      contentType: 'image/' + uploadResult.fileName.split('.').pop(),
+      timeCreated: new Date(),
+      downloadURL: uploadResult.downloadURL
+    };
+    
+    const updatedItems = [...items, newFile].sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    setItems(updatedItems);
+    
     setUploadModal({ isOpen: false });
-    fetchItems(); // Refresh the current view
   };
 
   const handleUploadError = (error) => {
@@ -663,7 +717,42 @@ export default function FileStoragePage() {
   ];
 
   if (loading) {
-    return <LoadingSpinner size="lg" className="h-64" />;
+    return (
+      <div className="space-y-10">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div>
+            <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">File Storage</h1>
+          </div>
+          <div className="flex items-center space-x-4">
+            <div className="w-20 h-10 bg-muted animate-pulse rounded"></div>
+            <div className="w-24 h-10 bg-muted animate-pulse rounded"></div>
+            <div className="w-32 h-10 bg-muted animate-pulse rounded"></div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="card">
+              <div className="card-content p-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <div className="w-20 h-4 bg-muted animate-pulse rounded"></div>
+                    <div className="w-16 h-8 bg-muted animate-pulse rounded"></div>
+                  </div>
+                  <div className="w-8 h-8 bg-muted animate-pulse rounded"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <div className="card">
+          <div className="card-content p-0">
+            <TableSkeleton rows={10} columns={6} />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -674,36 +763,37 @@ export default function FileStoragePage() {
         </div>
         <div className="flex items-center space-x-4">
           {currentPath && currentPath !== userBasePath && (
-            <button
+            <LoadingButton
               onClick={navigateBack}
-              className="btn-secondary inline-flex items-center"
+              variant="secondary"
+              icon={ArrowLeft}
             >
-              <ArrowLeft className="h-5 w-5 mr-2" />
               Back
-            </button>
+            </LoadingButton>
           )}
-          <button
+          <LoadingButton
             onClick={() => setCreateFolderModal({ isOpen: true })}
-            className="btn-secondary inline-flex items-center"
+            variant="secondary"
+            icon={Plus}
           >
-            <Plus className="h-5 w-5 mr-2" />
             New Folder
-          </button>
-          <button
+          </LoadingButton>
+          <LoadingButton
             onClick={() => setUploadModal({ isOpen: true })}
-            className="btn-primary inline-flex items-center"
+            variant="primary"
+            icon={Upload}
           >
-            <Upload className="h-5 w-5 mr-3" />
             Upload Image
-          </button>
-          <button
+          </LoadingButton>
+          <LoadingButton
             onClick={fetchItems}
-            disabled={loading}
-            className="btn-secondary inline-flex items-center"
+            loading={loading}
+            loadingText="Refreshing..."
+            variant="secondary"
+            icon={RefreshCw}
           >
-            <RefreshCw className={`h-5 w-5 mr-3 ${loading ? 'animate-spin' : ''}`} />
             Refresh
-          </button>
+          </LoadingButton>
         </div>
       </div>
 

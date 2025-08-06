@@ -4,7 +4,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useContent } from '@/hooks/useContent';
 import { analyticsService } from '@/services/analyticsService';
 import DataTable from '@/components/shared/DataTable';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import LoadingButton from '@/components/shared/LoadingButton';
+import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import { Edit, Trash2, Plus, ImageIcon, BarChart3, AlertTriangle, Eye, Upload, Download, FileText, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
@@ -12,7 +13,7 @@ import { getStatusBadgeClass } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 
 export default function ManageContentPage({ activeBlogId }) {
-  const { content, loading, error, refetch } = useContent(activeBlogId);
+  const { content, setContent, loading, error, refetch } = useContent(activeBlogId);
   const { getAuthToken, currentUser } = useAuth();
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, content: null });
   const [analyticsModal, setAnalyticsModal] = useState({ isOpen: false, content: null });
@@ -44,8 +45,16 @@ export default function ManageContentPage({ activeBlogId }) {
       return;
     }
 
+    setBulkActionLoading(true);
+    const originalContent = [...content];
+
+    // Optimistic UI update
+    const updatedContent = content.map(item =>
+      selectedItems.includes(item.id) ? { ...item, status: 'published' } : item
+    );
+    setContent(updatedContent);
+
     try {
-      setBulkActionLoading(true);
       const token = await getAuthToken();
       
       const promises = selectedItems.map(async (itemId) => {
@@ -70,10 +79,10 @@ export default function ManageContentPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully published ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
-      refetch();
     } catch (error) {
       console.error('Bulk publish error:', error);
       toast.error('Some items failed to publish');
+      setContent(originalContent); // Rollback on error
     } finally {
       setBulkActionLoading(false);
     }
@@ -85,8 +94,16 @@ export default function ManageContentPage({ activeBlogId }) {
       return;
     }
 
+    setBulkActionLoading(true);
+    const originalContent = [...content];
+
+    // Optimistic UI update
+    const updatedContent = content.map(item =>
+      selectedItems.includes(item.id) ? { ...item, status: 'draft' } : item
+    );
+    setContent(updatedContent);
+
     try {
-      setBulkActionLoading(true);
       const token = await getAuthToken();
       
       const promises = selectedItems.map(async (itemId) => {
@@ -111,10 +128,10 @@ export default function ManageContentPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully unpublished ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
-      refetch();
     } catch (error) {
       console.error('Bulk unpublish error:', error);
       toast.error('Some items failed to unpublish');
+      setContent(originalContent); // Rollback on error
     } finally {
       setBulkActionLoading(false);
     }
@@ -130,8 +147,14 @@ export default function ManageContentPage({ activeBlogId }) {
       return;
     }
 
+    setBulkActionLoading(true);
+    const originalContent = [...content];
+
+    // Optimistic UI update
+    const updatedContent = content.filter(item => !selectedItems.includes(item.id));
+    setContent(updatedContent);
+
     try {
-      setBulkActionLoading(true);
       const token = await getAuthToken();
       
       const promises = selectedItems.map(async (itemId) => {
@@ -155,10 +178,10 @@ export default function ManageContentPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
-      refetch();
     } catch (error) {
       console.error('Bulk delete error:', error);
       toast.error('Some items failed to delete');
+      setContent(originalContent); // Rollback on error
     } finally {
       setBulkActionLoading(false);
     }
@@ -233,7 +256,7 @@ export default function ManageContentPage({ activeBlogId }) {
         
         if (results.successCount > 0) {
           toast.success(`Successfully imported ${results.successCount} of ${results.totalItems} content item${results.successCount !== 1 ? 's' : ''}`);
-          refetch(); // Refresh the content list
+          refetch(); // Only refetch for imports since we need to get new data
         }
 
         if (results.errorCount > 0) {
@@ -360,8 +383,14 @@ export default function ManageContentPage({ activeBlogId }) {
   };
 
   const handleDelete = async (contentItem) => {
+    setDeletingItemId(contentItem.id);
+    const originalContent = [...content];
+
+    // Optimistic UI update
+    const updatedContent = content.filter(item => item.id !== contentItem.id);
+    setContent(updatedContent);
+
     try {
-      setDeletingItemId(contentItem.id);
       const token = await getAuthToken();
       const response = await fetch(`/.netlify/functions/admin-content`, {
         method: 'DELETE',
@@ -374,7 +403,6 @@ export default function ManageContentPage({ activeBlogId }) {
 
       if (response.ok) {
         toast.success('Content deleted successfully');
-        refetch(); // Refresh the list
         setDeleteModal({ isOpen: false, content: null });
       } else {
         throw new Error('Failed to delete content');
@@ -382,6 +410,7 @@ export default function ManageContentPage({ activeBlogId }) {
     } catch (error) {
       console.error('Error deleting content:', error);
       toast.error('Failed to delete content');
+      setContent(originalContent); // Rollback on error
     } finally {
       setDeletingItemId(null);
     }
@@ -504,7 +533,7 @@ export default function ManageContentPage({ activeBlogId }) {
             title="Delete"
           >
             {deletingItemId === row.id ? (
-              <LoadingSpinner size="sm" />
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive"></div>
             ) : (
               <Trash2 className="h-4 w-4" />
             )}
@@ -516,8 +545,16 @@ export default function ManageContentPage({ activeBlogId }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" />
+      <div className="section-spacing">
+        <div className="page-header">
+          <h1 className="page-title">Manage Content</h1>
+          <p className="page-description">Loading your content...</p>
+        </div>
+        <div className="card">
+          <div className="card-content p-0">
+            <TableSkeleton rows={8} columns={7} />
+          </div>
+        </div>
       </div>
     );
   }
@@ -567,39 +604,40 @@ export default function ManageContentPage({ activeBlogId }) {
           )}
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
-          <Link
-            to="/dashboard/create"
-            className="btn-primary inline-flex items-center"
-          >
+          <Link to="/dashboard/create" className="btn-primary inline-flex items-center">
             <Plus className="h-5 w-5 mr-3" />
             Create New
           </Link>
-          <button
+          <LoadingButton
             onClick={handleImport}
-            disabled={importing}
-            className="btn-secondary inline-flex items-center"
+            loading={importing}
+            loadingText="Importing..."
+            variant="secondary"
+            icon={Upload}
           >
-            <Upload className="h-5 w-5 mr-3" />
-            {importing ? 'Importing...' : 'Import JSON'}
-          </button>
+            Import JSON
+          </LoadingButton>
           {selectedItems.length > 0 ? (
-            <button
+            <LoadingButton
               onClick={handleExportSelected}
-              disabled={exporting}
-              className="btn-secondary inline-flex items-center"
+              loading={exporting}
+              loadingText="Exporting..."
+              variant="secondary"
+              icon={Download}
             >
-              <Download className="h-5 w-5 mr-3" />
-              {exporting ? 'Exporting...' : `Export Selected (${selectedItems.length})`}
-            </button>
+              Export Selected ({selectedItems.length})
+            </LoadingButton>
           ) : (
-            <button
+            <LoadingButton
               onClick={handleExportAll}
-              disabled={exporting || content.length === 0}
-              className="btn-secondary inline-flex items-center"
+              loading={exporting}
+              disabled={content.length === 0}
+              loadingText="Exporting..."
+              variant="secondary"
+              icon={Download}
             >
-              <Download className="h-5 w-5 mr-3" />
-              {exporting ? 'Exporting...' : 'Export All'}
-            </button>
+              Export All
+            </LoadingButton>
           )}
         </div>
       </div>
@@ -696,10 +734,10 @@ export default function ManageContentPage({ activeBlogId }) {
               className="btn-danger"
             >
               {deletingItemId === deleteModal.content?.id ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive-foreground mr-2"></div>
                   Deleting...
-                </>
+                </div>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -755,8 +793,19 @@ function ContentAnalyticsModal({ contentId, contentTitle, activeBlogId }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-32">
-        <LoadingSpinner size="md" />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="w-32 h-6 bg-muted animate-pulse rounded"></div>
+          <div className="w-24 h-10 bg-muted animate-pulse rounded"></div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="p-4 bg-muted animate-pulse rounded-lg">
+              <div className="h-8 bg-muted/70 rounded mb-2"></div>
+              <div className="h-4 bg-muted/50 rounded"></div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

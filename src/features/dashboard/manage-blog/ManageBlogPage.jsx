@@ -111,6 +111,23 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
       return;
     }
 
+    const originalBlog = { ...currentBlog };
+    const originalAllBlogs = [...allBlogs];
+    
+    // Optimistic UI update
+    const updatedBlog = {
+      ...currentBlog,
+      name: formData.name.trim(),
+      description: formData.description.trim()
+    };
+    setCurrentBlog(updatedBlog);
+    
+    const updatedAllBlogs = allBlogs.map(blog => 
+      blog.id === activeBlogId 
+        ? { ...blog, name: formData.name.trim(), description: formData.description.trim() }
+        : blog
+    );
+    setAllBlogs(updatedAllBlogs);
     try {
       setSaving(true);
       
@@ -118,20 +135,6 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
         name: formData.name.trim(),
         description: formData.description.trim()
       });
-      
-      // Update local state
-      setCurrentBlog(prev => ({
-        ...prev,
-        name: formData.name.trim(),
-        description: formData.description.trim()
-      }));
-      
-      // Update the blog in the allBlogs array
-      setAllBlogs(prev => prev.map(blog => 
-        blog.id === activeBlogId 
-          ? { ...blog, name: formData.name.trim(), description: formData.description.trim() }
-          : blog
-      ));
       
       setSaved(true);
       toast.success('Blog updated successfully');
@@ -141,14 +144,17 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
     } catch (error) {
       console.error('Error updating blog:', error);
       toast.error('Failed to update blog');
+      // Rollback on error
+      setCurrentBlog(originalBlog);
+      setAllBlogs(originalAllBlogs);
     } finally {
       setSaving(false);
     }
   };
 
   const handleBlogCreated = async (newBlog) => {
-    // Refresh the blogs list
-    await fetchBlogData();
+    // Optimistic UI update - add new blog to the list
+    setAllBlogs(prev => [newBlog, ...prev]);
     
     // Switch to the new blog
     setActiveBlogId(newBlog.id);
@@ -169,21 +175,27 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
       return;
     }
 
+    const originalAllBlogs = [...allBlogs];
+    const remainingBlogs = allBlogs.filter(blog => blog.id !== activeBlogId);
+    
+    // Optimistic UI update - remove blog and switch to another
+    setAllBlogs(remainingBlogs);
+    if (remainingBlogs.length > 0) {
+      setActiveBlogId(remainingBlogs[0].id);
+      setCurrentBlog(remainingBlogs[0]);
+      setFormData({
+        name: remainingBlogs[0].name || '',
+        description: remainingBlogs[0].description || ''
+      });
+    }
     try {
       setDeletingBlog(true);
       
       const token = await getAuthToken();
       await blogService.deleteBlog(currentUser.uid, activeBlogId, token);
       
-      // Find another blog to switch to
-      const remainingBlogs = allBlogs.filter(blog => blog.id !== activeBlogId);
-      if (remainingBlogs.length > 0) {
-        setActiveBlogId(remainingBlogs[0].id);
-        toast.success(`Blog deleted. Switched to "${remainingBlogs[0].name}"`);
-      }
+      toast.success(`Blog deleted. Switched to "${remainingBlogs[0].name}"`);
       
-      // Refresh blog data
-      await fetchBlogData();
       setDeleteModalOpen(false);
     } catch (error) {
       console.error('Error deleting blog:', error);
@@ -193,6 +205,11 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
       } else {
         toast.error(error.message || 'Failed to delete blog');
       }
+      
+      // Rollback on error
+      setAllBlogs(originalAllBlogs);
+      setActiveBlogId(activeBlogId);
+      setCurrentBlog(originalAllBlogs.find(blog => blog.id === activeBlogId));
     } finally {
       setDeletingBlog(false);
     }

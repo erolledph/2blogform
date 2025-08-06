@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { FileText, Eye, Calendar, TrendingUp, Plus, BarChart3, Package, ShoppingBag } from 'lucide-react';
 import { useContentStats } from '@/hooks/useContent';
 import { useProductStats } from '@/hooks/useProducts';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import { StatCardSkeleton } from '@/components/shared/SkeletonLoader';
 
 export default function OverviewPage({ activeBlogId }) {
   const { stats, loading, error } = useContentStats(activeBlogId);
@@ -81,13 +81,6 @@ export default function OverviewPage({ activeBlogId }) {
     }
   ];
 
-  if (loading || productLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
 
   if (error || productError) {
     return (
@@ -110,21 +103,27 @@ export default function OverviewPage({ activeBlogId }) {
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-6">Blog Content</h2>
         <div className="grid-responsive-4">
-          {statCards.map((stat, index) => (
-            <div key={index} className={`card border ${stat.borderColor} ${stat.bgColor}`}>
-              <div className="card-content p-6 sm:p-8">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm sm:text-base font-medium text-muted-foreground mb-2 sm:mb-3">{stat.title}</p>
-                    <p className="text-3xl sm:text-4xl font-bold text-foreground">{stat.value}</p>
-                  </div>
-                  <div className={`p-3 sm:p-4 rounded-full ${stat.bgColor} border ${stat.borderColor}`}>
-                    <stat.icon className={`h-6 w-6 sm:h-8 sm:w-8 ${stat.color}`} />
+          {loading ? (
+            Array.from({ length: 4 }).map((_, index) => (
+              <StatCardSkeleton key={index} />
+            ))
+          ) : (
+            statCards.map((stat, index) => (
+              <div key={index} className={`card border ${stat.borderColor} ${stat.bgColor}`}>
+                <div className="card-content p-6 sm:p-8">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm sm:text-base font-medium text-muted-foreground mb-2 sm:mb-3">{stat.title}</p>
+                      <p className="text-3xl sm:text-4xl font-bold text-foreground">{stat.value}</p>
+                    </div>
+                    <div className={`p-3 sm:p-4 rounded-full ${stat.bgColor} border ${stat.borderColor}`}>
+                      <stat.icon className={`h-6 w-6 sm:h-8 sm:w-8 ${stat.color}`} />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -132,21 +131,27 @@ export default function OverviewPage({ activeBlogId }) {
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-6">Products</h2>
         <div className="grid-responsive-4">
-          {productStatCards.map((stat, index) => (
-            <div key={index} className={`card border ${stat.borderColor} ${stat.bgColor}`}>
-              <div className="card-content p-6 sm:p-8">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm sm:text-base font-medium text-muted-foreground mb-2 sm:mb-3">{stat.title}</p>
-                    <p className="text-3xl sm:text-4xl font-bold text-foreground">{stat.value}</p>
-                  </div>
-                  <div className={`p-3 sm:p-4 rounded-full ${stat.bgColor} border ${stat.borderColor}`}>
-                    <stat.icon className={`h-6 w-6 sm:h-8 sm:w-8 ${stat.color}`} />
+          {productLoading ? (
+            Array.from({ length: 4 }).map((_, index) => (
+              <StatCardSkeleton key={index} />
+            ))
+          ) : (
+            productStatCards.map((stat, index) => (
+              <div key={index} className={`card border ${stat.borderColor} ${stat.bgColor}`}>
+                <div className="card-content p-6 sm:p-8">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm sm:text-base font-medium text-muted-foreground mb-2 sm:mb-3">{stat.title}</p>
+                      <p className="text-3xl sm:text-4xl font-bold text-foreground">{stat.value}</p>
+                    </div>
+                    <div className={`p-3 sm:p-4 rounded-full ${stat.bgColor} border ${stat.borderColor}`}>
+                      <stat.icon className={`h-6 w-6 sm:h-8 sm:w-8 ${stat.color}`} />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 

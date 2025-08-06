@@ -1,12 +1,36 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { contentService } from '@/services/contentService';
+import { useCachedData } from '@/hooks/useCache';
 
 export function useContent(blogId) {
   const [content, setContent] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { currentUser } = useAuth();
+
+  // Use cached data with 3-minute TTL for content
+  const {
+    data: cachedContent,
+    loading: cacheLoading,
+    error: cacheError,
+    refetch: refetchCached,
+    invalidate
+  } = useCachedData(
+    `content-${currentUser?.uid}-${blogId}`,
+    () => contentService.fetchAllContent(currentUser?.uid, blogId),
+    [currentUser?.uid, blogId],
+    3 * 60 * 1000 // 3 minutes TTL
+  );
+
+  // Update local state when cached data changes
+  useEffect(() => {
+    if (cachedContent) {
+      setContent(cachedContent);
+    }
+    setLoading(cacheLoading);
+    setError(cacheError);
+  }, [cachedContent, cacheLoading, cacheError]);
 
   const fetchContent = async () => {
     if (!currentUser?.uid || !blogId) {
@@ -20,6 +44,8 @@ export function useContent(blogId) {
       setError(null);
       const data = await contentService.fetchAllContent(currentUser.uid, blogId);
       setContent(data);
+      // Update cache with fresh data
+      invalidate();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -27,15 +53,13 @@ export function useContent(blogId) {
     }
   };
 
-  useEffect(() => {
-    fetchContent();
-  }, [currentUser?.uid, blogId]);
-
   return {
     content,
+    setContent,
     loading,
     error,
-    refetch: fetchContent
+    refetch: refetchCached,
+    invalidateCache: invalidate
   };
 }
 
