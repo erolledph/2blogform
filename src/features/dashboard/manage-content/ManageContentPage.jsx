@@ -84,10 +84,14 @@ export default function ManageContentPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully published ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
+      // Refetch data to ensure UI is synchronized with backend
+      refetch();
     } catch (error) {
       console.error('Bulk publish error:', error);
       toast.error('Some items failed to publish');
       setContent(originalContent); // Rollback on error
+      // Refetch data to ensure UI is synchronized with backend
+      refetch();
     } finally {
       setPublishingLoading(false);
     }
@@ -133,10 +137,14 @@ export default function ManageContentPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully unpublished ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
+      // Refetch data to ensure UI is synchronized with backend
+      refetch();
     } catch (error) {
       console.error('Bulk unpublish error:', error);
       toast.error('Some items failed to unpublish');
       setContent(originalContent); // Rollback on error
+      // Refetch data to ensure UI is synchronized with backend
+      refetch();
     } finally {
       setUnpublishingLoading(false);
     }
@@ -183,10 +191,14 @@ export default function ManageContentPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
+      // Refetch data to ensure UI is synchronized with backend
+      refetch();
     } catch (error) {
       console.error('Bulk delete error:', error);
       toast.error('Some items failed to delete');
       setContent(originalContent); // Rollback on error
+      // Refetch data to ensure UI is synchronized with backend
+      refetch();
     } finally {
       setDeletingLoading(false);
     }
@@ -409,6 +421,8 @@ export default function ManageContentPage({ activeBlogId }) {
       if (response.ok) {
         toast.success('Content deleted successfully');
         setDeleteModal({ isOpen: false, content: null });
+        // Refetch data to ensure UI is synchronized with backend
+        refetch();
       } else {
         throw new Error('Failed to delete content');
       }
@@ -416,6 +430,8 @@ export default function ManageContentPage({ activeBlogId }) {
       console.error('Error deleting content:', error);
       toast.error('Failed to delete content');
       setContent(originalContent); // Rollback on error
+      // Refetch data to ensure UI is synchronized with backend
+      refetch();
     } finally {
       setDeletingItemId(null);
     }
