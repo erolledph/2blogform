@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLiveEventStream } from '@/hooks/useRealTimeCollaboration';
 import { Activity, Eye, MousePointer, Users, FileText, Package, Zap, Filter } from 'lucide-react';
 import DynamicTransition from './DynamicTransition';
