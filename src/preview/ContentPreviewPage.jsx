@@ -122,170 +122,181 @@ export default function ContentPreviewPage() {
       {loading ? (
         <ContentPreviewSkeleton />
       ) : (
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
-        <article className="max-w-4xl mx-auto">
-          {/* Article Header */}
-          <header className="mb-12 sm:mb-16 lg:mb-20">
-            {/* Status and Breadcrumb */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 sm:mb-12">
-              <div className="flex items-center space-x-3">
-                <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
-                  content?.status === 'published' 
-                    ? 'bg-green-100 text-green-800 border border-green-200' 
-                    : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-                }`}>
-                  {content?.status || 'draft'}
-                </span>
-                {content?.categories?.map((category, index) => (
-                  <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                    {category}
-                  </span>
-                ))}
-              </div>
-              <div className="text-sm text-gray-500 font-mono bg-gray-100 px-3 py-1 rounded-lg border">
-                /{content?.slug}
-              </div>
-            </div>
-
-            {/* Title */}
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-8 sm:mb-12 leading-tight tracking-tight">
-              {content?.title}
-            </h1>
-
-            {/* Enhanced Meta Information */}
-            <div className="flex flex-wrap items-center gap-6 sm:gap-8 text-gray-600 mb-8 sm:mb-12 pb-8 sm:pb-12 border-b border-gray-200">
-              {content?.author && (
-                <div className="flex items-center group">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
-                    <User className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-base sm:text-lg font-semibold text-gray-900">{content.author}</div>
-                    <div className="text-sm text-gray-500">Author</div>
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex items-center space-x-2">
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <Calendar className="h-5 w-5 text-gray-600" />
-                </div>
-                <div>
-                  <div className="text-base font-medium text-gray-900">{formatDate(content?.createdAt)}</div>
-                  <div className="text-sm text-gray-500">Published</div>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <Clock className="h-5 w-5 text-gray-600" />
-                </div>
-                <div>
-                  <div className="text-base font-medium text-gray-900">{getReadingTime(content?.content)}</div>
-                  <div className="text-sm text-gray-500">Reading time</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Tags */}
-            {content?.tags?.length > 0 && (
-              <div className="flex flex-wrap items-center gap-3 mb-8 sm:mb-12">
-                <Tag className="h-5 w-5 text-gray-500" />
-                <div className="flex flex-wrap gap-2">
-                  {content.tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors duration-200"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </header>
-
-          {/* Featured Image */}
-          {content?.featuredImageUrl && (
-            <div className="mb-12 sm:mb-16 lg:mb-20">
-              <FeaturedImage
-                src={content.featuredImageUrl}
-                alt={content.title}
-                className="max-h-[70vh] shadow-2xl"
-              />
-            </div>
-          )}
-
-          {/* Content Body */}
-          <div className="mb-12 sm:mb-16 lg:mb-20">
-            <div className="prose prose-lg sm:prose-xl prose-gray max-w-none markdown-content">
-              <ReactMarkdown>
-                {content?.content || ''}
-              </ReactMarkdown>
-            </div>
-          </div>
-
-          {/* Enhanced Article Footer */}
-          <footer className="space-y-8 sm:space-y-12">
-            {/* Meta Description */}
-            {content?.metaDescription && (
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 sm:p-8 border border-blue-100">
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 flex items-center">
-                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
-                    <FileText className="h-5 w-5 text-white" />
-                  </div>
-                  Article Summary
-                </h3>
-                <p className="text-gray-700 text-lg sm:text-xl leading-relaxed italic">{content.metaDescription}</p>
-              </div>
-            )}
-
-            {/* SEO Information */}
-            {(content?.seoTitle || content?.keywords?.length > 0) && (
-              <div className="bg-gray-50 rounded-2xl p-6 sm:p-8 border border-gray-200">
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">SEO Information</h3>
-                <div className="space-y-4">
-                  {content?.seoTitle && (
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                      <span className="text-base font-semibold text-gray-700 min-w-fit">SEO Title:</span>
-                      <span className="text-gray-600 text-base">{content.seoTitle}</span>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden">
+            <div className="p-6 sm:p-8 lg:p-16">
+              <article className="max-w-4xl mx-auto">
+                {/* Article Header */}
+                <header className="mb-12 sm:mb-16 lg:mb-20">
+                  {/* Status and Breadcrumb */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 sm:mb-12">
+                    <div className="flex items-center space-x-3">
+                      <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
+                        content?.status === 'published' 
+                          ? 'bg-green-100 text-green-800 border border-green-200' 
+                          : 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                      }`}>
+                        {content?.status || 'draft'}
+                      </span>
+                      {content?.categories?.map((category, index) => (
+                        <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                          {category}
+                        </span>
+                      ))}
                     </div>
-                  )}
-                  {content?.keywords?.length > 0 && (
-                    <div className="flex flex-col sm:flex-row sm:items-start gap-2">
-                      <span className="text-base font-semibold text-gray-700 min-w-fit">Keywords:</span>
+                    <div className="text-sm text-gray-500 font-mono bg-gray-100 px-3 py-1 rounded-lg border">
+                      /{content?.slug}
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-8 sm:mb-12 leading-tight tracking-tight">
+                    {content?.title}
+                  </h1>
+
+                  {/* Enhanced Meta Information */}
+                  <div className="flex flex-wrap items-center gap-6 sm:gap-8 text-gray-600 mb-8 sm:mb-12 pb-8 sm:pb-12 border-b border-gray-200">
+                    {content?.author && (
+                      <div className="flex items-center group">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mr-4 shadow-lg">
+                          <User className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+                        </div>
+                        <div>
+                          <div className="text-base sm:text-lg font-semibold text-gray-900">{content.author}</div>
+                          <div className="text-sm text-gray-500">Author</div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-gray-100 rounded-lg">
+                        <Calendar className="h-5 w-5 text-gray-600" />
+                      </div>
+                      <div>
+                        <div className="text-base font-medium text-gray-900">{formatDate(content?.createdAt)}</div>
+                        <div className="text-sm text-gray-500">Published</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <div className="p-2 bg-gray-100 rounded-lg">
+                        <Clock className="h-5 w-5 text-gray-600" />
+                      </div>
+                      <div>
+                        <div className="text-base font-medium text-gray-900">{getReadingTime(content?.content)}</div>
+                        <div className="text-sm text-gray-500">Reading time</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tags */}
+                  {content?.tags?.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-3 mb-8 sm:mb-12">
+                      <Tag className="h-5 w-5 text-gray-500" />
                       <div className="flex flex-wrap gap-2">
-                        {content.keywords.map((keyword, index) => (
+                        {content.tags.map((tag, index) => (
                           <span
                             key={index}
-                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white text-gray-700 border border-gray-300"
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 transition-colors duration-200"
                           >
-                            {keyword}
+                            #{tag}
                           </span>
                         ))}
                       </div>
                     </div>
                   )}
+                </header>
+
+                {/* Featured Image */}
+                {content?.featuredImageUrl && (
+                  <div className="mb-12 sm:mb-16 lg:mb-20">
+                    <FeaturedImage
+                      src={content.featuredImageUrl}
+                      alt={content.title}
+                      className="max-h-[70vh] shadow-2xl"
+                    />
+                  </div>
+                )}
+
+                {/* Content Body */}
+                <div className="mb-12 sm:mb-16 lg:mb-20">
+                  <div className="prose prose-lg sm:prose-xl prose-gray max-w-none markdown-content">
+                    <ReactMarkdown>
+                      {content?.content || ''}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              </article>
+
+              {/* API Data Sections */}
+              <div className="max-w-4xl mx-auto space-y-8 sm:space-y-12">
+                {/* Meta Description (API Field) */}
+                {content?.metaDescription && (
+                  <div className="border-t border-gray-200 pt-8 lg:pt-16">
+                    <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-8">API Data: Meta Description</h2>
+                    <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 sm:p-8 border border-blue-100">
+                      <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 flex items-center">
+                        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
+                          <FileText className="h-5 w-5 text-white" />
+                        </div>
+                        metaDescription Field
+                      </h3>
+                      <p className="text-gray-700 text-lg sm:text-xl leading-relaxed italic">{content.metaDescription}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* SEO Information (API Fields) */}
+                {(content?.seoTitle || content?.keywords?.length > 0) && (
+                  <div className="border-t border-gray-200 pt-8">
+                    <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-8">API Data: SEO Fields</h2>
+                    <div className="bg-gray-50 rounded-2xl p-6 sm:p-8 border border-gray-200">
+                      <div className="space-y-4">
+                        {content?.seoTitle && (
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                            <span className="text-base font-semibold text-gray-700 min-w-fit">seoTitle:</span>
+                            <span className="text-gray-600 text-base">{content.seoTitle}</span>
+                          </div>
+                        )}
+                        {content?.keywords?.length > 0 && (
+                          <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+                            <span className="text-base font-semibold text-gray-700 min-w-fit">keywords:</span>
+                            <div className="flex flex-wrap gap-2">
+                              {content.keywords.map((keyword, index) => (
+                                <span
+                                  key={index}
+                                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white text-gray-700 border border-gray-300"
+                                >
+                                  {keyword}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Enhanced Social Actions */}
+                <div className="border-t border-gray-200 pt-8">
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-4 py-8 border-t border-b border-gray-200">
+                    <p className="text-lg font-medium text-gray-700">Enjoyed this article?</p>
+                    <div className="flex items-center space-x-4">
+                      <button className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                        <Share2 className="h-5 w-5 mr-2" />
+                        Share
+                      </button>
+                      <button className="inline-flex items-center px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all duration-200 border border-gray-300">
+                        <Bookmark className="h-5 w-5 mr-2" />
+                        Save
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            )}
-
-            {/* Enhanced Social Actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 py-8 border-t border-b border-gray-200">
-              <p className="text-lg font-medium text-gray-700">Enjoyed this article?</p>
-              <div className="flex items-center space-x-4">
-                <button className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl">
-                  <Share2 className="h-5 w-5 mr-2" />
-                  Share
-                </button>
-                <button className="inline-flex items-center px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all duration-200 border border-gray-300">
-                  <Bookmark className="h-5 w-5 mr-2" />
-                  Save
-                </button>
-              </div>
             </div>
-          </footer>
-        </article>
+          </div>
 
           {/* Enhanced Related Content Section */}
           <RelatedContentSection 
@@ -314,9 +325,9 @@ function RelatedContentSection({ allContent, currentContentId, uid, blogId, form
   return (
     <section className="mt-20 sm:mt-24 lg:mt-32">
       <div className="text-center mb-12 sm:mb-16">
-        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">More Articles</h2>
+        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">Related Content</h2>
         <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
-          Discover more insights and stories from our collection
+          More content from the API
         </p>
       </div>
       
@@ -382,7 +393,7 @@ function RelatedContentSection({ allContent, currentContentId, uid, blogId, form
           to="/dashboard/manage"
           className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl text-lg"
         >
-          View All Articles
+          View All Content
           <ArrowLeft className="ml-3 h-6 w-6 transform rotate-180" />
         </Link>
       </div>
