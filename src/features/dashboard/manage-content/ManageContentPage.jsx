@@ -13,7 +13,7 @@ import { getStatusBadgeClass } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 
 export default function ManageContentPage({ activeBlogId }) {
-  const { content, setContent, loading, error, refetch } = useContent(activeBlogId);
+  const { content, setContent, loading, error, refetch, invalidateCache } = useContent(activeBlogId);
   const { getAuthToken, currentUser } = useAuth();
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, content: null });
   const [analyticsModal, setAnalyticsModal] = useState({ isOpen: false, content: null });
@@ -84,6 +84,9 @@ export default function ManageContentPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully published ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
+      
+      // Invalidate cache and refresh data to ensure UI consistency
+      invalidateCache();
     } catch (error) {
       console.error('Bulk publish error:', error);
       toast.error('Some items failed to publish');
@@ -133,6 +136,9 @@ export default function ManageContentPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully unpublished ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
+      
+      // Invalidate cache and refresh data to ensure UI consistency
+      invalidateCache();
     } catch (error) {
       console.error('Bulk unpublish error:', error);
       toast.error('Some items failed to unpublish');
@@ -183,6 +189,9 @@ export default function ManageContentPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
+      
+      // Invalidate cache and refresh data to ensure UI consistency
+      invalidateCache();
     } catch (error) {
       console.error('Bulk delete error:', error);
       toast.error('Some items failed to delete');
