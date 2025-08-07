@@ -370,10 +370,11 @@ export default function ProductPreviewPage() {
             </div>
 
             {/* Product Description */}
+            {/* Product Description */}
             {product?.description && (
               <div className="px-6 sm:px-8 lg:px-16 pb-8 lg:pb-16">
                 <div className="border-t border-gray-200 pt-8 lg:pt-16">
-                  <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-8">Product Details</h2>
+                  <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-8">API Data: Product Description</h2>
                   <div className="prose prose-lg sm:prose-xl prose-gray max-w-none markdown-content">
                     <ReactMarkdown>
                       {product.description}
@@ -383,15 +384,15 @@ export default function ProductPreviewPage() {
               </div>
             )}
 
-            {/* Product Metadata */}
+            {/* Product Metadata (API Fields) */}
             <div className="px-6 sm:px-8 lg:px-16 pb-8 lg:pb-16">
               <div className="border-t border-gray-200 pt-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Product Information</h3>
+                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-8">API Data: Product Metadata</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                     <div className="flex items-center space-x-3 mb-4">
                       <Calendar className="h-6 w-6 text-gray-600" />
-                      <h4 className="text-lg font-semibold text-gray-900">Added to Catalog</h4>
+                      <h4 className="text-lg font-semibold text-gray-900">createdAt Field</h4>
                     </div>
                     <p className="text-gray-700 text-lg">{formatDate(product?.createdAt)}</p>
                   </div>
@@ -400,7 +401,7 @@ export default function ProductPreviewPage() {
                     <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                       <div className="flex items-center space-x-3 mb-4">
                         <Package className="h-6 w-6 text-gray-600" />
-                        <h4 className="text-lg font-semibold text-gray-900">Category</h4>
+                        <h4 className="text-lg font-semibold text-gray-900">category Field</h4>
                       </div>
                       <p className="text-gray-700 text-lg">{product.category}</p>
                     </div>
@@ -439,9 +440,9 @@ function RelatedProductsSection({ allProducts, currentProductId, uid, blogId, us
   return (
     <section className="mt-20 sm:mt-24 lg:mt-32">
       <div className="text-center mb-12 sm:mb-16">
-        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">More Products</h2>
+        <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4 sm:mb-6">Related Products</h2>
         <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
-          Discover more items from our catalog
+          More products from the API
         </p>
       </div>
       
@@ -537,7 +538,7 @@ function RelatedProductsSection({ allProducts, currentProductId, uid, blogId, us
           to="/dashboard/manage-products"
           className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-2xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl text-lg"
         >
-          View All Products
+          Manage Products
           <ArrowLeft className="ml-3 h-6 w-6 transform rotate-180" />
         </Link>
       </div>
