@@ -221,15 +221,23 @@ exports.handler = async (event, context) => {
 
         const now = admin.firestore.FieldValue.serverTimestamp();
         
-        // Ensure price and percentOff are numbers
+        // Build update object with only the fields that are being changed
         const productData = {
-          ...updateData,
-          userId,
-          blogId: blogId,
-          price: parseFloat(updateData.price) || 0,
-          percentOff: parseFloat(updateData.percentOff) || 0,
           updatedAt: now
         };
+
+        // Only include fields that are explicitly provided in the update
+        if (updateData.name !== undefined) productData.name = updateData.name;
+        if (updateData.slug !== undefined) productData.slug = updateData.slug;
+        if (updateData.description !== undefined) productData.description = updateData.description;
+        if (updateData.price !== undefined) productData.price = parseFloat(updateData.price);
+        if (updateData.percentOff !== undefined) productData.percentOff = parseFloat(updateData.percentOff);
+        if (updateData.imageUrls !== undefined) productData.imageUrls = updateData.imageUrls;
+        if (updateData.imageUrl !== undefined) productData.imageUrl = updateData.imageUrl;
+        if (updateData.productUrl !== undefined) productData.productUrl = updateData.productUrl;
+        if (updateData.category !== undefined) productData.category = updateData.category;
+        if (updateData.tags !== undefined) productData.tags = updateData.tags;
+        if (updateData.status !== undefined) productData.status = updateData.status;
 
         await docRef.update(productData);
         
