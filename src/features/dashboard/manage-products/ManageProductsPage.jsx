@@ -294,14 +294,10 @@ export default function ManageProductsPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully published ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
-      // Refetch data to ensure UI is synchronized with backend
-      refetch();
     } catch (error) {
       console.error('Bulk publish error:', error);
       toast.error('Some products failed to publish');
       setProducts(originalProducts); // Rollback on error
-      // Refetch data to ensure UI is synchronized with backend
-      refetch();
     } finally {
       setPublishingLoading(false);
     }
@@ -347,14 +343,10 @@ export default function ManageProductsPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully unpublished ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
-      // Refetch data to ensure UI is synchronized with backend
-      refetch();
     } catch (error) {
       console.error('Bulk unpublish error:', error);
       toast.error('Some products failed to unpublish');
       setProducts(originalProducts); // Rollback on error
-      // Refetch data to ensure UI is synchronized with backend
-      refetch();
     } finally {
       setUnpublishingLoading(false);
     }
@@ -401,14 +393,10 @@ export default function ManageProductsPage({ activeBlogId }) {
       await Promise.all(promises);
       toast.success(`Successfully deleted ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
       setSelectedItems([]);
-      // Refetch data to ensure UI is synchronized with backend
-      refetch();
     } catch (error) {
       console.error('Bulk delete error:', error);
       toast.error('Some products failed to delete');
       setProducts(originalProducts); // Rollback on error
-      // Refetch data to ensure UI is synchronized with backend
-      refetch();
     } finally {
       setDeletingLoading(false);
     }
@@ -436,8 +424,6 @@ export default function ManageProductsPage({ activeBlogId }) {
       if (response.ok) {
         toast.success('Product deleted successfully');
         setDeleteModal({ isOpen: false, product: null });
-        // Refetch data to ensure UI is synchronized with backend
-        refetch();
       } else {
         throw new Error('Failed to delete product');
       }
@@ -445,8 +431,6 @@ export default function ManageProductsPage({ activeBlogId }) {
       console.error('Error deleting product:', error);
       toast.error('Failed to delete product');
       setProducts(originalProducts); // Rollback on error
-      // Refetch data to ensure UI is synchronized with backend
-      refetch();
     } finally {
       setDeletingItemId(null);
     }
