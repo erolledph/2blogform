@@ -26,7 +26,14 @@ export function useContent(blogId) {
   // Update local state when cached data changes
   useEffect(() => {
     if (cachedContent) {
-      setContent(cachedContent);
+      // Convert Firestore timestamps to JavaScript Date objects for consistency
+      const processedData = cachedContent.map(item => ({
+        ...item,
+        createdAt: item.createdAt?.toDate ? item.createdAt.toDate() : item.createdAt,
+        updatedAt: item.updatedAt?.toDate ? item.updatedAt.toDate() : item.updatedAt,
+        publishDate: item.publishDate?.toDate ? item.publishDate.toDate() : item.publishDate
+      }));
+      setContent(processedData);
     }
     setLoading(cacheLoading);
     setError(cacheError);
@@ -43,7 +50,16 @@ export function useContent(blogId) {
       setLoading(true);
       setError(null);
       const data = await contentService.fetchAllContent(currentUser.uid, blogId);
-      setContent(data);
+      
+      // Convert Firestore timestamps to JavaScript Date objects for consistency
+      const processedData = data.map(item => ({
+        ...item,
+        createdAt: item.createdAt?.toDate ? item.createdAt.toDate() : item.createdAt,
+        updatedAt: item.updatedAt?.toDate ? item.updatedAt.toDate() : item.updatedAt,
+        publishDate: item.publishDate?.toDate ? item.publishDate.toDate() : item.publishDate
+      }));
+      
+      setContent(processedData);
       // Update cache with fresh data
       invalidate();
     } catch (err) {

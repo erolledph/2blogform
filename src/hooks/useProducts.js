@@ -26,7 +26,13 @@ export function useProducts(blogId) {
   // Update local state when cached data changes
   useEffect(() => {
     if (cachedProducts) {
-      setProducts(cachedProducts);
+      // Convert Firestore timestamps to JavaScript Date objects for consistency
+      const processedData = cachedProducts.map(item => ({
+        ...item,
+        createdAt: item.createdAt?.toDate ? item.createdAt.toDate() : item.createdAt,
+        updatedAt: item.updatedAt?.toDate ? item.updatedAt.toDate() : item.updatedAt
+      }));
+      setProducts(processedData);
     }
     setLoading(cacheLoading);
     setError(cacheError);
@@ -43,7 +49,15 @@ export function useProducts(blogId) {
       setLoading(true);
       setError(null);
       const data = await productsService.fetchAllProducts(currentUser.uid, blogId);
-      setProducts(data);
+      
+      // Convert Firestore timestamps to JavaScript Date objects for consistency
+      const processedData = data.map(item => ({
+        ...item,
+        createdAt: item.createdAt?.toDate ? item.createdAt.toDate() : item.createdAt,
+        updatedAt: item.updatedAt?.toDate ? item.updatedAt.toDate() : item.updatedAt
+      }));
+      
+      setProducts(processedData);
       // Update cache with fresh data
       invalidate();
     } catch (err) {

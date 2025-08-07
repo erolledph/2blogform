@@ -19,9 +19,14 @@ export default function ManageContentPage({ activeBlogId }) {
   const [analyticsModal, setAnalyticsModal] = useState({ isOpen: false, content: null });
   const [selectedItems, setSelectedItems] = useState([]);
   const [importing, setImporting] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState(null);
-  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  
+  // Individual loading states for each bulk action
+  const [publishingLoading, setPublishingLoading] = useState(false);
+  const [unpublishingLoading, setUnpublishingLoading] = useState(false);
+  const [deletingLoading, setDeletingLoading] = useState(false);
+  const [exportingSelectedLoading, setExportingSelectedLoading] = useState(false);
+  const [exportingAllLoading, setExportingAllLoading] = useState(false);
 
   const handleSelectAll = (selectAll) => {
     if (selectAll) {
@@ -45,7 +50,7 @@ export default function ManageContentPage({ activeBlogId }) {
       return;
     }
 
-    setBulkActionLoading(true);
+    setPublishingLoading(true);
     const originalContent = [...content];
 
     // Optimistic UI update
@@ -84,7 +89,7 @@ export default function ManageContentPage({ activeBlogId }) {
       toast.error('Some items failed to publish');
       setContent(originalContent); // Rollback on error
     } finally {
-      setBulkActionLoading(false);
+      setPublishingLoading(false);
     }
   };
 
@@ -94,7 +99,7 @@ export default function ManageContentPage({ activeBlogId }) {
       return;
     }
 
-    setBulkActionLoading(true);
+    setUnpublishingLoading(true);
     const originalContent = [...content];
 
     // Optimistic UI update
@@ -133,7 +138,7 @@ export default function ManageContentPage({ activeBlogId }) {
       toast.error('Some items failed to unpublish');
       setContent(originalContent); // Rollback on error
     } finally {
-      setBulkActionLoading(false);
+      setUnpublishingLoading(false);
     }
   };
 
@@ -147,7 +152,7 @@ export default function ManageContentPage({ activeBlogId }) {
       return;
     }
 
-    setBulkActionLoading(true);
+    setDeletingLoading(true);
     const originalContent = [...content];
 
     // Optimistic UI update
@@ -183,7 +188,7 @@ export default function ManageContentPage({ activeBlogId }) {
       toast.error('Some items failed to delete');
       setContent(originalContent); // Rollback on error
     } finally {
-      setBulkActionLoading(false);
+      setDeletingLoading(false);
     }
   };
 
@@ -281,7 +286,7 @@ export default function ManageContentPage({ activeBlogId }) {
     }
 
     try {
-      setExporting(true);
+      setExportingSelectedLoading(true);
       const token = await getAuthToken();
       
       const response = await fetch('/api/export/content', {
@@ -327,13 +332,13 @@ export default function ManageContentPage({ activeBlogId }) {
       console.error('Export error:', error);
       toast.error(error.message || 'Failed to export content');
     } finally {
-      setExporting(false);
+      setExportingSelectedLoading(false);
     }
   };
 
   const handleExportAll = async () => {
     try {
-      setExporting(true);
+      setExportingAllLoading(true);
       const token = await getAuthToken();
       
       const response = await fetch('/api/export/content', {
@@ -378,7 +383,7 @@ export default function ManageContentPage({ activeBlogId }) {
       console.error('Export error:', error);
       toast.error(error.message || 'Failed to export content');
     } finally {
-      setExporting(false);
+      setExportingAllLoading(false);
     }
   };
 
@@ -483,7 +488,7 @@ export default function ManageContentPage({ activeBlogId }) {
       title: 'Created',
       render: (value) => (
         <span className="text-sm sm:text-base text-foreground">
-          {value ? format(value.toDate(), 'MMM dd, yyyy') : 'N/A'}
+          {value ? format(value, 'MMM dd, yyyy') : 'N/A'}
         </span>
       )
     },
@@ -577,35 +582,36 @@ export default function ManageContentPage({ activeBlogId }) {
               <p className="text-base text-primary font-medium">
                 {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 <button
                   onClick={handleBulkPublish}
-                  disabled={bulkActionLoading}
-                  className="btn-secondary btn-sm"
+                  disabled={publishingLoading}
+                  className="btn-secondary btn-sm min-w-[120px]"
                 >
-                  {bulkActionLoading ? 'Publishing...' : 'Publish Selected'}
+                  {publishingLoading ? 'Publishing...' : 'Publish Selected'}
                 </button>
                 <button
                   onClick={handleBulkUnpublish}
-                  disabled={bulkActionLoading}
-                  className="btn-secondary btn-sm"
+                  disabled={unpublishingLoading}
+                  className="btn-secondary btn-sm min-w-[130px]"
                 >
-                  {bulkActionLoading ? 'Unpublishing...' : 'Unpublish Selected'}
+                  {unpublishingLoading ? 'Unpublishing...' : 'Unpublish Selected'}
                 </button>
                 <button
                   onClick={handleBulkDelete}
-                  disabled={bulkActionLoading}
-                  className="btn-danger btn-sm"
+                  disabled={deletingLoading}
+                  className="btn-danger btn-sm min-w-[120px]"
                 >
-                  {bulkActionLoading ? 'Deleting...' : 'Delete Selected'}
+                  {deletingLoading ? 'Deleting...' : 'Delete Selected'}
                 </button>
                 <LoadingButton
                   onClick={handleExportSelected}
-                  loading={exporting}
+                  loading={exportingSelectedLoading}
                   loadingText="Exporting..."
                   variant="secondary"
                   size="sm"
                   icon={Download}
+                  className="min-w-[140px]"
                 >
                   Export Selected ({selectedItems.length})
                 </LoadingButton>
@@ -626,6 +632,15 @@ export default function ManageContentPage({ activeBlogId }) {
             icon={Upload}
           >
             Import JSON
+          </LoadingButton>
+          <LoadingButton
+            onClick={handleExportAll}
+            loading={exportingAllLoading}
+            loadingText="Exporting..."
+            variant="secondary"
+            icon={Download}
+          >
+            Export All
           </LoadingButton>
         </div>
       </div>

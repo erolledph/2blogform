@@ -18,9 +18,14 @@ export default function ManageProductsPage({ activeBlogId }) {
   const [userCurrency, setUserCurrency] = useState('$');
   const [selectedItems, setSelectedItems] = useState([]);
   const [importing, setImporting] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState(null);
-  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  
+  // Individual loading states for each bulk action
+  const [publishingLoading, setPublishingLoading] = useState(false);
+  const [unpublishingLoading, setUnpublishingLoading] = useState(false);
+  const [deletingLoading, setDeletingLoading] = useState(false);
+  const [exportingSelectedLoading, setExportingSelectedLoading] = useState(false);
+  const [exportingAllLoading, setExportingAllLoading] = useState(false);
   const { getAuthToken, currentUser } = useAuth();
 
   useEffect(() => {
@@ -148,7 +153,7 @@ export default function ManageProductsPage({ activeBlogId }) {
     }
 
     try {
-      setExporting(true);
+      setExportingSelectedLoading(true);
       const token = await getAuthToken();
       
       const response = await fetch('/api/export/products', {
@@ -194,13 +199,13 @@ export default function ManageProductsPage({ activeBlogId }) {
       console.error('Export error:', error);
       toast.error(error.message || 'Failed to export products');
     } finally {
-      setExporting(false);
+      setExportingSelectedLoading(false);
     }
   };
 
   const handleExportAll = async () => {
     try {
-      setExporting(true);
+      setExportingAllLoading(true);
       const token = await getAuthToken();
       
       const response = await fetch('/api/export/products', {
@@ -245,7 +250,7 @@ export default function ManageProductsPage({ activeBlogId }) {
       console.error('Export error:', error);
       toast.error(error.message || 'Failed to export products');
     } finally {
-      setExporting(false);
+      setExportingAllLoading(false);
     }
   };
 
@@ -255,7 +260,7 @@ export default function ManageProductsPage({ activeBlogId }) {
       return;
     }
 
-    setBulkActionLoading(true);
+    setPublishingLoading(true);
     const originalProducts = [...products];
 
     // Optimistic UI update
@@ -294,7 +299,7 @@ export default function ManageProductsPage({ activeBlogId }) {
       toast.error('Some products failed to publish');
       setProducts(originalProducts); // Rollback on error
     } finally {
-      setBulkActionLoading(false);
+      setPublishingLoading(false);
     }
   };
 
@@ -304,7 +309,7 @@ export default function ManageProductsPage({ activeBlogId }) {
       return;
     }
 
-    setBulkActionLoading(true);
+    setUnpublishingLoading(true);
     const originalProducts = [...products];
 
     // Optimistic UI update
@@ -343,7 +348,7 @@ export default function ManageProductsPage({ activeBlogId }) {
       toast.error('Some products failed to unpublish');
       setProducts(originalProducts); // Rollback on error
     } finally {
-      setBulkActionLoading(false);
+      setUnpublishingLoading(false);
     }
   };
 
@@ -357,7 +362,7 @@ export default function ManageProductsPage({ activeBlogId }) {
       return;
     }
 
-    setBulkActionLoading(true);
+    setDeletingLoading(true);
     const originalProducts = [...products];
 
     // Optimistic UI update
@@ -393,7 +398,7 @@ export default function ManageProductsPage({ activeBlogId }) {
       toast.error('Some products failed to delete');
       setProducts(originalProducts); // Rollback on error
     } finally {
-      setBulkActionLoading(false);
+      setDeletingLoading(false);
     }
   };
 
@@ -534,7 +539,7 @@ export default function ManageProductsPage({ activeBlogId }) {
       title: 'Created',
       render: (value) => (
         <span className="text-sm sm:text-base text-foreground">
-          {value ? format(value.toDate(), 'MMM dd, yyyy') : 'N/A'}
+          {value ? format(value, 'MMM dd, yyyy') : 'N/A'}
         </span>
       )
     },
@@ -622,35 +627,36 @@ export default function ManageProductsPage({ activeBlogId }) {
               <p className="text-base text-primary font-medium">
                 {selectedItems.length} product{selectedItems.length !== 1 ? 's' : ''} selected
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 <button
                   onClick={handleBulkPublish}
-                  disabled={bulkActionLoading}
-                  className="btn-secondary btn-sm"
+                  disabled={publishingLoading}
+                  className="btn-secondary btn-sm min-w-[120px]"
                 >
-                  {bulkActionLoading ? 'Publishing...' : 'Publish Selected'}
+                  {publishingLoading ? 'Publishing...' : 'Publish Selected'}
                 </button>
                 <button
                   onClick={handleBulkUnpublish}
-                  disabled={bulkActionLoading}
-                  className="btn-secondary btn-sm"
+                  disabled={unpublishingLoading}
+                  className="btn-secondary btn-sm min-w-[130px]"
                 >
-                  {bulkActionLoading ? 'Unpublishing...' : 'Unpublish Selected'}
+                  {unpublishingLoading ? 'Unpublishing...' : 'Unpublish Selected'}
                 </button>
                 <button
                   onClick={handleBulkDelete}
-                  disabled={bulkActionLoading}
-                  className="btn-danger btn-sm"
+                  disabled={deletingLoading}
+                  className="btn-danger btn-sm min-w-[120px]"
                 >
-                  {bulkActionLoading ? 'Deleting...' : 'Delete Selected'}
+                  {deletingLoading ? 'Deleting...' : 'Delete Selected'}
                 </button>
                 <LoadingButton
                   onClick={handleExportSelected}
-                  loading={exporting}
+                  loading={exportingSelectedLoading}
                   loadingText="Exporting..."
                   variant="secondary"
                   size="sm"
                   icon={Download}
+                  className="min-w-[140px]"
                 >
                   Export Selected ({selectedItems.length})
                 </LoadingButton>
@@ -671,6 +677,15 @@ export default function ManageProductsPage({ activeBlogId }) {
             icon={Upload}
           >
             Import JSON
+          </LoadingButton>
+          <LoadingButton
+            onClick={handleExportAll}
+            loading={exportingAllLoading}
+            loadingText="Exporting..."
+            variant="secondary"
+            icon={Download}
+          >
+            Export All
           </LoadingButton>
         </div>
       </div>
