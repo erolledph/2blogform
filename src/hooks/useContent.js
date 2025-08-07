@@ -61,7 +61,7 @@ export function useContent(blogId) {
       
       setContent(processedData);
       // Update cache with fresh data
-      invalidate();
+      if (invalidate) invalidate();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -74,8 +74,8 @@ export function useContent(blogId) {
     setContent,
     loading,
     error,
-    refetch: refetchCached,
-    invalidateCache: invalidate
+    refetch: refetchCached || fetchContent,
+    invalidateCache: invalidate || (() => {})
   };
 }
 

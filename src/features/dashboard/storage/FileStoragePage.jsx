@@ -51,6 +51,7 @@ export default function FileStoragePage() {
   const [newItemName, setNewItemName] = useState('');
   const [selectedDestination, setSelectedDestination] = useState('');
   const [availableFolders, setAvailableFolders] = useState([]);
+  const [operationLoading, setOperationLoading] = useState(false);
   const { currentUser, getAuthToken } = useAuth();
   
   // Initialize user-specific base path
@@ -224,6 +225,7 @@ export default function FileStoragePage() {
     }
 
     try {
+      setOperationLoading(true);
       const folderPath = `${currentPath}/${newFolderName.trim()}`;
       
       const token = await getAuthToken();
@@ -241,8 +243,12 @@ export default function FileStoragePage() {
       }
       
       setNewFolderName('');
+      await fetchItems(); // Refresh the items list
     } catch (error) {
       console.error('Error creating folder:', error);
+      toast.error('Failed to create folder');
+    } finally {
+      setOperationLoading(false);
     }
   };
 
@@ -258,6 +264,7 @@ export default function FileStoragePage() {
     }
 
     try {
+      setOperationLoading(true);
       const item = renameModal.item;
       
       const token = await getAuthToken();
@@ -272,8 +279,12 @@ export default function FileStoragePage() {
       
       setRenameModal({ isOpen: false, item: null });
       setNewItemName('');
+      await fetchItems(); // Refresh the items list
     } catch (error) {
       console.error('Error renaming item:', error);
+      toast.error('Failed to rename item');
+    } finally {
+      setOperationLoading(false);
     }
   };
 
@@ -324,6 +335,7 @@ export default function FileStoragePage() {
     }
 
     try {
+      setOperationLoading(true);
       const item = moveModal.item;
       
       const token = await getAuthToken();
@@ -339,8 +351,12 @@ export default function FileStoragePage() {
       
       setMoveModal({ isOpen: false, item: null });
       setSelectedDestination('');
+      await fetchItems(); // Refresh the items list
     } catch (error) {
       console.error('Error moving item:', error);
+      toast.error('Failed to move item');
+    } finally {
+      setOperationLoading(false);
     }
   };
   const navigateToFolder = (folderPath) => {
@@ -394,8 +410,10 @@ export default function FileStoragePage() {
       toast.success(`${item.type === 'folder' ? 'Folder' : 'File'} deleted successfully`);
       
       setDeleteModal({ isOpen: false, item: null });
+      await fetchItems(); // Refresh the items list
     } catch (error) {
       console.error('Error deleting item:', error);
+      toast.error('Failed to delete item');
     }
   };
 
@@ -964,10 +982,17 @@ export default function FileStoragePage() {
             </button>
             <button
               onClick={createFolder}
-              disabled={!newFolderName.trim()}
+              disabled={operationLoading || !newFolderName.trim()}
               className="btn-primary"
             >
-              Create Folder
+              {operationLoading ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Creating...
+                </>
+              ) : (
+                'Create Folder'
+              )}
             </button>
           </div>
         </div>
@@ -1028,10 +1053,10 @@ export default function FileStoragePage() {
             </button>
             <button
               onClick={renameItem}
-              disabled={loading || !newItemName.trim() || newItemName === renameModal.item?.name}
+              disabled={operationLoading || !newItemName.trim() || newItemName === renameModal.item?.name}
               className="btn-primary"
             >
-              {loading ? (
+              {operationLoading ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
                   {renameModal.item?.type === 'folder' ? 'Moving folder...' : 'Renaming...'}
@@ -1133,10 +1158,10 @@ export default function FileStoragePage() {
             </button>
             <button
               onClick={moveItem}
-              disabled={loading || !selectedDestination}
+              disabled={operationLoading || !selectedDestination}
               className="btn-primary"
             >
-              {loading ? (
+              {operationLoading ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
                   {moveModal.item?.type === 'folder' ? 'Moving folder...' : 'Moving file...'}
@@ -1195,11 +1220,20 @@ export default function FileStoragePage() {
             </button>
             <button
               onClick={createFolder}
-              disabled={!newFolderName.trim()}
+              disabled={operationLoading || !newFolderName.trim()}
               className="btn-primary"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Folder
+              {operationLoading ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Folder
+                </>
+              )}
             </button>
           </div>
         </div>

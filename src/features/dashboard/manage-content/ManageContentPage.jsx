@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useContent } from '@/hooks/useContent';
-import { analyticsService } from '@/services/analyticsService';
+import { useContentAnalytics } from '@/hooks/useAnalytics';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
 import DynamicTransition from '@/components/shared/DynamicTransition';
@@ -83,6 +83,7 @@ export default function ManageContentPage({ activeBlogId }) {
       invalidateCache();
     } catch (error) {
       console.error('Bulk publish error:', error);
+      toast.error('Failed to publish selected items');
     } finally {
       setPublishingLoading(false);
     }
@@ -126,6 +127,7 @@ export default function ManageContentPage({ activeBlogId }) {
       invalidateCache();
     } catch (error) {
       console.error('Bulk unpublish error:', error);
+      toast.error('Failed to unpublish selected items');
     } finally {
       setUnpublishingLoading(false);
     }
@@ -172,6 +174,7 @@ export default function ManageContentPage({ activeBlogId }) {
       invalidateCache();
     } catch (error) {
       console.error('Bulk delete error:', error);
+      toast.error('Failed to delete selected items');
     } finally {
       setDeletingLoading(false);
     }
@@ -255,7 +258,6 @@ export default function ManageContentPage({ activeBlogId }) {
         }
 
       } catch (error) {
-        a.download = `content-export-all-${new Date().toISOString().split('T')[0]}.json`;
         toast.error(error.message || 'Failed to import content');
       } finally {
         setImporting(false);
@@ -401,10 +403,6 @@ export default function ManageContentPage({ activeBlogId }) {
     }
   };
 
-  const handleViewAnalytics = (contentItem) => {
-    setAnalyticsModal({ isOpen: true, content: contentItem });
-  };
-
   const columns = [
     {
       key: 'featuredImageUrl',
@@ -505,7 +503,7 @@ export default function ManageContentPage({ activeBlogId }) {
             <Edit className="h-4 w-4" />
           </Link>
           <button
-            onClick={() => handleViewAnalytics(row)}
+            onClick={() => setAnalyticsModal({ isOpen: true, content: row })}
             className="text-blue-600 p-2 rounded-md hover:bg-blue-50 transition-colors duration-200"
             title="View Analytics"
           >
@@ -754,28 +752,8 @@ export default function ManageContentPage({ activeBlogId }) {
 
 // Content Analytics Modal Component
 function ContentAnalyticsModal({ contentId, contentTitle, activeBlogId }) {
-  const [analytics, setAnalytics] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState(30);
-  const { currentUser } = useAuth();
-
-  useEffect(() => {
-    if (!contentId || !currentUser?.uid || !activeBlogId) return;
-
-    const fetchAnalytics = async () => {
-      setLoading(true);
-      try {
-        const data = await analyticsService.getContentAnalytics(currentUser.uid, contentId, activeBlogId, period);
-        setAnalytics(data);
-      } catch (error) {
-        console.error('Error fetching analytics:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAnalytics();
-  }, [contentId, period, currentUser?.uid, activeBlogId]);
+  const { analytics, loading, error } = useContentAnalytics(contentId, activeBlogId, period);
 
   if (loading) {
     return (

@@ -292,6 +292,7 @@ export default function ManageProductsPage({ activeBlogId }) {
       setSelectedItems([]);
     } catch (error) {
       console.error('Bulk publish error:', error);
+      toast.error('Failed to publish selected items');
     } finally {
       setPublishingLoading(false);
     }
@@ -334,6 +335,7 @@ export default function ManageProductsPage({ activeBlogId }) {
       setSelectedItems([]);
     } catch (error) {
       console.error('Bulk unpublish error:', error);
+      toast.error('Failed to unpublish selected items');
     } finally {
       setUnpublishingLoading(false);
     }
@@ -379,6 +381,7 @@ export default function ManageProductsPage({ activeBlogId }) {
       setSelectedItems([]);
     } catch (error) {
       console.error('Bulk delete error:', error);
+      toast.error('Failed to delete selected items');
     } finally {
       setDeletingLoading(false);
     }
