@@ -658,10 +658,11 @@
 }
 
 .markdown-content pre {
-  background-color: hsl(var(--primary));
-  color: hsl(var(--primary-foreground));
+  background-color: hsl(var(--secondary)); /* Change to a light grey/green */
+  color: hsl(var(--foreground)); /* Change to a dark grey for better contrast */
   border-color: hsl(var(--border));
 }
+
 
 .markdown-content pre code {
   color: hsl(var(--primary-foreground));
