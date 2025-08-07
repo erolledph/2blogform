@@ -40,6 +40,9 @@
     --input: 214.3 31.8% 91.4%;
     --border: 214.3 31.8% 91.4%;
     --ring: 142 76% 36%; /* Ring color matches primary green */
+
+    /* New variable for code background */
+    --code-background: 150 10% 92%; /* Slightly darker than --secondary */
   }
 
   body {
@@ -101,7 +104,6 @@
   .sidebar.expanded {
     @apply w-64; /* 256px */
   }
-
 
   .sidebar-header {
     @apply p-4 flex items-center justify-between relative h-16; /* p-4 = 16px, h-16 = 64px */
@@ -246,7 +248,6 @@
   .nav-link.active .nav-link-icon {
     color: hsl(var(--primary)); /* Active icon color is primary green */
   }
-
 
   .main-content {
     @apply flex-1 overflow-x-auto;
@@ -547,6 +548,103 @@
   .grid-responsive-4 {
     @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6; /* gap-6 = 24px */
   }
+
+  /* Updated Markdown Content Styling */
+  .markdown-content {
+    color: hsl(var(--foreground));
+  }
+
+  .markdown-content h1,
+  .markdown-content h2,
+  .markdown-content h3,
+  .markdown-content h4,
+  .markdown-content h5,
+  .markdown-content h6 {
+    color: hsl(var(--foreground));
+  }
+
+  .markdown-content p {
+    color: hsl(var(--foreground));
+  }
+
+  .markdown-content ul,
+  .markdown-content ol {
+    /* List item color is inherited */
+  }
+
+  .markdown-content li {
+    color: hsl(var(--foreground));
+  }
+
+  .markdown-content blockquote {
+    border-left: 4px solid hsl(var(--primary));
+    color: hsl(var(--foreground));
+    background: hsl(var(--secondary));
+    padding: 1rem;
+    margin: 1rem 0;
+  }
+
+  .markdown-content code {
+    background-color: hsl(var(--code-background));
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border));
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+  }
+
+  .markdown-content pre {
+    background-color: hsl(var(--code-background));
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border));
+    padding: 1rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace;
+  }
+
+  .markdown-content pre code {
+    color: hsl(var(--foreground));
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  .markdown-content a {
+    color: hsl(var(--primary));
+  }
+
+  .markdown-content strong {
+    color: hsl(var(--foreground));
+  }
+
+  .markdown-content em {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .markdown-content hr {
+    border-color: hsl(var(--border));
+  }
+
+  .markdown-content table {
+    border-color: hsl(var(--border));
+  }
+
+  .markdown-content th {
+    background-color: hsl(var(--secondary));
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--border));
+  }
+
+  .markdown-content td {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--border));
+  }
+
+  .markdown-content img {
+    border-color: hsl(var(--border));
+  }
 }
 
 /* Mobile sidebar scroll prevention */
@@ -616,103 +714,6 @@
   border-color: hsl(var(--primary));
   color: hsl(var(--muted-foreground));
   background-image: linear-gradient(to right, hsla(var(--primary), 0.05), hsla(var(--accent), 0.05));
-}
-
-/* React Markdown Styling */
-.markdown-content {
-  color: hsl(var(--foreground));
-}
-
-.markdown-content h1,
-.markdown-content h2,
-.markdown-content h3,
-.markdown-content h4,
-.markdown-content h5,
-.markdown-content h6 {
-  color: hsl(var(--foreground));
-}
-
-.markdown-content p {
-  color: hsl(var(--foreground));
-}
-
-.markdown-content ul,
-.markdown-content ol {
-  /* List item color is inherited */
-}
-
-.markdown-content li {
-  color: hsl(var(--foreground));
-}
-
-..markdown-content blockquote {
-  border-color: hsl(var(--primary)); /* Keep border color as is */
-  color: hsl(var(--foreground)); /* Change to dark grey for better contrast */
-  background-color: hsl(var(--muted)); /* Change to a solid light grey background */
-  background-image: none; /* Remove the gradient background */
-}
-
-.markdown-content code {
-  background-color: hsl(var(--code-background)); /* Slightly darker background */
-  color: hsl(var(--foreground)); /* Dark text for high contrast */
-  border: 1px solid hsl(var(--border));
-  padding: 0.2rem 0.4rem; /* Consistent padding */
-  border-radius: 4px;
-  font-family: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace;
-}
-
-.markdown-content pre {
-  background-color: hsl(var(--code-background)); /* Lighter background */
-  color: hsl(var(--foreground)); /* Dark text for readability */
-  border: 1px solid hsl(var(--border));
-  padding: 1rem;
-  border-radius: 6px;
-  overflow-x: auto;
-  font-family: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace;
-}
-
-
-.markdown-content pre code {
-  color: hsl(var(--foreground)); /* Match pre text color */
-  background: transparent; /* Remove inline code background inside pre */
-  border: none;
-  padding: 0;
-}
-
-.markdown-content a {
-  color: hsl(var(--primary));
-}
-
-.markdown-content strong {
-  color: hsl(var(--foreground));
-}
-
-.markdown-content em {
-  color: hsl(var(--muted-foreground));
-}
-
-.markdown-content hr {
-  border-color: hsl(var(--border));
-}
-
-.markdown-content table {
-  border-color: hsl(var(--border));
-}
-
-.markdown-content th {
-  background-color: hsl(var(--secondary));
-  color: hsl(var(--foreground));
-  border-color: hsl(var(--border));
-}
-
-.markdown-content td {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  border-color: hsl(var(--border));
-}
-
-.markdown-content img {
-  border-color: hsl(var(--border));
 }
 
 /* Enhanced Loading States */
