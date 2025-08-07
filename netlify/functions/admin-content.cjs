@@ -211,26 +211,29 @@ exports.handler = async (event, context) => {
         const now = admin.firestore.FieldValue.serverTimestamp();
         const existingData = doc.data();
         
+        // Build update object with only the fields that are being changed
         const contentData = {
-          title: updateData.title || '',
-          slug: updateData.slug || '',
-          content: updateData.content || '',
-          featuredImageUrl: updateData.featuredImageUrl || '',
-          metaDescription: updateData.metaDescription || '',
-          seoTitle: updateData.seoTitle || '',
-          keywords: updateData.keywords || [],
-          author: updateData.author || '',
-          categories: updateData.categories || [],
-          tags: updateData.tags || [],
-          status: updateData.status || 'draft',
-          userId,
-          blogId: blogId,
-          updatedAt: now,
-          // Update publishDate if status changed to published
-          publishDate: (updateData.status || 'draft') === 'published' && existingData.status !== 'published' 
-            ? now 
-            : existingData.publishDate
+          updatedAt: now
         };
+
+        // Only include fields that are explicitly provided in the update
+        if (updateData.title !== undefined) contentData.title = updateData.title;
+        if (updateData.slug !== undefined) contentData.slug = updateData.slug;
+        if (updateData.content !== undefined) contentData.content = updateData.content;
+        if (updateData.featuredImageUrl !== undefined) contentData.featuredImageUrl = updateData.featuredImageUrl;
+        if (updateData.metaDescription !== undefined) contentData.metaDescription = updateData.metaDescription;
+        if (updateData.seoTitle !== undefined) contentData.seoTitle = updateData.seoTitle;
+        if (updateData.keywords !== undefined) contentData.keywords = updateData.keywords;
+        if (updateData.author !== undefined) contentData.author = updateData.author;
+        if (updateData.categories !== undefined) contentData.categories = updateData.categories;
+        if (updateData.tags !== undefined) contentData.tags = updateData.tags;
+        if (updateData.status !== undefined) {
+          contentData.status = updateData.status;
+          // Update publishDate if status changed to published
+          if (updateData.status === 'published' && existingData.status !== 'published') {
+            contentData.publishDate = now;
+          }
+        }
 
         await docRef.update(contentData);
         
