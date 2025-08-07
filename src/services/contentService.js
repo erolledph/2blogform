@@ -7,6 +7,10 @@ export const contentService = {
     if (!blogId) {
       throw new Error('blogId is required');
     }
+    // Validate that blogId is not the same as userId to prevent data sync issues
+    if (blogId === userId) {
+      throw new Error('Invalid blogId: blogId cannot be the same as userId');
+    }
     const actualBlogId = blogId;
     return collection(db, 'users', userId, 'blogs', actualBlogId, 'content');
   },

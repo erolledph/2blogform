@@ -102,6 +102,17 @@ export function AuthProvider({ children }) {
           // Check for admin notifications before updating profile
           await checkForAdminNotifications(user, newProfile, userProfile);
           
+          // Ensure user has a default blog when they first log in
+          if (!userProfile) {
+            try {
+              await import('@/services/blogService').then(({ blogService }) => 
+                blogService.ensureDefaultBlog(user.uid)
+              );
+            } catch (blogError) {
+              console.warn('Could not ensure default blog during auth:', blogError);
+            }
+          }
+          
           // Store raw Firebase user and separate profile data
           setCurrentUser(user);
           setUserProfile(newProfile);

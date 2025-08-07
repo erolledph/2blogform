@@ -2,6 +2,7 @@ import React, { useState, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { blogService } from '@/services/blogService';
+import toast from 'react-hot-toast';
 import { realTimeManager } from '@/services/realTimeService';
 import { webSocketService } from '@/services/webSocketService';
 import Sidebar from './Sidebar';
@@ -75,9 +76,16 @@ export default function DashboardPage() {
           setBlogInitialized(true);
         } catch (error) {
           console.error('Error initializing blog:', error);
-          // Fallback to userId for backward compatibility
-          setActiveBlogId(currentUser.uid);
-          setBlogInitialized(true);
+          // Create a new default blog if initialization fails
+          try {
+            const newBlogId = await blogService.createNewBlog(currentUser.uid, 'My Blog', 'My personal blog');
+            setActiveBlogId(newBlogId.id);
+            setBlogInitialized(true);
+            toast.success('Created your first blog successfully');
+          } catch (createError) {
+            console.error('Error creating default blog:', createError);
+            toast.error('Failed to initialize blog. Please refresh the page.');
+          }
         }
       }
     };

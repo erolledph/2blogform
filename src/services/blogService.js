@@ -117,8 +117,8 @@ export const blogService = {
       return defaultBlog.id;
     } catch (error) {
       console.error('Error ensuring default blog:', error);
-      // Fallback to userId for backward compatibility
-      return userId;
+      // Re-throw error instead of using userId fallback to prevent data sync issues
+      throw new Error('Failed to ensure default blog: ' + error.message);
     }
   },
 
