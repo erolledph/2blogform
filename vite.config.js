@@ -101,7 +101,7 @@ export default defineConfig({
       'lucide-react',
       'react-hot-toast'
     ],
-    exclude: ['react-simplemde-editor']
+    exclude: []
   },
   // Preview optimizations
   preview: {
