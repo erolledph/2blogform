@@ -49,12 +49,20 @@ function validateProductItem(item, index) {
     errors.push('Missing required field: name');
   } else if (typeof item.name !== 'string') {
     errors.push('Name must be a string');
+  } else if (item.name.trim().length < 3) {
+    errors.push('Product name must be at least 3 characters');
+  } else if (item.name.length > 200) {
+    errors.push('Product name must be less than 200 characters');
   }
   
   if (!item.description || !item.description.trim()) {
     errors.push('Missing required field: description');
   } else if (typeof item.description !== 'string') {
     errors.push('Description must be a string');
+  } else if (item.description.trim().length < 10) {
+    errors.push('Description must be at least 10 characters');
+  } else if (item.description.length > 10000) {
+    errors.push('Description must be less than 10,000 characters');
   }
   
   // Generate slug if missing
@@ -64,11 +72,17 @@ function validateProductItem(item, index) {
     } else {
       errors.push('Missing required field: slug (and cannot generate from name)');
     }
+  } else if (!/^[a-z0-9-]+$/.test(item.slug)) {
+    errors.push('Slug can only contain lowercase letters, numbers, and hyphens');
+  } else if (item.slug.length > 100) {
+    errors.push('Slug must be less than 100 characters');
   }
   
   // Validate price
   if (item.price === undefined || item.price === null || isNaN(parseFloat(item.price)) || parseFloat(item.price) < 0) {
     errors.push('Invalid price: must be a valid number >= 0');
+  } else if (parseFloat(item.price) > 999999.99) {
+    errors.push('Price cannot exceed $999,999.99');
   }
   
   // Validate percentOff
@@ -89,12 +103,26 @@ function validateProductItem(item, index) {
     item.percentOff = 0;
   }
   
+  // Validate optional fields
+  if (item.productUrl && (typeof item.productUrl !== 'string' || item.productUrl.length > 500)) {
+    errors.push('Product URL must be a string with maximum 500 characters');
+  }
+  
+  if (item.category && (typeof item.category !== 'string' || item.category.length > 100)) {
+    errors.push('Category must be a string with maximum 100 characters');
+  }
+  
   // Ensure arrays are arrays
   if (item.imageUrls && !Array.isArray(item.imageUrls)) {
-    item.imageUrls = [];
+    errors.push('Image URLs must be an array');
+  } else {
+    item.imageUrls = item.imageUrls || [];
   }
+  
   if (item.tags && !Array.isArray(item.tags)) {
-    item.tags = [];
+    errors.push('Tags must be an array');
+  } else {
+    item.tags = item.tags || [];
   }
   
   // Ensure strings are strings

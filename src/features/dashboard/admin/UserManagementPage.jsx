@@ -580,6 +580,7 @@ function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
     maxBlogs: user.maxBlogs || 1,
     totalStorageMB: user.totalStorageMB || 100
   });
+  const [errors, setErrors] = useState({});
   
   const [storageOption, setStorageOption] = useState('preset');
   const [customStorage, setCustomStorage] = useState('');
@@ -605,15 +606,46 @@ function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
     }
   }, [formData.totalStorageMB]);
 
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Role validation
+    if (!formData.role || !['admin', 'user'].includes(formData.role)) {
+      newErrors.role = 'Role must be either "admin" or "user"';
+    }
+    
+    // Max blogs validation
+    if (!Number.isInteger(formData.maxBlogs) || formData.maxBlogs < 1) {
+      newErrors.maxBlogs = 'Maximum blogs must be a positive integer (minimum 1)';
+    } else if (formData.maxBlogs > 50) {
+      newErrors.maxBlogs = 'Maximum blogs cannot exceed 50';
+    }
+    
+    // Storage validation
+    if (!Number.isInteger(formData.totalStorageMB) || formData.totalStorageMB < 100) {
+      newErrors.totalStorageMB = 'Storage limit must be at least 100 MB';
+    } else if (formData.totalStorageMB > 100000) {
+      newErrors.totalStorageMB = 'Storage limit cannot exceed 100 GB (100,000 MB)';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
   const handleStorageOptionChange = (option) => {
     setStorageOption(option);
     if (option === 'preset') {
       setFormData(prev => ({ ...prev, totalStorageMB: 100 }));
+      if (errors.totalStorageMB) {
+        setErrors(prev => ({ ...prev, totalStorageMB: '' }));
+      }
     }
   };
 
   const handleStoragePresetChange = (value) => {
     setFormData(prev => ({ ...prev, totalStorageMB: parseInt(value) }));
+    if (errors.totalStorageMB) {
+      setErrors(prev => ({ ...prev, totalStorageMB: '' }));
+    }
   };
 
   const handleCustomStorageChange = (value) => {
@@ -621,21 +653,34 @@ function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
     const numValue = parseInt(value) || 100;
     if (numValue >= 100) {
       setFormData(prev => ({ ...prev, totalStorageMB: numValue }));
+      if (errors.totalStorageMB) {
+        setErrors(prev => ({ ...prev, totalStorageMB: '' }));
+      }
     }
   };
 
+  const handleRoleChange = (role) => {
+    setFormData(prev => ({ ...prev, role }));
+    if (errors.role) {
+      setErrors(prev => ({ ...prev, role: '' }));
+    }
+  };
+
+  const handleMaxBlogsChange = (value) => {
+    const numValue = parseInt(value) || 1;
+    setFormData(prev => ({ 
+      ...prev, 
+      maxBlogs: numValue,
+      canManageMultipleBlogs: numValue > 1
+    }));
+    if (errors.maxBlogs) {
+      setErrors(prev => ({ ...prev, maxBlogs: '' }));
+    }
+  };
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Validate maxBlogs
-    if (formData.maxBlogs < 1) {
-      toast.error('Maximum blogs must be at least 1');
-      return;
-    }
-    
-    // Validate totalStorageMB
-    if (formData.totalStorageMB < 100) {
-      toast.error('Storage limit must be at least 100 MB');
+    if (!validateForm()) {
       return;
     }
     
@@ -687,7 +732,7 @@ function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
               name="role"
               value="user"
               checked={formData.role === 'user'}
-              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
+              onChange={(e) => handleRoleChange(e.target.value)}
               disabled={updating || isCurrentUser}
               className="w-4 h-4 text-primary"
             />
@@ -702,7 +747,7 @@ function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
               name="role"
               value="admin"
               checked={formData.role === 'admin'}
-              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
+              onChange={(e) => handleRoleChange(e.target.value)}
               disabled={updating || isCurrentUser}
               className="w-4 h-4 text-primary"
             />
@@ -712,6 +757,9 @@ function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
             </div>
           </label>
         </div>
+        {errors.role && (
+          <p className="mt-2 text-sm text-destructive">{errors.role}</p>
+        )}
         {isCurrentUser && (
           <p className="text-sm text-muted-foreground mt-2">
             You cannot change your own role
@@ -731,16 +779,10 @@ function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
               min="1"
               max="50"
               value={formData.maxBlogs}
-              onChange={(e) => {
-                const value = parseInt(e.target.value) || 1;
-                setFormData(prev => ({ 
-                  ...prev, 
-                  maxBlogs: value,
-                  canManageMultipleBlogs: value > 1
-                }));
-              }}
+              onChange={(e) => handleMaxBlogsChange(e.target.value)}
               disabled={updating}
               placeholder="1"
+              error={errors.maxBlogs}
             />
             <p className="text-sm text-muted-foreground mt-2">
               Number of blogs this user can create (1-50)
@@ -797,14 +839,19 @@ function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
                   <InputField
                     type="number"
                     min="100"
+                    max="100000"
                     value={customStorage}
                     onChange={(e) => handleCustomStorageChange(e.target.value)}
                     disabled={updating}
                     placeholder="100"
                     className="flex-1"
+                    error={errors.totalStorageMB}
                   />
                   <span className="text-sm text-muted-foreground">MB</span>
                 </div>
+              )}
+              {errors.totalStorageMB && (
+                <p className="text-sm text-destructive">{errors.totalStorageMB}</p>
               )}
             </div>
             <p className="text-sm text-muted-foreground mt-2">
@@ -819,6 +866,7 @@ function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
         <LoadingButton
           onClick={onCancel}
           variant="secondary"
+          disabled={updating}
         >
           Cancel
         </LoadingButton>
@@ -826,6 +874,7 @@ function UserEditForm({ user, onSave, onCancel, updating, currentUserId }) {
           loading={updating}
           loadingText="Updating..."
           variant="primary"
+          disabled={Object.keys(errors).length > 0}
         >
           Save Changes
         </LoadingButton>

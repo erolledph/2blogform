@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProducts } from '@/hooks/useProducts';
+import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
 import { settingsService } from '@/services/settingsService';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
+import DynamicTransition from '@/components/shared/DynamicTransition';
 import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import { Edit, Trash2, Plus, ImageIcon, DollarSign, Package, ExternalLink, Eye, Upload, Download, CheckCircle } from 'lucide-react';
@@ -14,6 +16,7 @@ import toast from 'react-hot-toast';
 
 export default function ManageProductsPage({ activeBlogId }) {
   const { products, setProducts, loading, error, refetch } = useProducts(activeBlogId);
+  const { executeOperation } = useRealTimeOperations();
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, product: null });
   const [userCurrency, setUserCurrency] = useState('$');
   const [selectedItems, setSelectedItems] = useState([]);
@@ -260,44 +263,51 @@ export default function ManageProductsPage({ activeBlogId }) {
       return;
     }
 
-    setPublishingLoading(true);
-    const originalProducts = [...products];
-
-    // Optimistic UI update
-    const updatedProducts = products.map(item =>
-      selectedItems.includes(item.id) ? { ...item, status: 'published' } : item
-    );
-    setProducts(updatedProducts);
-
     try {
-      const token = await getAuthToken();
+      setPublishingLoading(true);
       
-      const promises = selectedItems.map(async (itemId) => {
-        const response = await fetch(`/.netlify/functions/admin-product`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ 
-            id: itemId, 
-            blogId: activeBlogId,
-            status: 'published'
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to publish item ${itemId}`);
-        }
-      });
+      await executeOperation({
+        type: 'bulk-publish-products',
+        dataKey: `products-${activeBlogId}`,
+        optimisticUpdate: products.map(item =>
+          selectedItems.includes(item.id) ? { ...item, status: 'published' } : item
+        ),
+        rollbackData: products,
+        execute: async () => {
+          const token = await getAuthToken();
+          
+          const promises = selectedItems.map(async (itemId) => {
+            const response = await fetch(`/.netlify/functions/admin-product`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ 
+                id: itemId, 
+                blogId: activeBlogId,
+                status: 'published'
+              })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Failed to publish item ${itemId}`);
+            }
+          });
 
-      await Promise.all(promises);
-      toast.success(`Successfully published ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
+          await Promise.all(promises);
+          return products.map(item =>
+            selectedItems.includes(item.id) ? { ...item, status: 'published' } : item
+          );
+        },
+        successMessage: `Successfully published ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`,
+        errorMessage: 'Some products failed to publish',
+        context: { area: 'product-manager' }
+      });
+      
       setSelectedItems([]);
     } catch (error) {
       console.error('Bulk publish error:', error);
-      toast.error('Some products failed to publish');
-      setProducts(originalProducts); // Rollback on error
     } finally {
       setPublishingLoading(false);
     }
@@ -309,44 +319,51 @@ export default function ManageProductsPage({ activeBlogId }) {
       return;
     }
 
-    setUnpublishingLoading(true);
-    const originalProducts = [...products];
-
-    // Optimistic UI update
-    const updatedProducts = products.map(item =>
-      selectedItems.includes(item.id) ? { ...item, status: 'draft' } : item
-    );
-    setProducts(updatedProducts);
-
     try {
-      const token = await getAuthToken();
+      setUnpublishingLoading(true);
       
-      const promises = selectedItems.map(async (itemId) => {
-        const response = await fetch(`/.netlify/functions/admin-product`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ 
-            id: itemId, 
-            blogId: activeBlogId,
-            status: 'draft'
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to unpublish item ${itemId}`);
-        }
-      });
+      await executeOperation({
+        type: 'bulk-unpublish-products',
+        dataKey: `products-${activeBlogId}`,
+        optimisticUpdate: products.map(item =>
+          selectedItems.includes(item.id) ? { ...item, status: 'draft' } : item
+        ),
+        rollbackData: products,
+        execute: async () => {
+          const token = await getAuthToken();
+          
+          const promises = selectedItems.map(async (itemId) => {
+            const response = await fetch(`/.netlify/functions/admin-product`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ 
+                id: itemId, 
+                blogId: activeBlogId,
+                status: 'draft'
+              })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Failed to unpublish item ${itemId}`);
+            }
+          });
 
-      await Promise.all(promises);
-      toast.success(`Successfully unpublished ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
+          await Promise.all(promises);
+          return products.map(item =>
+            selectedItems.includes(item.id) ? { ...item, status: 'draft' } : item
+          );
+        },
+        successMessage: `Successfully unpublished ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`,
+        errorMessage: 'Some products failed to unpublish',
+        context: { area: 'product-manager' }
+      });
+      
       setSelectedItems([]);
     } catch (error) {
       console.error('Bulk unpublish error:', error);
-      toast.error('Some products failed to unpublish');
-      setProducts(originalProducts); // Rollback on error
     } finally {
       setUnpublishingLoading(false);
     }
@@ -362,75 +379,85 @@ export default function ManageProductsPage({ activeBlogId }) {
       return;
     }
 
-    setDeletingLoading(true);
-    const originalProducts = [...products];
-
-    // Optimistic UI update
-    const updatedProducts = products.filter(item => !selectedItems.includes(item.id));
-    setProducts(updatedProducts);
-
     try {
-      const token = await getAuthToken();
+      setDeletingLoading(true);
       
-      const promises = selectedItems.map(async (itemId) => {
-        const response = await fetch(`/.netlify/functions/admin-product`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ 
-            id: itemId, 
-            blogId: activeBlogId
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to delete item ${itemId}`);
-        }
-      });
+      await executeOperation({
+        type: 'bulk-delete-products',
+        dataKey: `products-${activeBlogId}`,
+        optimisticUpdate: products.filter(item => !selectedItems.includes(item.id)),
+        rollbackData: products,
+        execute: async () => {
+          const token = await getAuthToken();
+          
+          const promises = selectedItems.map(async (itemId) => {
+            const response = await fetch(`/.netlify/functions/admin-product`, {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ 
+                id: itemId, 
+                blogId: activeBlogId
+              })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Failed to delete item ${itemId}`);
+            }
+          });
 
-      await Promise.all(promises);
-      toast.success(`Successfully deleted ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
+          await Promise.all(promises);
+          return products.filter(item => !selectedItems.includes(item.id));
+        },
+        successMessage: `Successfully deleted ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`,
+        errorMessage: 'Some products failed to delete',
+        context: { area: 'product-manager' }
+      });
+      
       setSelectedItems([]);
     } catch (error) {
       console.error('Bulk delete error:', error);
-      toast.error('Some products failed to delete');
-      setProducts(originalProducts); // Rollback on error
     } finally {
       setDeletingLoading(false);
     }
   };
 
   const handleDelete = async (product) => {
-    setDeletingItemId(product.id);
-    const originalProducts = [...products];
-
-    // Optimistic UI update
-    const updatedProducts = products.filter(item => item.id !== product.id);
-    setProducts(updatedProducts);
-
     try {
-      const token = await getAuthToken();
-      const response = await fetch(`/.netlify/functions/admin-product`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ id: product.id, blogId: activeBlogId })
-      });
+      setDeletingItemId(product.id);
+      
+      await executeOperation({
+        type: 'delete-product',
+        dataKey: `products-${activeBlogId}`,
+        optimisticUpdate: products.filter(item => item.id !== product.id),
+        rollbackData: products,
+        execute: async () => {
+          const token = await getAuthToken();
+          const response = await fetch(`/.netlify/functions/admin-product`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ id: product.id, blogId: activeBlogId })
+          });
 
-      if (response.ok) {
-        toast.success('Product deleted successfully');
-        setDeleteModal({ isOpen: false, product: null });
-      } else {
-        throw new Error('Failed to delete product');
-      }
+          if (!response.ok) {
+            throw new Error('Failed to delete product');
+          }
+          
+          return products.filter(item => item.id !== product.id);
+        },
+        successMessage: 'Product deleted successfully',
+        errorMessage: 'Failed to delete product',
+        context: { area: 'product-manager' }
+      });
+      
+      setDeleteModal({ isOpen: false, product: null });
     } catch (error) {
       console.error('Error deleting product:', error);
-      toast.error('Failed to delete product');
-      setProducts(originalProducts); // Rollback on error
     } finally {
       setDeletingItemId(null);
     }
@@ -595,7 +622,7 @@ export default function ManageProductsPage({ activeBlogId }) {
 
   if (loading) {
     return (
-      <div className="section-spacing">
+      <DynamicTransition loading={true} className="section-spacing">
         <div className="page-header">
           <h1 className="page-title">Manage Products</h1>
           <p className="page-description">Loading your products...</p>
@@ -605,7 +632,7 @@ export default function ManageProductsPage({ activeBlogId }) {
             <TableSkeleton rows={8} columns={6} />
           </div>
         </div>
-      </div>
+      </DynamicTransition>
     );
   }
 
@@ -618,7 +645,7 @@ export default function ManageProductsPage({ activeBlogId }) {
   }
 
   return (
-    <div className="section-spacing">
+    <DynamicTransition loading={loading} error={error} className="section-spacing">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
         <div className="page-header mb-0">
           <h1 className="page-title mb-2">Manage Products</h1>
@@ -733,6 +760,7 @@ export default function ManageProductsPage({ activeBlogId }) {
               selectedItems={selectedItems}
               onSelectAll={handleSelectAll}
               onSelectRow={handleSelectRow}
+              enableAnimations={true}
               onFiltersChange={(filters) => {
                 // Filters are handled internally by DataTable
                 // This callback can be used for additional logic if needed
@@ -796,6 +824,6 @@ export default function ManageProductsPage({ activeBlogId }) {
           </div>
         </div>
       </Modal>
-    </div>
+    </DynamicTransition>
   );
 }

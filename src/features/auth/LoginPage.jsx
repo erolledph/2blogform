@@ -18,20 +18,30 @@ export default function LoginPage() {
   const validateForm = () => {
     const newErrors = {};
     
+    // Email validation
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid';
     } else if (formData.email.length > 254) {
       newErrors.email = 'Email is too long';
+    } else if (formData.email.length < 5) {
+      newErrors.email = 'Email is too short';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
     }
     
+    // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     } else if (formData.password.length > 128) {
       newErrors.password = 'Password is too long';
+    } else if (formData.password.includes(' ')) {
+      newErrors.password = 'Password cannot contain spaces';
+    } else if (!/^(?=.*[a-zA-Z])/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one letter';
     }
     
     setErrors(newErrors);

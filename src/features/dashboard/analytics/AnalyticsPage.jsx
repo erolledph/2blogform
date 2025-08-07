@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useSiteAnalytics, useBackendUsage } from '@/hooks/useAnalytics';
 import { useCachedData } from '@/hooks/useCache';
+import LiveAnalyticsDashboard, { RealTimePerformanceMonitor } from '@/components/shared/LiveAnalyticsDashboard';
+import { useLiveAnalytics } from '@/services/realTimeAnalytics';
 import SkeletonLoader, { StatCardSkeleton } from '@/components/shared/SkeletonLoader';
 import {
   BarChart3,
@@ -20,6 +22,8 @@ import {
 
 export default function AnalyticsPage({ activeBlogId }) {
   const [selectedPeriod, setSelectedPeriod] = useState(30);
+  const [activeTab, setActiveTab] = useState('overview');
+  const { liveMetrics, performanceData, isStreaming } = useLiveAnalytics(activeBlogId);
   
   // Use cached analytics data with 2-minute TTL
   const {
@@ -119,8 +123,48 @@ export default function AnalyticsPage({ activeBlogId }) {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div>
           <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">Analytics & Platform Usage</h1>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${isStreaming ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+              <span className="text-sm text-muted-foreground">
+                {isStreaming ? 'Live streaming active' : 'Live streaming inactive'}
+              </span>
+            </div>
+          </div>
         </div>
         <div className="flex items-center space-x-4">
+          <div className="flex bg-muted rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'overview' 
+                  ? 'bg-white text-foreground shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('live')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'live' 
+                  ? 'bg-white text-foreground shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Live Analytics
+            </button>
+            <button
+              onClick={() => setActiveTab('performance')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'performance' 
+                  ? 'bg-white text-foreground shadow-sm' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Performance
+            </button>
+          </div>
           <select
             value={selectedPeriod}
             onChange={(e) => setSelectedPeriod(Number(e.target.value))}
@@ -138,6 +182,17 @@ export default function AnalyticsPage({ activeBlogId }) {
         </div>
       </div>
 
+      {/* Tab Content */}
+      {activeTab === 'live' && (
+        <LiveAnalyticsDashboard blogId={activeBlogId} />
+      )}
+
+      {activeTab === 'performance' && (
+        <RealTimePerformanceMonitor />
+      )}
+
+      {activeTab === 'overview' && (
+        <>
       {/* Important Notice */}
       <div className="card border-amber-200 bg-amber-50">
         <div className="card-content p-6">
@@ -659,6 +714,8 @@ export default function AnalyticsPage({ activeBlogId }) {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

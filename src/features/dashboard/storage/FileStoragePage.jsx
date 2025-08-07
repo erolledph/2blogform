@@ -3,8 +3,10 @@ import { ref, listAll, getMetadata, getDownloadURL, deleteObject, uploadBytes } 
 import { storage } from '@/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { storageService } from '@/services/storageService';
+import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
+import DynamicTransition from '@/components/shared/DynamicTransition';
 import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import ImageUploader from '@/components/shared/ImageUploader';
@@ -51,6 +53,7 @@ export default function FileStoragePage() {
   const [selectedDestination, setSelectedDestination] = useState('');
   const [availableFolders, setAvailableFolders] = useState([]);
   const { currentUser, getAuthToken } = useAuth();
+  const { executeOperation } = useRealTimeOperations();
   
   // Initialize user-specific base path
   useEffect(() => {
@@ -222,31 +225,35 @@ export default function FileStoragePage() {
       return;
     }
 
-    const originalItems = [...items];
-    const folderPath = `${currentPath}/${newFolderName.trim()}`;
-    
-    // Optimistic UI update - add folder immediately
-    const newFolder = {
-      id: folderPath,
-      name: newFolderName.trim(),
-      fullPath: folderPath,
-      type: 'folder',
-      size: 0,
-      timeCreated: null
-    };
-    const updatedItems = [...items, newFolder].sort((a, b) => {
-      if (a.type !== b.type) {
-        return a.type === 'folder' ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name);
-    });
-    setItems(updatedItems);
     try {
-      const token = await getAuthToken();
+      const folderPath = `${currentPath}/${newFolderName.trim()}`;
       
-      await storageService.createFolder(folderPath, token);
-      
-      toast.success('Folder created successfully');
+      await executeOperation({
+        type: 'create-folder',
+        dataKey: 'file-storage',
+        optimisticUpdate: [...items, {
+          id: folderPath,
+          name: newFolderName.trim(),
+          fullPath: folderPath,
+          type: 'folder',
+          size: 0,
+          timeCreated: null
+        }].sort((a, b) => {
+          if (a.type !== b.type) {
+            return a.type === 'folder' ? -1 : 1;
+          }
+          return a.name.localeCompare(b.name);
+        }),
+        rollbackData: items,
+        execute: async () => {
+          const token = await getAuthToken();
+          await storageService.createFolder(folderPath, token);
+          return folderPath;
+        },
+        successMessage: 'Folder created successfully',
+        errorMessage: 'Failed to create folder',
+        context: { area: 'file-storage' }
+      });
       
       // Close the appropriate modal based on context
       if (createFolderInMoveModal) {
@@ -260,10 +267,6 @@ export default function FileStoragePage() {
       setNewFolderName('');
     } catch (error) {
       console.error('Error creating folder:', error);
-      toast.error(error.message || 'Failed to create folder');
-      setItems(originalItems); // Rollback on error
-    } finally {
-      // No need to set loading false since we're not using page-level loading
     }
   };
 
@@ -278,35 +281,38 @@ export default function FileStoragePage() {
       return;
     }
 
-    const originalItems = [...items];
-    const item = renameModal.item;
-    
-    // Optimistic UI update
-    const updatedItems = items.map(currentItem => 
-      currentItem.id === item.id 
-        ? { ...currentItem, name: newItemName.trim() }
-        : currentItem
-    );
-    setItems(updatedItems);
     try {
-      const token = await getAuthToken();
-
-      if (item.type === 'file') {
-        await storageService.renameFile(item.fullPath, newItemName.trim(), token);
-      } else {
-        // For folders, use the renameFolder function
-        await storageService.renameFolder(item.fullPath, newItemName.trim(), token);
-      }
+      const item = renameModal.item;
       
-      toast.success('Item renamed successfully');
+      await executeOperation({
+        type: `rename-${item.type}`,
+        dataKey: 'file-storage',
+        optimisticUpdate: items.map(currentItem => 
+          currentItem.id === item.id 
+            ? { ...currentItem, name: newItemName.trim() }
+            : currentItem
+        ),
+        rollbackData: items,
+        execute: async () => {
+          const token = await getAuthToken();
+
+          if (item.type === 'file') {
+            await storageService.renameFile(item.fullPath, newItemName.trim(), token);
+          } else {
+            await storageService.renameFolder(item.fullPath, newItemName.trim(), token);
+          }
+          
+          return newItemName.trim();
+        },
+        successMessage: 'Item renamed successfully',
+        errorMessage: 'Failed to rename item',
+        context: { area: 'file-storage' }
+      });
+      
       setRenameModal({ isOpen: false, item: null });
       setNewItemName('');
     } catch (error) {
       console.error('Error renaming item:', error);
-      toast.error(error.message || 'Failed to rename item');
-      setItems(originalItems); // Rollback on error
-    } finally {
-      // No need to set loading false since we're not using page-level loading
     }
   };
 
@@ -356,32 +362,35 @@ export default function FileStoragePage() {
       return;
     }
 
-    const originalItems = [...items];
-    const item = moveModal.item;
-    
-    // Optimistic UI update - remove item from current view
-    const updatedItems = items.filter(currentItem => currentItem.id !== item.id);
-    setItems(updatedItems);
     try {
-      const token = await getAuthToken();
-
-      if (item.type === 'file') {
-        const destPath = `${selectedDestination}/${item.name}`;
-        await storageService.moveFile(item.fullPath, destPath, token);
-      } else {
-        // For folders, use the moveFolder function
-        await storageService.moveFolder(item.fullPath, selectedDestination, token);
-      }
+      const item = moveModal.item;
       
-      toast.success('Item moved successfully');
+      await executeOperation({
+        type: `move-${item.type}`,
+        dataKey: 'file-storage',
+        optimisticUpdate: items.filter(currentItem => currentItem.id !== item.id),
+        rollbackData: items,
+        execute: async () => {
+          const token = await getAuthToken();
+
+          if (item.type === 'file') {
+            const destPath = `${selectedDestination}/${item.name}`;
+            await storageService.moveFile(item.fullPath, destPath, token);
+          } else {
+            await storageService.moveFolder(item.fullPath, selectedDestination, token);
+          }
+          
+          return selectedDestination;
+        },
+        successMessage: 'Item moved successfully',
+        errorMessage: 'Failed to move item',
+        context: { area: 'file-storage' }
+      });
+      
       setMoveModal({ isOpen: false, item: null });
       setSelectedDestination('');
     } catch (error) {
       console.error('Error moving item:', error);
-      toast.error(error.message || 'Failed to move item');
-      setItems(originalItems); // Rollback on error
-    } finally {
-      // No need to set loading false since we're not using page-level loading
     }
   };
   const navigateToFolder = (folderPath) => {
@@ -428,29 +437,25 @@ export default function FileStoragePage() {
   };
 
   const handleDelete = async (item) => {
-    const originalItems = [...items];
-    
-    // Optimistic UI update - remove item immediately
-    const updatedItems = items.filter(currentItem => currentItem.id !== item.id);
-    setItems(updatedItems);
     try {
-      if (item.type === 'folder') {
-        // Use server-side folder deletion
-        const token = await getAuthToken();
-        await storageService.deleteFile(item.fullPath, token, true);
-        toast.success('Folder deleted successfully');
-      } else {
-        // Use server-side file deletion
-        const token = await getAuthToken();
-        await storageService.deleteFile(item.fullPath, token, false);
-        toast.success('File deleted successfully');
-      }
+      await executeOperation({
+        type: `delete-${item.type}`,
+        dataKey: 'file-storage',
+        optimisticUpdate: items.filter(currentItem => currentItem.id !== item.id),
+        rollbackData: items,
+        execute: async () => {
+          const token = await getAuthToken();
+          await storageService.deleteFile(item.fullPath, token, item.type === 'folder');
+          return item.fullPath;
+        },
+        successMessage: `${item.type === 'folder' ? 'Folder' : 'File'} deleted successfully`,
+        errorMessage: `Failed to delete ${item.type}`,
+        context: { area: 'file-storage' }
+      });
       
       setDeleteModal({ isOpen: false, item: null });
     } catch (error) {
       console.error('Error deleting item:', error);
-      toast.error(`Failed to delete ${item.type}`);
-      setItems(originalItems); // Rollback on error
     }
   };
 
@@ -459,25 +464,8 @@ export default function FileStoragePage() {
   };
 
   const handleUploadSuccess = (uploadResult) => {
-    // Optimistic UI update - add new file to items
-    const newFile = {
-      id: uploadResult.fullPath,
-      name: uploadResult.fileName,
-      fullPath: uploadResult.fullPath,
-      type: 'file',
-      size: uploadResult.size,
-      contentType: 'image/' + uploadResult.fileName.split('.').pop(),
-      timeCreated: new Date(),
-      downloadURL: uploadResult.downloadURL
-    };
-    
-    const updatedItems = [...items, newFile].sort((a, b) => {
-      if (a.type !== b.type) {
-        return a.type === 'folder' ? -1 : 1;
-      }
-      return a.name.localeCompare(b.name);
-    });
-    setItems(updatedItems);
+    // Refresh items to get the latest state
+    fetchItems();
     
     setUploadModal({ isOpen: false });
   };
@@ -718,7 +706,7 @@ export default function FileStoragePage() {
 
   if (loading) {
     return (
-      <div className="space-y-10">
+      <DynamicTransition loading={true} className="space-y-10">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div>
             <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">File Storage</h1>
@@ -751,12 +739,12 @@ export default function FileStoragePage() {
             <TableSkeleton rows={10} columns={6} />
           </div>
         </div>
-      </div>
+      </DynamicTransition>
     );
   }
 
   return (
-    <div className="space-y-10">
+    <DynamicTransition loading={loading} error={error} className="space-y-10">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div>
           <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">File Storage</h1>
@@ -1276,6 +1264,6 @@ export default function FileStoragePage() {
           </div>
         </div>
       </Modal>
-    </div>
+    </DynamicTransition>
   );
 }

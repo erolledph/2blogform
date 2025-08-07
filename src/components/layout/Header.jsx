@@ -1,10 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, Wifi, WifiOff } from 'lucide-react';
+import { ConnectionIndicator } from '@/components/shared/ConnectionStatus';
+import { PresenceIndicators } from '@/components/shared/CollaborationIndicators';
+import RealTimeNotifications from '@/components/shared/RealTimeNotifications';
+import DynamicTransition from '@/components/shared/DynamicTransition';
+import { PerformanceWidget, CachePerformanceMonitor } from '@/components/shared/PerformanceMonitor';
 
 export default function Header({ onMenuClick }) {
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   return (
-    <header className="bg-white border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-30 backdrop-blur-sm bg-white/95">
+    <header className="bg-white/95 backdrop-blur-md border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-30 shadow-sm">
       <div className="flex items-center justify-between">
         {/* Left side - Mobile menu button */}
         <div className="flex items-center">
@@ -20,20 +27,61 @@ export default function Header({ onMenuClick }) {
         </div>
 
         {/* Center - Empty space for future use */}
-        <div className="flex-1"></div>
+        <div className="flex-1 flex justify-center">
+          <div className="flex items-center space-x-4">
+            <ConnectionIndicator />
+            <PresenceIndicators location="dashboard" />
+            <PerformanceWidget />
+            <CachePerformanceMonitor />
+          </div>
+        </div>
 
         {/* Right side - Notifications */}
         <div className="flex items-center space-x-2 sm:space-x-3">
           {/* Notifications */}
-          <button 
+          <div className="relative">
+            <button 
+            onClick={() => setShowNotifications(!showNotifications)}
             className="p-2 rounded-md hover:bg-muted transition-colors duration-200 relative"
             title="Notifications"
           >
             <Bell className="h-5 w-5 text-muted-foreground" />
-            <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full"></span>
+            {notifications.length > 0 && (
+              <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full animate-pulse"></span>
+            )}
           </button>
+            
+            {/* Notifications Dropdown */}
+            {showNotifications && (
+              <DynamicTransition show={showNotifications} transitionType="scale">
+                <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-border rounded-lg shadow-lg z-50">
+                  <div className="p-4 border-b border-border">
+                    <h3 className="text-sm font-medium text-foreground">Notifications</h3>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-muted-foreground">
+                        <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No new notifications</p>
+                      </div>
+                    ) : (
+                      notifications.map((notification, index) => (
+                        <div key={index} className="p-3 border-b border-border last:border-b-0 hover:bg-muted/30">
+                          <p className="text-sm text-foreground">{notification.message}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </DynamicTransition>
+            )}
+          </div>
         </div>
       </div>
+      
+      {/* Real-time notifications overlay */}
+      <RealTimeNotifications />
     </header>
   );
 }

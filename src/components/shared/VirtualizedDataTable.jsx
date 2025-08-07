@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Filter, X, Check } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { FixedSizeList as List } from 'react-window';
+import { Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
 import DynamicTransition from './DynamicTransition';
-import ProgressiveLoader from './ProgressiveLoader';
-import { StaggeredList } from './ProgressiveLoader';
-import VirtualizedDataTable from './VirtualizedDataTable';
+import { debounce } from '@/utils/helpers';
 
-export default function DataTable({
+// Enhanced DataTable with virtual scrolling for large datasets
+export default function VirtualizedDataTable({
   data = [],
   columns = [],
   searchable = false,
@@ -13,7 +13,7 @@ export default function DataTable({
   filterOptions = {},
   sortable = false,
   pagination = false,
-  pageSize = 10,
+  pageSize = 50,
   selectable = false,
   selectedItems = [],
   onSelectAll = null,
@@ -22,42 +22,11 @@ export default function DataTable({
   className = '',
   loading = false,
   error = null,
-  enableVirtualScrolling = false,
-  enableProgressiveLoading = false,
-  onLoadMore = null,
-  hasMore = false,
-  enableAnimations = true,
-  virtualScrollThreshold = 100,
+  enableVirtualScrolling = true,
   itemHeight = 60,
-  containerHeight = 600
+  containerHeight = 600,
+  overscan = 5
 }) {
-  // Use virtualized table for large datasets
-  if (enableVirtualScrolling || data.length > virtualScrollThreshold) {
-    return (
-      <VirtualizedDataTable
-        data={data}
-        columns={columns}
-        searchable={searchable}
-        filterable={filterable}
-        filterOptions={filterOptions}
-        sortable={sortable}
-        pagination={pagination}
-        pageSize={pageSize}
-        selectable={selectable}
-        selectedItems={selectedItems}
-        onSelectAll={onSelectAll}
-        onSelectRow={onSelectRow}
-        onFiltersChange={onFiltersChange}
-        className={className}
-        loading={loading}
-        error={error}
-        enableVirtualScrolling={true}
-        itemHeight={itemHeight}
-        containerHeight={containerHeight}
-      />
-    );
-  }
-
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
@@ -68,6 +37,16 @@ export default function DataTable({
     dateRange: { start: '', end: '' }
   });
   const [showFilters, setShowFilters] = useState(false);
+  const listRef = useRef(null);
+
+  // Debounced search to improve performance
+  const debouncedSearch = useCallback(
+    debounce((term) => {
+      setSearchTerm(term);
+      setCurrentPage(1);
+    }, 300),
+    []
+  );
 
   // Memoized filtered and sorted data
   const processedData = useMemo(() => {
@@ -131,7 +110,7 @@ export default function DataTable({
     return result;
   }, [data, searchTerm, sortConfig, filters]);
 
-  // Pagination
+  // Pagination for virtual scrolling
   const paginatedData = useMemo(() => {
     if (!pagination) return processedData;
     
@@ -139,6 +118,7 @@ export default function DataTable({
     return processedData.slice(startIndex, startIndex + pageSize);
   }, [processedData, currentPage, pageSize, pagination]);
 
+  const displayData = enableVirtualScrolling ? paginatedData : processedData;
   const totalPages = Math.ceil(processedData.length / pageSize);
 
   // Handle sorting
@@ -155,7 +135,7 @@ export default function DataTable({
   const handleFilterChange = (filterKey, value) => {
     const newFilters = { ...filters, [filterKey]: value };
     setFilters(newFilters);
-    setCurrentPage(1); // Reset to first page when filtering
+    setCurrentPage(1);
     
     if (onFiltersChange) {
       onFiltersChange(newFilters);
@@ -209,31 +189,39 @@ export default function DataTable({
     }
   };
 
-  // Render table row with animations
-  const renderTableRow = (item, index) => (
-    <tr 
-      key={item.id || index}
-      className={`border-b border-border hover:bg-muted/30 transition-colors duration-200 ${
-        selectedItems.includes(item.id) ? 'bg-primary/5' : ''
-      }`}
-    >
-      {selectable && (
-        <td className="px-4 py-3">
-          <input
-            type="checkbox"
-            checked={selectedItems.includes(item.id)}
-            onChange={(e) => handleRowSelect(item.id, e.target.checked)}
-            className="w-4 h-4 text-primary rounded border-border focus:ring-primary"
-          />
-        </td>
-      )}
-      {columns.map((column) => (
-        <td key={column.key} className="px-4 py-3">
-          {column.render ? column.render(item[column.key], item) : item[column.key]}
-        </td>
-      ))}
-    </tr>
-  );
+  // Virtual list row renderer
+  const Row = ({ index, style }) => {
+    const item = displayData[index];
+    if (!item) return null;
+
+    return (
+      <div style={style} className="flex items-center border-b border-border hover:bg-muted/30 transition-colors duration-200">
+        {selectable && (
+          <div className="px-4 py-3 flex-shrink-0">
+            <input
+              type="checkbox"
+              checked={selectedItems.includes(item.id)}
+              onChange={(e) => handleRowSelect(item.id, e.target.checked)}
+              className="w-4 h-4 text-primary rounded border-border focus:ring-primary"
+            />
+          </div>
+        )}
+        {columns.map((column, colIndex) => (
+          <div 
+            key={column.key} 
+            className="px-4 py-3 flex-1 min-w-0"
+            style={{ 
+              flex: column.width || 1,
+              minWidth: column.minWidth || 'auto',
+              maxWidth: column.maxWidth || 'none'
+            }}
+          >
+            {column.render ? column.render(item[column.key], item) : item[column.key]}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   if (error) {
     return (
@@ -259,8 +247,7 @@ export default function DataTable({
                 <input
                   type="text"
                   placeholder="Search..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => debouncedSearch(e.target.value)}
                   className="input-field pl-10"
                 />
               </div>
@@ -403,12 +390,9 @@ export default function DataTable({
         {/* Results Summary */}
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div>
-            Showing {paginatedData.length} of {processedData.length} items
+            Showing {displayData.length} of {processedData.length} items
             {data.length !== processedData.length && (
               <span> (filtered from {data.length} total)</span>
-            )}
-            {data.length > virtualScrollThreshold && (
-              <span className="ml-2 text-blue-600">• Virtual scrolling enabled</span>
             )}
           </div>
           {selectable && selectedItems.length > 0 && (
@@ -418,28 +402,34 @@ export default function DataTable({
           )}
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border">
-            <thead className="bg-muted/50">
-              <tr>
+        {/* Virtual Table */}
+        <div className="card">
+          <div className="card-content p-0">
+            {/* Table Header */}
+            <div className="bg-muted/50 border-b border-border">
+              <div className="flex items-center">
                 {selectable && (
-                  <th className="px-4 py-3 text-left">
+                  <div className="px-4 py-3 flex-shrink-0">
                     <input
                       type="checkbox"
                       checked={selectedItems.length === data.length && data.length > 0}
                       onChange={handleSelectAll}
                       className="w-4 h-4 text-primary rounded border-border focus:ring-primary"
                     />
-                  </th>
+                  </div>
                 )}
                 {columns.map((column) => (
-                  <th
+                  <div
                     key={column.key}
-                    className={`px-4 py-3 text-left text-sm font-medium text-foreground ${
+                    className={`px-4 py-3 text-left text-sm font-medium text-foreground flex-1 min-w-0 ${
                       sortable && column.sortable !== false ? 'cursor-pointer hover:bg-muted/70' : ''
                     }`}
                     onClick={() => sortable && column.sortable !== false && handleSort(column.key)}
+                    style={{ 
+                      flex: column.width || 1,
+                      minWidth: column.minWidth || 'auto',
+                      maxWidth: column.maxWidth || 'none'
+                    }}
                   >
                     <div className="flex items-center space-x-2">
                       <span>{column.title}</span>
@@ -453,33 +443,55 @@ export default function DataTable({
                         </div>
                       )}
                     </div>
-                  </th>
+                  </div>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="bg-background divide-y divide-border">
-              {enableProgressiveLoading ? (
-                <tr>
-                  <td colSpan={columns.length + (selectable ? 1 : 0)}>
-                    <ProgressiveLoader
-                      data={paginatedData}
-                      renderItem={(item, index) => renderTableRow(item, index)}
-                      onLoadMore={onLoadMore}
-                      loading={loading}
-                      hasMore={hasMore}
-                      enableVirtualScrolling={enableVirtualScrolling}
-                    />
-                  </td>
-                </tr>
-              ) : enableAnimations ? (
-                <StaggeredList staggerDelay={50}>
-                  {paginatedData.map((item, index) => renderTableRow(item, index))}
-                </StaggeredList>
-              ) : (
-                paginatedData.map((item, index) => renderTableRow(item, index))
-              )}
-            </tbody>
-          </table>
+              </div>
+            </div>
+
+            {/* Virtual List Body */}
+            {enableVirtualScrolling && displayData.length > 20 ? (
+              <List
+                ref={listRef}
+                height={containerHeight}
+                itemCount={displayData.length}
+                itemSize={itemHeight}
+                overscanCount={overscan}
+                className="virtual-list"
+              >
+                {Row}
+              </List>
+            ) : (
+              <div className="divide-y divide-border">
+                {displayData.map((item, index) => (
+                  <div key={item.id || index} className="flex items-center border-b border-border hover:bg-muted/30 transition-colors duration-200">
+                    {selectable && (
+                      <div className="px-4 py-3 flex-shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.includes(item.id)}
+                          onChange={(e) => handleRowSelect(item.id, e.target.checked)}
+                          className="w-4 h-4 text-primary rounded border-border focus:ring-primary"
+                        />
+                      </div>
+                    )}
+                    {columns.map((column) => (
+                      <div 
+                        key={column.key} 
+                        className="px-4 py-3 flex-1 min-w-0"
+                        style={{ 
+                          flex: column.width || 1,
+                          minWidth: column.minWidth || 'auto',
+                          maxWidth: column.maxWidth || 'none'
+                        }}
+                      >
+                        {column.render ? column.render(item[column.key], item) : item[column.key]}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Empty State */}

@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
 import { settingsService } from '@/services/settingsService';
 import { productsService } from '@/services/productsService';
 import SimpleMDE from 'react-simplemde-editor';
 import InputField from '@/components/shared/InputField';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import AutoSaveIndicator from '@/components/shared/AutoSaveIndicator';
+import DynamicTransition from '@/components/shared/DynamicTransition';
 import ImageGalleryModal from '@/components/shared/ImageGalleryModal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import Modal from '@/components/shared/Modal';
@@ -18,6 +22,7 @@ export default function CreateProductPage({ activeBlogId }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getAuthToken, currentUser } = useAuth();
+  const { executeOperation } = useRealTimeOperations();
   const isEditing = Boolean(id);
 
   const [formData, setFormData] = useState({
@@ -41,6 +46,43 @@ export default function CreateProductPage({ activeBlogId }) {
   const [errors, setErrors] = useState({});
   const [galleryModal, setGalleryModal] = useState({ isOpen: false });
   const [uploadModal, setUploadModal] = useState({ isOpen: false });
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Auto-save functionality for editing
+  const autoSaveFunction = async (dataToSave) => {
+    if (!isEditing || !id) return;
+    
+    const token = await getAuthToken();
+    const response = await fetch(`/.netlify/functions/admin-product`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ 
+        id, 
+        blogId: activeBlogId,
+        ...dataToSave,
+        price: parseFloat(dataToSave.price) || 0,
+        percentOff: parseFloat(dataToSave.percentOff) || 0,
+        tags: parseArrayInput(tagsInput)
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Auto-save failed');
+    }
+  };
+
+  const { autoSaveStatus, lastSaved, forceSave, retryCount } = useAutoSave(
+    hasUnsavedChanges ? formData : null,
+    autoSaveFunction,
+    {
+      delay: 3000,
+      enabled: isEditing,
+      showNotifications: false
+    }
+  );
 
   // Memoize SimpleMDE options
   const simpleMDEOptions = useMemo(() => ({
@@ -104,49 +146,123 @@ export default function CreateProductPage({ activeBlogId }) {
     }
   };
 
+  // Track unsaved changes
+  useEffect(() => {
+    if (isEditing && existingContent) {
+      const hasChanges = 
+        formData.name !== (existingContent.name || '') ||
+        formData.slug !== (existingContent.slug || '') ||
+        formData.description !== (existingContent.description || '') ||
+        formData.price !== (existingContent.price?.toString() || '') ||
+        formData.percentOff !== (existingContent.percentOff?.toString() || '') ||
+        JSON.stringify(formData.imageUrls) !== JSON.stringify(existingContent.imageUrls || []) ||
+        formData.productUrl !== (existingContent.productUrl || '') ||
+        formData.category !== (existingContent.category || '') ||
+        formData.status !== (existingContent.status || 'draft') ||
+        tagsInput !== ((existingContent.tags || []).join(', '));
+      
+      setHasUnsavedChanges(hasChanges);
+    } else if (!isEditing) {
+      const hasContent = 
+        formData.name.trim() ||
+        formData.description.trim() ||
+        formData.price ||
+        formData.imageUrls.length > 0 ||
+        tagsInput.trim();
+      
+      setHasUnsavedChanges(hasContent);
+    }
+  }, [formData, tagsInput, isEditing, existingContent]);
+
   const validateForm = () => {
     const newErrors = {};
     
+    // Product name validation
     if (!formData.name.trim()) {
       newErrors.name = 'Product name is required';
+    } else if (formData.name.trim().length < 3) {
+      newErrors.name = 'Product name must be at least 3 characters';
     } else if (formData.name.length > 200) {
       newErrors.name = 'Product name must be less than 200 characters';
+    } else if (!/^[a-zA-Z0-9\s\-_.,!?()&:;'"]+$/.test(formData.name.trim())) {
+      newErrors.name = 'Product name contains invalid characters';
     }
     
+    // Slug validation
     if (!formData.slug.trim()) {
       newErrors.slug = 'Slug is required';
+    } else if (formData.slug.trim().length < 3) {
+      newErrors.slug = 'Slug must be at least 3 characters';
     } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
       newErrors.slug = 'Slug can only contain lowercase letters, numbers, and hyphens';
     } else if (formData.slug.length > 100) {
       newErrors.slug = 'Slug must be less than 100 characters';
+    } else if (formData.slug.startsWith('-') || formData.slug.endsWith('-')) {
+      newErrors.slug = 'Slug cannot start or end with a hyphen';
+    } else if (formData.slug.includes('--')) {
+      newErrors.slug = 'Slug cannot contain consecutive hyphens';
     }
     
+    // Description validation
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
+    } else if (formData.description.trim().length < 10) {
+      newErrors.description = 'Description must be at least 10 characters';
     } else if (formData.description.length > 10000) {
       newErrors.description = 'Description must be less than 10,000 characters';
     }
 
+    // Price validation
     if (!formData.price || isNaN(parseFloat(formData.price)) || parseFloat(formData.price) < 0) {
       newErrors.price = 'Valid price is required';
     } else if (parseFloat(formData.price) > 999999.99) {
       newErrors.price = 'Price cannot exceed $999,999.99';
+    } else if (parseFloat(formData.price) === 0) {
+      newErrors.price = 'Price must be greater than 0';
+    } else if (!/^\d+(\.\d{1,2})?$/.test(formData.price)) {
+      newErrors.price = 'Price can have at most 2 decimal places';
     }
 
+    // Percent off validation
     if (formData.percentOff && (isNaN(parseFloat(formData.percentOff)) || parseFloat(formData.percentOff) < 0 || parseFloat(formData.percentOff) > 100)) {
       newErrors.percentOff = 'Percent off must be between 0 and 100';
+    } else if (formData.percentOff && !/^\d+(\.\d{1,2})?$/.test(formData.percentOff)) {
+      newErrors.percentOff = 'Percent off can have at most 2 decimal places';
     }
 
+    // Category validation
     if (formData.category && formData.category.length > 100) {
       newErrors.category = 'Category must be less than 100 characters';
+    } else if (formData.category && formData.category.length > 0 && !/^[a-zA-Z0-9\s\-_&]+$/.test(formData.category)) {
+      newErrors.category = 'Category can only contain letters, numbers, spaces, hyphens, underscores, and ampersands';
     }
 
+    // Product URL validation
     if (formData.productUrl && formData.productUrl.length > 500) {
       newErrors.productUrl = 'Product URL must be less than 500 characters';
+    } else if (formData.productUrl && formData.productUrl.length > 0) {
+      try {
+        new URL(formData.productUrl);
+      } catch {
+        newErrors.productUrl = 'Please enter a valid URL';
+      }
     }
 
+    // Image URLs validation
     if (formData.imageUrls && formData.imageUrls.length > 5) {
       newErrors.imageUrls = 'Maximum 5 images allowed per product';
+    } else if (formData.imageUrls && formData.imageUrls.length > 0) {
+      const invalidUrls = formData.imageUrls.filter(url => {
+        try {
+          new URL(url);
+          return false;
+        } catch {
+          return true;
+        }
+      });
+      if (invalidUrls.length > 0) {
+        newErrors.imageUrls = `${invalidUrls.length} image URL${invalidUrls.length > 1 ? 's are' : ' is'} invalid`;
+      }
     }
     
     setErrors(newErrors);
@@ -231,38 +347,52 @@ export default function CreateProductPage({ activeBlogId }) {
       tags: parseArrayInput(tagsInput)
     };
 
-    setLoading(true);
-
     try {
-      const token = await getAuthToken();
-      const url = `/.netlify/functions/admin-product`;
+      setLoading(true);
       
-      const method = isEditing ? 'PUT' : 'POST';
-      const body = isEditing 
-        ? { id, ...finalFormData }
-        : finalFormData;
+      await executeOperation({
+        type: isEditing ? 'update-product' : 'create-product',
+        dataKey: `products-${activeBlogId}`,
+        execute: async () => {
+          const token = await getAuthToken();
+          const url = `/.netlify/functions/admin-product`;
+          
+          const method = isEditing ? 'PUT' : 'POST';
+          const body = isEditing 
+            ? { id, ...finalFormData }
+            : finalFormData;
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          const response = await fetch(url, {
+            method,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(body)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
+          }
+
+          return await response.json();
         },
-        body: JSON.stringify(body)
+        successMessage: isEditing ? 'Product updated successfully' : 'Product created successfully',
+        errorMessage: 'Failed to save product',
+        context: { area: 'product-manager' },
+        successActions: [
+          {
+            label: 'View Products',
+            onClick: () => navigate('/dashboard/manage-products'),
+            primary: true
+          }
+        ]
       });
-
-      if (response.ok) {
-        toast.success(isEditing ? 'Product updated successfully' : 'Product created successfully');
-        // Navigate immediately without waiting
-        setTimeout(() => navigate('/dashboard/manage-products'), 100);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || errorData.message || `Server error: ${response.status} ${response.statusText}`;
-        throw new Error(errorMessage);
-      }
+      
+      setTimeout(() => navigate('/dashboard/manage-products'), 500);
     } catch (error) {
       console.error('Error saving product:', error);
-      toast.error(error.message || 'Failed to save product');
     } finally {
       setLoading(false);
     }
@@ -280,7 +410,7 @@ export default function CreateProductPage({ activeBlogId }) {
   const savings = parseFloat(formData.price) - discountedPrice;
 
   return (
-    <div className="section-spacing">
+    <DynamicTransition loading={loading && isEditing} className="section-spacing">
       {/* Header */}
       <div className="page-header">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -288,6 +418,19 @@ export default function CreateProductPage({ activeBlogId }) {
             <h1 className="page-title">
               {isEditing ? 'Edit Product' : 'Create New Product'}
             </h1>
+            {/* Auto-save indicator for editing */}
+            {isEditing && (
+              <div className="mt-4">
+                <AutoSaveIndicator 
+                  status={autoSaveStatus}
+                  lastSaved={lastSaved}
+                  showRetryButton={autoSaveStatus === 'error'}
+                  onRetry={forceSave}
+                  retryCount={retryCount}
+                  isOnline={navigator.onLine}
+                />
+              </div>
+            )}
           </div>
         </div>
         
@@ -623,6 +766,6 @@ export default function CreateProductPage({ activeBlogId }) {
           initialMaxHeight={1080}
         />
       </Modal>
-    </div>
+    </DynamicTransition>
   );
 }

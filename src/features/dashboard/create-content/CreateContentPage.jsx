@@ -2,9 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useContentById } from '@/hooks/useContent';
-import SimpleMDE from 'react-simplemde-editor';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
+import CollaborativeEditor from '@/components/shared/CollaborativeEditor';
+import { PresenceIndicators } from '@/components/shared/CollaborationIndicators';
 import InputField from '@/components/shared/InputField';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import AutoSaveIndicator from '@/components/shared/AutoSaveIndicator';
+import DynamicTransition from '@/components/shared/DynamicTransition';
 import ImageGalleryModal from '@/components/shared/ImageGalleryModal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import Modal from '@/components/shared/Modal';
@@ -17,6 +22,7 @@ export default function CreateContentPage({ activeBlogId }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getAuthToken } = useAuth();
+  const { executeOperation } = useRealTimeOperations();
   const isEditing = Boolean(id);
   const { content: existingContent, loading: contentLoading } = useContentById(id, activeBlogId);
 
@@ -43,6 +49,43 @@ export default function CreateContentPage({ activeBlogId }) {
   const [errors, setErrors] = useState({});
   const [galleryModal, setGalleryModal] = useState({ isOpen: false });
   const [uploadModal, setUploadModal] = useState({ isOpen: false });
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Auto-save functionality
+  const autoSaveFunction = async (dataToSave) => {
+    if (!isEditing || !id) return; // Only auto-save for existing content
+    
+    const token = await getAuthToken();
+    const response = await fetch(`/.netlify/functions/admin-content`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ 
+        id, 
+        blogId: activeBlogId,
+        ...dataToSave,
+        keywords: parseArrayInput(keywordsInput),
+        categories: parseArrayInput(categoriesInput),
+        tags: parseArrayInput(tagsInput)
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Auto-save failed');
+    }
+  };
+
+  const { autoSaveStatus, lastSaved, forceSave, retryCount } = useAutoSave(
+    hasUnsavedChanges ? formData : null,
+    autoSaveFunction,
+    {
+      delay: 3000, // 3 second delay for auto-save
+      enabled: isEditing, // Only enable for editing existing content
+      showNotifications: false // We'll show our own indicator
+    }
+  );
 
   // Memoize SimpleMDE options to prevent re-initialization on every render
   const simpleMDEOptions = useMemo(() => ({
@@ -80,39 +123,103 @@ export default function CreateContentPage({ activeBlogId }) {
     }
   }, [isEditing, existingContent]);
 
+  // Track unsaved changes
+  useEffect(() => {
+    if (isEditing && existingContent) {
+      const hasChanges = 
+        formData.title !== (existingContent.title || '') ||
+        formData.slug !== (existingContent.slug || '') ||
+        formData.content !== (existingContent.content || '') ||
+        formData.featuredImageUrl !== (existingContent.featuredImageUrl || '') ||
+        formData.metaDescription !== (existingContent.metaDescription || '') ||
+        formData.seoTitle !== (existingContent.seoTitle || '') ||
+        formData.author !== (existingContent.author || '') ||
+        formData.status !== (existingContent.status || 'draft') ||
+        keywordsInput !== ((existingContent.keywords || []).join(', ')) ||
+        categoriesInput !== ((existingContent.categories || []).join(', ')) ||
+        tagsInput !== ((existingContent.tags || []).join(', '));
+      
+      setHasUnsavedChanges(hasChanges);
+    } else if (!isEditing) {
+      // For new content, consider it changed if any field has content
+      const hasContent = 
+        formData.title.trim() ||
+        formData.content.trim() ||
+        formData.featuredImageUrl ||
+        keywordsInput.trim() ||
+        categoriesInput.trim() ||
+        tagsInput.trim();
+      
+      setHasUnsavedChanges(hasContent);
+    }
+  }, [formData, keywordsInput, categoriesInput, tagsInput, isEditing, existingContent]);
+
   const validateForm = () => {
     const newErrors = {};
     
+    // Title validation
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
+    } else if (formData.title.trim().length < 3) {
+      newErrors.title = 'Title must be at least 3 characters';
     } else if (formData.title.length > 200) {
       newErrors.title = 'Title must be less than 200 characters';
+    } else if (!/^[a-zA-Z0-9\s\-_.,!?()&:;'"]+$/.test(formData.title.trim())) {
+      newErrors.title = 'Title contains invalid characters';
     }
     
+    // Slug validation
     if (!formData.slug.trim()) {
       newErrors.slug = 'Slug is required';
+    } else if (formData.slug.trim().length < 3) {
+      newErrors.slug = 'Slug must be at least 3 characters';
     } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
       newErrors.slug = 'Slug can only contain lowercase letters, numbers, and hyphens';
     } else if (formData.slug.length > 100) {
       newErrors.slug = 'Slug must be less than 100 characters';
+    } else if (formData.slug.startsWith('-') || formData.slug.endsWith('-')) {
+      newErrors.slug = 'Slug cannot start or end with a hyphen';
+    } else if (formData.slug.includes('--')) {
+      newErrors.slug = 'Slug cannot contain consecutive hyphens';
     }
     
+    // Content validation
     if (!formData.content.trim()) {
       newErrors.content = 'Content is required';
+    } else if (formData.content.trim().length < 10) {
+      newErrors.content = 'Content must be at least 10 characters';
     } else if (formData.content.length > 50000) {
       newErrors.content = 'Content must be less than 50,000 characters';
     }
 
+    // Meta description validation
     if (formData.metaDescription && formData.metaDescription.length > 160) {
       newErrors.metaDescription = 'Meta description should be less than 160 characters';
+    } else if (formData.metaDescription && formData.metaDescription.length > 0 && formData.metaDescription.length < 50) {
+      newErrors.metaDescription = 'Meta description should be at least 50 characters for better SEO';
     }
 
+    // SEO title validation
     if (formData.seoTitle && formData.seoTitle.length > 60) {
       newErrors.seoTitle = 'SEO title should be less than 60 characters';
+    } else if (formData.seoTitle && formData.seoTitle.length > 0 && formData.seoTitle.length < 10) {
+      newErrors.seoTitle = 'SEO title should be at least 10 characters';
     }
 
+    // Author validation
     if (formData.author && formData.author.length > 100) {
       newErrors.author = 'Author name must be less than 100 characters';
+    } else if (formData.author && formData.author.length > 0 && !/^[a-zA-Z\s\-'\.]+$/.test(formData.author)) {
+      newErrors.author = 'Author name can only contain letters, spaces, hyphens, apostrophes, and periods';
+    }
+
+    // Featured image URL validation
+    if (formData.featuredImageUrl && formData.featuredImageUrl.length > 0) {
+      try {
+        new URL(formData.featuredImageUrl);
+      } catch {
+        newErrors.featuredImageUrl = 'Please enter a valid image URL';
+      }
     }
     
     setErrors(newErrors);
@@ -201,39 +308,54 @@ export default function CreateContentPage({ activeBlogId }) {
       tags: parseArrayInput(tagsInput)
     };
 
-    setLoading(true);
-
+    // Use real-time operations for smooth experience
     try {
-      const token = await getAuthToken();
-      const url = `/.netlify/functions/admin-content`;
+      setLoading(true);
       
-      const method = isEditing ? 'PUT' : 'POST';
-      const body = isEditing 
-        ? { id, blogId: finalFormData.blogId, ...finalFormData }
-        : finalFormData;
+      await executeOperation({
+        type: isEditing ? 'update-content' : 'create-content',
+        dataKey: `content-${activeBlogId}`,
+        execute: async () => {
+          const token = await getAuthToken();
+          const url = `/.netlify/functions/admin-content`;
+          
+          const method = isEditing ? 'PUT' : 'POST';
+          const body = isEditing 
+            ? { id, blogId: finalFormData.blogId, ...finalFormData }
+            : finalFormData;
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          const response = await fetch(url, {
+            method,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(body)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
+          }
+
+          return await response.json();
         },
-        body: JSON.stringify(body)
+        successMessage: isEditing ? 'Content updated successfully' : 'Content created successfully',
+        errorMessage: 'Failed to save content',
+        context: { area: 'content-editor' },
+        successActions: [
+          {
+            label: 'View Content',
+            onClick: () => navigate('/dashboard/manage'),
+            primary: true
+          }
+        ]
       });
-
-      if (response.ok) {
-        toast.success(isEditing ? 'Content updated successfully' : 'Content created successfully');
-        // Navigate immediately without waiting
-        setTimeout(() => navigate('/dashboard/manage'), 100);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || errorData.message || `Server error: ${response.status} ${response.statusText}`;
-        console.error('Server response error:', errorData);
-        throw new Error(errorMessage);
-      }
+      
+      // Navigate with smooth transition
+      setTimeout(() => navigate('/dashboard/manage'), 500);
     } catch (error) {
       console.error('Error saving content:', error);
-      toast.error(error.message || 'Failed to save content');
     } finally {
       setLoading(false);
     }
@@ -248,7 +370,7 @@ export default function CreateContentPage({ activeBlogId }) {
   }
 
   return (
-    <div className="section-spacing">
+    <DynamicTransition loading={contentLoading && isEditing} className="section-spacing">
       {/* Header with Action Buttons */}
       <div className="page-header">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -256,6 +378,22 @@ export default function CreateContentPage({ activeBlogId }) {
             <h1 className="page-title">
               {isEditing ? 'Edit Content' : 'Create New Content'}
             </h1>
+            <div className="flex items-center space-x-4 mt-2">
+              <PresenceIndicators location="content-editor" />
+            </div>
+            {/* Auto-save indicator for editing */}
+            {isEditing && (
+              <div className="mt-4">
+                <AutoSaveIndicator 
+                  status={autoSaveStatus}
+                  lastSaved={lastSaved}
+                  showRetryButton={autoSaveStatus === 'error'}
+                  onRetry={forceSave}
+                  retryCount={retryCount}
+                  isOnline={navigator.onLine}
+                />
+              </div>
+            )}
           </div>
         </div>
         
@@ -318,7 +456,7 @@ export default function CreateContentPage({ activeBlogId }) {
                   <label className="block text-base font-medium text-foreground mb-4">
                     Content <span className="text-destructive">*</span>
                   </label>
-                  <SimpleMDE
+                  <CollaborativeEditor
                     value={formData.content}
                     onChange={(value) => {
                       setFormData(prev => ({ ...prev, content: value }));
@@ -326,6 +464,8 @@ export default function CreateContentPage({ activeBlogId }) {
                         setErrors(prev => ({ ...prev, content: '' }));
                       }
                     }}
+                    contentId={id || 'new-content'}
+                    onSave={handleSubmit}
                     options={simpleMDEOptions}
                   />
                   {errors.content && (
@@ -553,6 +693,6 @@ export default function CreateContentPage({ activeBlogId }) {
           initialMaxHeight={1080}
         />
       </Modal>
-    </div>
+    </DynamicTransition>
   );
 }

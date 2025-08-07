@@ -2,8 +2,11 @@ import React, { useState, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { blogService } from '@/services/blogService';
+import { realTimeManager } from '@/services/realTimeService';
+import { webSocketService } from '@/services/webSocketService';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import DynamicTransition from '@/components/shared/DynamicTransition';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 
 // Lazy load dashboard pages
@@ -23,6 +26,7 @@ const ManageBlogPage = React.lazy(() => import('@/features/dashboard/manage-blog
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { currentUser } = useAuth();
+  const [realTimeInitialized, setRealTimeInitialized] = useState(false);
   
   // activeBlogId is now managed by BlogSelector component for multi-blog users
   const [activeBlogId, setActiveBlogId] = useState(null);
@@ -89,6 +93,31 @@ export default function DashboardPage() {
     }
   }, [currentUser?.uid]);
 
+  // Initialize real-time manager when user and blog are ready
+  useEffect(() => {
+    if (currentUser?.uid && activeBlogId && !realTimeInitialized) {
+      realTimeManager.initialize(currentUser.uid, activeBlogId)
+        .then(() => {
+          // Also initialize WebSocket service for collaboration
+          return webSocketService.initialize(currentUser.uid, activeBlogId);
+        })
+        .then(() => {
+          setRealTimeInitialized(true);
+          console.log('Real-time services initialized');
+        })
+        .catch(error => {
+          console.error('Failed to initialize real-time services:', error);
+        });
+    }
+    
+    return () => {
+      if (realTimeInitialized) {
+        realTimeManager.disconnect();
+        webSocketService.disconnect();
+        setRealTimeInitialized(false);
+      }
+    };
+  }, [currentUser?.uid, activeBlogId, realTimeInitialized]);
   const openSidebar = () => {
     setSidebarOpen(true);
   };
@@ -120,13 +149,16 @@ export default function DashboardPage() {
         <div className="content-section">
           <div className="page-container">
             <Suspense fallback={
-              <div className="flex items-center justify-center h-64">
-                <LoadingSpinner size="lg" />
-              </div>
+              <DynamicTransition loading={true}>
+                <div className="flex items-center justify-center h-64">
+                  <LoadingSpinner size="lg" />
+                </div>
+              </DynamicTransition>
             }>
               {/* Only render routes when blog is initialized */}
               {blogInitialized && activeBlogId ? (
-                <Routes>
+                <DynamicTransition loading={!realTimeInitialized} transitionType="fade">
+                  <Routes>
                   <Route path="/" element={<Navigate to="/dashboard/overview" replace />} />
                   <Route path="/overview" element={<OverviewPage activeBlogId={activeBlogId} />} />
                   <Route path="/manage" element={<ManageContentPage activeBlogId={activeBlogId} />} />
@@ -143,10 +175,13 @@ export default function DashboardPage() {
                   <Route path="/tips" element={<TipsPage />} />
                   <Route path="/documentation" element={<DocumentationPage activeBlogId={activeBlogId} />} />
                 </Routes>
+                </DynamicTransition>
               ) : (
-                <div className="flex items-center justify-center h-64">
-                  <LoadingSpinner size="lg" />
-                </div>
+                <DynamicTransition loading={true}>
+                  <div className="flex items-center justify-center h-64">
+                    <LoadingSpinner size="lg" />
+                  </div>
+                </DynamicTransition>
               )}
             </Suspense>
           </div>

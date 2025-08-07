@@ -25,7 +25,11 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^6.20.1",
     "react-simplemde-editor": "^5.2.0",
-    "recharts": "^3.1.1"
+    "react-window": "^1.8.11",
+    "react-window-infinite-loader": "^1.0.10",
+    "recharts": "^3.1.1",
+    "react-window": "^1.8.8",
+    "react-window-infinite-loader": "^1.0.9"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",

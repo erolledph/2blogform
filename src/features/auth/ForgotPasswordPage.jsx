@@ -15,10 +15,19 @@ export default function ForgotPasswordPage() {
   const validateForm = () => {
     const newErrors = {};
     
+    // Email validation
     if (!email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = 'Email is invalid';
+    } else if (email.length > 254) {
+      newErrors.email = 'Email is too long';
+    } else if (email.length < 5) {
+      newErrors.email = 'Email is too short';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Please enter a valid email address';
+    } else if (email.includes(' ')) {
+      newErrors.email = 'Email cannot contain spaces';
     }
     
     setErrors(newErrors);

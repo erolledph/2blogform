@@ -22,26 +22,52 @@ export default function RegisterPage() {
   const validateForm = () => {
     const newErrors = {};
     
+    // Display name validation
+    if (!formData.displayName.trim()) {
+      newErrors.displayName = 'Display name is required';
+    } else if (formData.displayName.trim().length < 2) {
+      newErrors.displayName = 'Display name must be at least 2 characters';
+    } else if (formData.displayName.length > 100) {
+      newErrors.displayName = 'Display name must be less than 100 characters';
+    } else if (!/^[a-zA-Z\s\-'\.]+$/.test(formData.displayName.trim())) {
+      newErrors.displayName = 'Display name can only contain letters, spaces, hyphens, apostrophes, and periods';
+    }
+    
+    // Email validation
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid';
+    } else if (formData.email.length > 254) {
+      newErrors.email = 'Email is too long';
+    } else if (formData.email.length < 5) {
+      newErrors.email = 'Email is too short';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
     }
     
+    // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length > 128) {
+      newErrors.password = 'Password is too long';
+    } else if (formData.password.includes(' ')) {
+      newErrors.password = 'Password cannot contain spaces';
+    } else if (!/^(?=.*[a-zA-Z])/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one letter';
+    } else if (!/^(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one number';
     }
     
+    // Confirm password validation
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password';
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
-    }
-    
-    if (!formData.displayName.trim()) {
-      newErrors.displayName = 'Display name is required';
+    } else if (formData.confirmPassword.length < 6) {
+      newErrors.confirmPassword = 'Confirmation password must be at least 6 characters';
     }
     
     setErrors(newErrors);

@@ -3,9 +3,11 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { storageService } from '@/services/storageService';
+import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
 import { fromBlob } from 'image-resize-compress';
 import InputField from './InputField';
 import LoadingSpinner from './LoadingSpinner';
+import DynamicTransition from './DynamicTransition';
 import Modal from './Modal';
 import { Upload, Image as ImageIcon, FileImage, CheckCircle, AlertTriangle, Settings, Zap } from 'lucide-react';
 import { formatBytes } from '@/utils/helpers';
@@ -51,6 +53,8 @@ export default function ImageUploader({
   const [compressionStats, setCompressionStats] = useState(null);
   const [confirmUploadModal, setConfirmUploadModal] = useState(false);
   const [finalCompressedBlob, setFinalCompressedBlob] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const { executeOperation } = useRealTimeOperations();
 
   useEffect(() => {
     if (currentUser?.uid && storageService) {
@@ -277,42 +281,73 @@ export default function ImageUploader({
   const executeUpload = async (blobToUpload) => {
     try {
       setUploading(true);
+      setUploadProgress(0);
+      
+      await executeOperation({
+        type: 'upload-image',
+        dataKey: 'file-storage',
+        execute: async () => {
+          // Simulate upload progress
+          const progressInterval = setInterval(() => {
+            setUploadProgress(prev => {
+              if (prev >= 90) {
+                clearInterval(progressInterval);
+                return 90;
+              }
+              return prev + 10;
+            });
+          }, 200);
 
-      // Create storage path
-      const fileName = `${newFileName.trim()}.${outputFormat}`;
-      const fullPath = userStoragePath ? `${userStoragePath}/${fileName}` : `users/${currentUser?.uid}/public_images/${fileName}`;
-      const storageRef = ref(storage, fullPath);
-      
-      // Upload compressed image
-      await uploadBytes(storageRef, blobToUpload, {
-        contentType: `image/${outputFormat}`,
-        customMetadata: {
-          originalName: selectedFile.name,
-          originalSize: selectedFile.size.toString(),
-          compressedSize: blobToUpload.size.toString(),
-          compressionRatio: compressionStats?.compressionRatio || '0',
-          quality: imageQuality.toString(),
-          maxWidth: imageMaxWidth.toString(),
-          maxHeight: imageMaxHeight.toString()
-        }
+          // Create storage path
+          const fileName = `${newFileName.trim()}.${outputFormat}`;
+          const fullPath = userStoragePath ? `${userStoragePath}/${fileName}` : `users/${currentUser?.uid}/public_images/${fileName}`;
+          const storageRef = ref(storage, fullPath);
+          
+          // Upload compressed image
+          await uploadBytes(storageRef, blobToUpload, {
+            contentType: `image/${outputFormat}`,
+            customMetadata: {
+              originalName: selectedFile.name,
+              originalSize: selectedFile.size.toString(),
+              compressedSize: blobToUpload.size.toString(),
+              compressionRatio: compressionStats?.compressionRatio || '0',
+              quality: imageQuality.toString(),
+              maxWidth: imageMaxWidth.toString(),
+              maxHeight: imageMaxHeight.toString()
+            }
+          });
+          
+          clearInterval(progressInterval);
+          setUploadProgress(100);
+          
+          const downloadURL = await getDownloadURL(storageRef);
+          
+          return {
+            fileName,
+            fullPath,
+            downloadURL,
+            size: blobToUpload.size,
+            originalSize: selectedFile.size,
+            compressionRatio: compressionStats?.compressionRatio || '0'
+          };
+        },
+        successMessage: 'Image uploaded and optimized successfully!',
+        errorMessage: 'Failed to upload image',
+        context: { area: 'file-storage' }
       });
-      
-      const downloadURL = await getDownloadURL(storageRef);
-      
-      toast.success('Image uploaded successfully!');
       
       // Reset form
       resetForm();
 
-      // Refresh storage usage in background without blocking UI
+      // Refresh storage usage in background
       checkStorageUsage();
 
       // Callback for parent component
       if (onUploadSuccess) {
         onUploadSuccess({
-          fileName,
-          fullPath,
-          downloadURL,
+          fileName: `${newFileName.trim()}.${outputFormat}`,
+          fullPath: userStoragePath ? `${userStoragePath}/${newFileName.trim()}.${outputFormat}` : `users/${currentUser?.uid}/public_images/${newFileName.trim()}.${outputFormat}`,
+          downloadURL: '', // Will be set by the operation
           size: blobToUpload.size,
           originalSize: selectedFile.size,
           compressionRatio: compressionStats?.compressionRatio || '0'
@@ -321,13 +356,13 @@ export default function ImageUploader({
 
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast.error('Failed to upload image');
       
       if (onUploadError) {
         onUploadError(error);
       }
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -366,41 +401,43 @@ export default function ImageUploader({
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Storage Usage Display */}
-      <div className="card border-blue-200 bg-blue-50">
-        <div className="card-content p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-medium text-blue-800">Storage Usage</h4>
-            <div className="flex items-center space-x-2">
-              {checkingStorage && <LoadingSpinner size="sm" />}
-              <button
-                onClick={checkStorageUsage}
-                className="text-blue-600 hover:text-blue-800 text-xs"
-                title="Refresh storage usage"
-              >
-                Refresh
-              </button>
+      <DynamicTransition transitionType="slide-down">
+        <div className="card border-blue-200 bg-blue-50">
+          <div className="card-content p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-medium text-blue-800">Storage Usage</h4>
+              <div className="flex items-center space-x-2">
+                {checkingStorage && <LoadingSpinner size="sm" />}
+                <button
+                  onClick={checkStorageUsage}
+                  className="text-blue-600 hover:text-blue-800 text-xs"
+                  title="Refresh storage usage"
+                >
+                  Refresh
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-blue-700">Used: {(storageUsage.used).toFixed(1)} MB</span>
-              <span className="text-blue-700">Limit: {storageUsage.limit} MB</span>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-blue-700">Used: {(storageUsage.used).toFixed(1)} MB</span>
+                <span className="text-blue-700">Limit: {storageUsage.limit} MB</span>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    (storageUsage.used / storageUsage.limit) > 0.9 ? 'bg-red-500' :
+                    (storageUsage.used / storageUsage.limit) > 0.7 ? 'bg-yellow-500' : 'bg-blue-500'
+                  }`}
+                  style={{ width: `${Math.min((storageUsage.used / storageUsage.limit) * 100, 100)}%` }}
+                ></div>
+              </div>
+              <p className="text-xs text-blue-600">
+                Your personal storage space
+              </p>
             </div>
-            <div className="w-full bg-blue-200 rounded-full h-2">
-              <div 
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  (storageUsage.used / storageUsage.limit) > 0.9 ? 'bg-red-500' :
-                  (storageUsage.used / storageUsage.limit) > 0.7 ? 'bg-yellow-500' : 'bg-blue-500'
-                }`}
-                style={{ width: `${Math.min((storageUsage.used / storageUsage.limit) * 100, 100)}%` }}
-              ></div>
-            </div>
-            <p className="text-xs text-blue-600">
-              Your personal storage space
-            </p>
           </div>
         </div>
-      </div>
+      </DynamicTransition>
 
       {/* File Selection */}
       <div className="card">
@@ -445,7 +482,22 @@ export default function ImageUploader({
 
               {isProcessing && (
                 <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-md">
-                  <LoadingSpinner size="sm" />
+                  <div className="text-center">
+                    <LoadingSpinner size="sm" />
+                    {uploading && uploadProgress > 0 && (
+                      <div className="mt-2">
+                        <div className="w-32 bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-primary h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {uploadProgress}% uploaded
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </label>
@@ -456,93 +508,97 @@ export default function ImageUploader({
 
           {/* Preview and Stats */}
           {selectedFile && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Image Preview */}
-              <div>
-                <h4 className="text-base font-medium text-foreground mb-3">Preview</h4>
-                <div className="border border-border rounded-lg p-4 bg-muted/30">
-                  {previewUrl ? (
-                    <img
-                      src={previewUrl}
-                      alt="Preview"
-                      className="w-full h-48 object-contain rounded-md"
-                    />
-                  ) : (
-                    <div className="w-full h-48 bg-muted rounded-md flex items-center justify-center">
-                      <ImageIcon className="h-12 w-12 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Compression Stats */}
-              <div>
-                <h4 className="text-base font-medium text-foreground mb-3">
-                  Compression Preview
-                  {compressing && <LoadingSpinner size="sm" className="inline-block ml-2" />}
-                </h4>
-                <div className="space-y-4">
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <FileImage className="h-5 w-5 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-800">Original</span>
-                    </div>
-                    <div className="space-y-1 text-sm text-blue-700">
-                      <div>Size: {formatBytes(originalFileSize || 0)}</div>
-                      <div>Format: {selectedFile?.type}</div>
-                    </div>
+            <DynamicTransition transitionType="slide-up">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Image Preview */}
+                <div>
+                  <h4 className="text-base font-medium text-foreground mb-3">Preview</h4>
+                  <div className="border border-border rounded-lg p-4 bg-muted/30">
+                    {previewUrl ? (
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="w-full h-48 object-contain rounded-md"
+                      />
+                    ) : (
+                      <div className="w-full h-48 bg-muted rounded-md flex items-center justify-center">
+                        <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
+                </div>
 
-                  {compressionStats && (
-                    <div className={`p-4 border rounded-lg ${
-                      compressionStats.isLarger 
-                        ? 'bg-red-50 border-red-200' 
-                        : 'bg-green-50 border-green-200'
-                    }`}>
+                {/* Compression Stats */}
+                <div>
+                  <h4 className="text-base font-medium text-foreground mb-3">
+                    Compression Preview
+                    {compressing && <LoadingSpinner size="sm" className="inline-block ml-2" />}
+                  </h4>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                       <div className="flex items-center space-x-3 mb-3">
-                        {compressionStats.isLarger ? (
-                          <AlertTriangle className="h-5 w-5 text-red-600" />
-                        ) : (
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                        )}
-                        <span className={`text-sm font-medium ${
-                          compressionStats.isLarger ? 'text-red-800' : 'text-green-800'
-                        }`}>
-                          Optimized
-                        </span>
+                        <FileImage className="h-5 w-5 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">Original</span>
                       </div>
-                      <div className={`space-y-1 text-sm ${
-                        compressionStats.isLarger ? 'text-red-700' : 'text-green-700'
-                      }`}>
-                        <div>Size: {formatBytes(compressionStats.compressedSize)}</div>
-                        <div>Format: {outputFormat.toUpperCase()}</div>
-                        <div className="font-medium">
-                          {compressionStats.isLarger ? 'Increased' : 'Saved'}: {Math.abs(parseFloat(compressionStats.compressionRatio))}% 
-                          ({compressionStats.isLarger ? '+' : ''}{formatBytes(Math.abs(compressionStats.sizeDifference))})
-                        </div>
+                      <div className="space-y-1 text-sm text-blue-700">
+                        <div>Size: {formatBytes(originalFileSize || 0)}</div>
+                        <div>Format: {selectedFile?.type}</div>
                       </div>
-                      {compressionStats.isLarger && (
-                        <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-800">
-                          ⚠ The optimized file is larger than the original. Try adjusting the quality percentage, as compression may be malfunctioning.
-                        </div>
-                      )}
                     </div>
-                  )}
+
+                    {compressionStats && (
+                      <div className={`p-4 border rounded-lg ${
+                        compressionStats.isLarger 
+                          ? 'bg-red-50 border-red-200' 
+                          : 'bg-green-50 border-green-200'
+                      }`}>
+                        <div className="flex items-center space-x-3 mb-3">
+                          {compressionStats.isLarger ? (
+                            <AlertTriangle className="h-5 w-5 text-red-600" />
+                          ) : (
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          )}
+                          <span className={`text-sm font-medium ${
+                            compressionStats.isLarger ? 'text-red-800' : 'text-green-800'
+                          }`}>
+                            Optimized
+                          </span>
+                        </div>
+                        <div className={`space-y-1 text-sm ${
+                          compressionStats.isLarger ? 'text-red-700' : 'text-green-700'
+                        }`}>
+                          <div>Size: {formatBytes(compressionStats.compressedSize)}</div>
+                          <div>Format: {outputFormat.toUpperCase()}</div>
+                          <div className="font-medium">
+                            {compressionStats.isLarger ? 'Increased' : 'Saved'}: {Math.abs(parseFloat(compressionStats.compressionRatio))}% 
+                            ({compressionStats.isLarger ? '+' : ''}{formatBytes(Math.abs(compressionStats.sizeDifference))})
+                          </div>
+                        </div>
+                        {compressionStats.isLarger && (
+                          <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-xs text-red-800">
+                            ⚠ The optimized file is larger than the original. Try adjusting the quality percentage, as compression may be malfunctioning.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            </DynamicTransition>
           )}
 
           {/* Filename Input */}
           {selectedFile && (
-            <InputField
-              label="New Filename (without extension)"
-              value={newFileName}
-              onChange={(e) => setNewFileName(e.target.value)}
-              placeholder="Enter filename"
-              disabled={isProcessing}
-              className="max-w-md"
-            />
+            <DynamicTransition transitionType="fade">
+              <InputField
+                label="New Filename (without extension)"
+                value={newFileName}
+                onChange={(e) => setNewFileName(e.target.value)}
+                placeholder="Enter filename"
+                disabled={isProcessing}
+                className="max-w-md"
+              />
+            </DynamicTransition>
           )}
         </div>
       </div>
@@ -639,13 +695,6 @@ export default function ImageUploader({
           )}
         </div>
       </div>
-      
-      {/* Optimization Settings (DUPLICATE SECTION - REMOVE) */}
-      {/* The content below this comment seems to be a duplicate of the previous card, which is the source of the error.
-          The error occurs because you have two `div` elements next to each other at the root without a parent container. */}
-      {/* <div className="card">
-        ... duplicated content
-      </div> */}
       
       {/* Format Information */}
       <div className="card">

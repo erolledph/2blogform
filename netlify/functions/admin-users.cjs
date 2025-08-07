@@ -198,6 +198,7 @@ exports.handler = async (event, context) => {
         const data = JSON.parse(event.body);
         const { userId, role, canManageMultipleBlogs, maxBlogs, totalStorageMB } = data;
         
+        // Enhanced input validation
         if (!userId) {
           return {
             statusCode: 400,
@@ -206,6 +207,14 @@ exports.handler = async (event, context) => {
           };
         }
 
+        // Validate userId format
+        if (typeof userId !== 'string' || !userId.trim()) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'User ID must be a non-empty string' })
+          };
+        }
         // Validate role
         if (role && !['admin', 'user'].includes(role)) {
           return {
@@ -225,20 +234,20 @@ exports.handler = async (event, context) => {
         }
 
         // Validate maxBlogs
-        if (maxBlogs !== undefined && (!Number.isInteger(maxBlogs) || maxBlogs < 1)) {
+        if (maxBlogs !== undefined && (!Number.isInteger(maxBlogs) || maxBlogs < 1 || maxBlogs > 50)) {
           return {
             statusCode: 400,
             headers,
-            body: JSON.stringify({ error: 'maxBlogs must be a positive integer (minimum 1)' })
+            body: JSON.stringify({ error: 'maxBlogs must be a positive integer between 1 and 50' })
           };
         }
 
         // Validate totalStorageMB
-        if (totalStorageMB !== undefined && (!Number.isInteger(totalStorageMB) || totalStorageMB < 100)) {
+        if (totalStorageMB !== undefined && (!Number.isInteger(totalStorageMB) || totalStorageMB < 100 || totalStorageMB > 100000)) {
           return {
             statusCode: 400,
             headers,
-            body: JSON.stringify({ error: 'totalStorageMB must be a positive integer (minimum 100)' })
+            body: JSON.stringify({ error: 'totalStorageMB must be a positive integer between 100 and 100,000' })
           };
         }
         try {

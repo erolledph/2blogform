@@ -49,12 +49,20 @@ function validateContentItem(item, index) {
     errors.push('Missing required field: title');
   } else if (typeof item.title !== 'string') {
     errors.push('Title must be a string');
+  } else if (item.title.trim().length < 3) {
+    errors.push('Title must be at least 3 characters');
+  } else if (item.title.length > 200) {
+    errors.push('Title must be less than 200 characters');
   }
   
   if (!item.content || !item.content.trim()) {
     errors.push('Missing required field: content');
   } else if (typeof item.content !== 'string') {
     errors.push('Content must be a string');
+  } else if (item.content.trim().length < 10) {
+    errors.push('Content must be at least 10 characters');
+  } else if (item.content.length > 50000) {
+    errors.push('Content must be less than 50,000 characters');
   }
   
   // Generate slug if missing
@@ -64,6 +72,10 @@ function validateContentItem(item, index) {
     } else {
       errors.push('Missing required field: slug (and cannot generate from title)');
     }
+  } else if (!/^[a-z0-9-]+$/.test(item.slug)) {
+    errors.push('Slug can only contain lowercase letters, numbers, and hyphens');
+  } else if (item.slug.length > 100) {
+    errors.push('Slug must be less than 100 characters');
   }
   
   // Validate status
@@ -76,15 +88,40 @@ function validateContentItem(item, index) {
     item.status = 'draft';
   }
   
+  // Validate optional fields
+  if (item.metaDescription && (typeof item.metaDescription !== 'string' || item.metaDescription.length > 160)) {
+    errors.push('Meta description must be a string with maximum 160 characters');
+  }
+  
+  if (item.seoTitle && (typeof item.seoTitle !== 'string' || item.seoTitle.length > 60)) {
+    errors.push('SEO title must be a string with maximum 60 characters');
+  }
+  
+  if (item.author && (typeof item.author !== 'string' || item.author.length > 100)) {
+    errors.push('Author must be a string with maximum 100 characters');
+  }
+  
+  if (item.featuredImageUrl && typeof item.featuredImageUrl !== 'string') {
+    errors.push('Featured image URL must be a string');
+  }
+  
   // Ensure arrays are arrays
   if (item.keywords && !Array.isArray(item.keywords)) {
-    item.keywords = [];
+    errors.push('Keywords must be an array');
+  } else {
+    item.keywords = item.keywords || [];
   }
+  
   if (item.categories && !Array.isArray(item.categories)) {
-    item.categories = [];
+    errors.push('Categories must be an array');
+  } else {
+    item.categories = item.categories || [];
   }
+  
   if (item.tags && !Array.isArray(item.tags)) {
-    item.tags = [];
+    errors.push('Tags must be an array');
+  } else {
+    item.tags = item.tags || [];
   }
   
   // Ensure strings are strings
