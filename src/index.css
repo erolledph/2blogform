@@ -653,20 +653,30 @@
 }
 
 .markdown-content code {
-  background-color: hsl(var(--secondary));
-  color: hsl(var(--foreground));
-  border-color: hsl(var(--border));
+  background-color: hsl(var(--code-background)); /* Slightly darker background */
+  color: hsl(var(--foreground)); /* Dark text for high contrast */
+  border: 1px solid hsl(var(--border));
+  padding: 0.2rem 0.4rem; /* Consistent padding */
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace;
 }
 
 .markdown-content pre {
-  background-color: hsl(var(--secondary)); /* Change to a light grey/green */
-  color: hsl(var(--foreground)); /* Change to a dark grey for better contrast */
-  border-color: hsl(var(--border));
+  background-color: hsl(var(--code-background)); /* Lighter background */
+  color: hsl(var(--foreground)); /* Dark text for readability */
+  border: 1px solid hsl(var(--border));
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace;
 }
 
 
 .markdown-content pre code {
-  color: hsl(var(--primary-foreground));
+  color: hsl(var(--foreground)); /* Match pre text color */
+  background: transparent; /* Remove inline code background inside pre */
+  border: none;
+  padding: 0;
 }
 
 .markdown-content a {
