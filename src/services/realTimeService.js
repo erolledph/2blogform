@@ -1,3 +1,5 @@
+import React from 'react';
+
 // Enhanced Real-time service for WebSocket and Server-Sent Events management
 import { webSocketService } from './webSocketService';
 import { realTimeAnalyticsService } from './realTimeAnalytics';
