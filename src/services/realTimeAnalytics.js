@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+
 // Real-time analytics service for live data streaming
 class RealTimeAnalyticsService {
   constructor() {

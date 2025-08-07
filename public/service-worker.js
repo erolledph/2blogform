@@ -154,7 +154,7 @@ async function cacheFirst(request, cache) {
   try {
     const networkResponse = await fetch(request);
     
-    if (networkResponse.ok) {
+    if (request.method === 'GET' && networkResponse.ok) {
       cache.put(request, networkResponse.clone());
     }
     
@@ -172,7 +172,7 @@ async function networkFirst(request, cache) {
   try {
     const networkResponse = await fetch(request);
     
-    if (networkResponse.ok) {
+    if (request.method === 'GET' && networkResponse.ok) {
       cache.put(request, networkResponse.clone());
     }
     
@@ -196,7 +196,7 @@ async function staleWhileRevalidate(request, cache) {
   
   // Always try to fetch fresh data in background
   const fetchPromise = fetch(request).then((networkResponse) => {
-    if (networkResponse.ok) {
+    if (request.method === 'GET' && networkResponse.ok) {
       cache.put(request, networkResponse.clone());
     }
     return networkResponse;
