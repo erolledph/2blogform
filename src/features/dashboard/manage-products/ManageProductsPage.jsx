@@ -644,6 +644,16 @@ export default function ManageProductsPage({ activeBlogId }) {
                 >
                   {bulkActionLoading ? 'Deleting...' : 'Delete Selected'}
                 </button>
+                <LoadingButton
+                  onClick={handleExportSelected}
+                  loading={exporting}
+                  loadingText="Exporting..."
+                  variant="secondary"
+                  size="sm"
+                  icon={Download}
+                >
+                  Export Selected ({selectedItems.length})
+                </LoadingButton>
               </div>
             </div>
           )}
@@ -662,28 +672,6 @@ export default function ManageProductsPage({ activeBlogId }) {
           >
             Import JSON
           </LoadingButton>
-          {selectedItems.length > 0 ? (
-            <LoadingButton
-              onClick={handleExportSelected}
-              loading={exporting}
-              loadingText="Exporting..."
-              variant="secondary"
-              icon={Download}
-            >
-              Export Selected ({selectedItems.length})
-            </LoadingButton>
-          ) : (
-            <LoadingButton
-              onClick={handleExportAll}
-              loading={exporting}
-              disabled={products.length === 0}
-              loadingText="Exporting..."
-              variant="secondary"
-              icon={Download}
-            >
-              Export All
-            </LoadingButton>
-          )}
         </div>
       </div>
 
