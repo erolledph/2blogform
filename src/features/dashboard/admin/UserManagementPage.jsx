@@ -325,6 +325,29 @@ export default function UserManagementPage() {
               {row.role === 'admin' ? <Crown className="h-4 w-4" /> : <User className="h-4 w-4" />}
             </button>
           )}
+          
+          {/* Delete user button */}
+          {row.uid !== currentUser?.uid && (
+            <button
+              onClick={() => setDeleteModal({ isOpen: true, user: row })}
+              disabled={deleting}
+              className="text-red-600 p-2 rounded-md hover:bg-red-50 transition-colors duration-200"
+              title="Delete user"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
+          
+          {/* Delete user button */}
+          {row.uid !== currentUser?.uid && (
+            <button
+              onClick={() => setDeleteModal({ isOpen: true, user: row })}
+              className="text-red-600 p-2 rounded-md hover:bg-red-50 transition-colors duration-200"
+              title="Delete user"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
       )
     }
