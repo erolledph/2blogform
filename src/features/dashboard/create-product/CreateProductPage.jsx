@@ -39,6 +39,7 @@ export default function CreateProductPage({ activeBlogId }) {
   // Separate state for array input fields
   const [tagsInput, setTagsInput] = useState('');
   const [userCurrency, setUserCurrency] = useState('$');
+  const [existingContent, setExistingContent] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -135,6 +136,7 @@ export default function CreateProductPage({ activeBlogId }) {
       });
 
       setTagsInput((data.tags || []).join(', '));
+      setExistingContent(data);
     } catch (error) {
       console.error('Error fetching product:', error);
       toast.error('Failed to fetch product');
