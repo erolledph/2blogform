@@ -645,10 +645,11 @@
   color: hsl(var(--foreground));
 }
 
-.markdown-content blockquote {
-  border-color: hsl(var(--primary));
-  color: hsl(var(--muted-foreground));
-  background-image: linear-gradient(to right, hsla(var(--primary), 0.05), hsla(var(--accent), 0.05));
+..markdown-content blockquote {
+  border-color: hsl(var(--primary)); /* Keep border color as is */
+  color: hsl(var(--foreground)); /* Change to dark grey for better contrast */
+  background-color: hsl(var(--muted)); /* Change to a solid light grey background */
+  background-image: none; /* Remove the gradient background */
 }
 
 .markdown-content code {
