@@ -1,8 +1,12 @@
 import React from 'react';
-import { useAnalytics } from '../../../hooks/useAnalytics';
+import { useSiteAnalytics, useBackendUsage } from '../../../hooks/useAnalytics';
 
-const AnalyticsPage = () => {
-  const { siteAnalytics, backendUsage, loading, error } = useAnalytics();
+const AnalyticsPage = ({ activeBlogId }) => {
+  const { analytics: siteAnalytics, loading: siteLoading, error: siteError } = useSiteAnalytics(activeBlogId);
+  const { usage: backendUsage, loading: usageLoading, error: usageError } = useBackendUsage(activeBlogId);
+
+  const loading = siteLoading || usageLoading;
+  const error = siteError || usageError;
 
   if (loading) {
     return (
