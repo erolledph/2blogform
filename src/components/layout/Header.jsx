@@ -1,10 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, Wifi, WifiOff } from 'lucide-react';
-import { ConnectionIndicator } from '@/components/shared/ConnectionStatus';
-import { PresenceIndicators } from '@/components/shared/CollaborationIndicators';
-import RealTimeNotifications from '@/components/shared/RealTimeNotifications';
 import DynamicTransition from '@/components/shared/DynamicTransition';
-import { PerformanceWidget, CachePerformanceMonitor } from '@/components/shared/PerformanceMonitor';
 
 export default function Header({ onMenuClick }) {
   const [notifications, setNotifications] = useState([]);
@@ -28,12 +24,6 @@ export default function Header({ onMenuClick }) {
 
         {/* Center - Empty space for future use */}
         <div className="flex-1 flex justify-center">
-          <div className="flex items-center space-x-4">
-            <ConnectionIndicator />
-            <PresenceIndicators location="dashboard" />
-            <PerformanceWidget />
-            <CachePerformanceMonitor />
-          </div>
         </div>
 
         {/* Right side - Notifications */}
@@ -79,9 +69,6 @@ export default function Header({ onMenuClick }) {
           </div>
         </div>
       </div>
-      
-      {/* Real-time notifications overlay */}
-      <RealTimeNotifications />
     </header>
   );
 }

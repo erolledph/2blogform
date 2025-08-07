@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { debounce } from '@/utils/helpers';
-import toast from 'react-hot-toast';
 
 // Auto-save hook with real-time indicators
 export function useAutoSave(data, saveFunction, options = {}) {
@@ -41,15 +40,7 @@ export function useAutoSave(data, saveFunction, options = {}) {
         if (onSave) onSave();
         
         if (showNotifications) {
-          toast.success('Draft saved automatically', {
-            duration: 2000,
-            style: {
-              background: '#f0f9ff',
-              color: '#0369a1',
-              border: '1px solid #bae6fd',
-              fontSize: '14px'
-            }
-          });
+          console.log('Draft saved automatically');
         }
       } catch (error) {
         console.error('Auto-save failed:', error);
@@ -65,11 +56,7 @@ export function useAutoSave(data, saveFunction, options = {}) {
           setAutoSaveStatus('error');
           if (onError) onError(error);
           
-          if (showNotifications) {
-            toast.error('Auto-save failed - please save manually', {
-              duration: 5000
-            });
-          }
+          console.error('Auto-save failed - please save manually');
         }
       }
     }, delay),
@@ -107,15 +94,13 @@ export function useAutoSave(data, saveFunction, options = {}) {
       if (onSave) onSave();
       
       if (showNotifications) {
-        toast.success('Saved successfully');
+        console.log('Saved successfully');
       }
     } catch (error) {
       setAutoSaveStatus('error');
       if (onError) onError(error);
       
-      if (showNotifications) {
-        toast.error('Save failed');
-      }
+      console.error('Save failed');
       throw error;
     }
   }, [data, saveFunction, enabled, onSave, onError, showNotifications]);

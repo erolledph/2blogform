@@ -2,10 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/hooks/useAuth';
-import { realTimeManager } from '@/services/realTimeService';
-import { webSocketService } from '@/services/webSocketService';
-import { realTimeAnalyticsService } from '@/services/realTimeAnalytics';
-import { performanceService } from '@/services/performanceService';
 import LoginPage from '@/features/auth/LoginPage';
 import RegisterPage from '@/features/auth/RegisterPage';
 import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
@@ -15,14 +11,9 @@ import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import DynamicTransition from '@/components/shared/DynamicTransition';
 import ContentPreviewPage from '@/preview/ContentPreviewPage';
 import ProductPreviewPage from '@/preview/ProductPreviewPage';
-import PerformanceMonitor from '@/components/shared/PerformanceMonitor';
 
 function App() {
-  // Cleanup real-time connections on app unmount
   React.useEffect(() => {
-    // Initialize performance monitoring
-    performanceService.initialize();
-    
     // Setup service worker update notification
     if ('serviceWorker' in navigator) {
       window.showUpdateNotification = () => {
@@ -32,13 +23,6 @@ function App() {
         }
       };
     }
-    
-    return () => {
-      realTimeManager.disconnect();
-      webSocketService.disconnect();
-      realTimeAnalyticsService.stopStreaming();
-      performanceService.cleanup();
-    };
   }, []);
   
   return (
@@ -77,8 +61,6 @@ function App() {
                 }}
               />
               
-              {/* Performance Monitor */}
-              <PerformanceMonitor autoHide={true} />
             </div>
           </Router>
         </DynamicTransition>

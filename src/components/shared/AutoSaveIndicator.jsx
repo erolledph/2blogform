@@ -1,6 +1,5 @@
 import React from 'react';
 import { Check, AlertTriangle, Clock, Wifi, WifiOff, RotateCcw } from 'lucide-react';
-import { CrossTabSyncIndicator } from './CollaborationIndicators';
 
 export default function AutoSaveIndicator({ 
   status = 'saved',
@@ -106,9 +105,6 @@ export default function AutoSaveIndicator({
         </span>
       </div>
 
-      {/* Cross-tab sync indicator */}
-      <CrossTabSyncIndicator />
-
       {/* Retry button for errors */}
       {showRetryButton && onRetry && (
         <button
@@ -118,45 +114,6 @@ export default function AutoSaveIndicator({
         >
           <RotateCcw className="h-4 w-4" />
         </button>
-      )}
-    </div>
-  );
-}
-
-// Enhanced auto-save indicator with collaboration features
-export function CollaborativeAutoSaveIndicator({ 
-  status,
-  lastSaved,
-  collaborators = [],
-  conflicts = [],
-  className = ''
-}) {
-  return (
-    <div className={`space-y-2 ${className}`}>
-      <AutoSaveIndicator 
-        status={status}
-        lastSaved={lastSaved}
-        isOnline={navigator.onLine}
-      />
-      
-      {/* Collaboration status */}
-      {collaborators.length > 0 && (
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full border bg-purple-50 border-purple-200">
-          <Users className="h-4 w-4 text-purple-600" />
-          <span className="text-sm font-medium text-purple-600">
-            {collaborators.length} collaborator{collaborators.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-      )}
-
-      {/* Conflict indicator */}
-      {conflicts.length > 0 && (
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full border bg-red-50 border-red-200">
-          <AlertTriangle className="h-4 w-4 text-red-600" />
-          <span className="text-sm font-medium text-red-600">
-            {conflicts.length} conflict{conflicts.length !== 1 ? 's' : ''}
-          </span>
-        </div>
       )}
     </div>
   );

@@ -15,7 +15,6 @@ export default function SmartNotification({
   persistent = false,
   onClose,
   context = null,
-  isOnline = true
 }) {
   const [visible, setVisible] = useState(true);
   const [progress, setProgress] = useState(100);
@@ -127,12 +126,6 @@ export default function SmartNotification({
         ${config.bgColor} ${config.borderColor} border rounded-lg p-4 ${getPriorityClasses()}
       `}>
         {/* Connection status indicator */}
-        {!isOnline && (
-          <div className="absolute top-2 left-2">
-            <WifiOff className="h-3 w-3 text-red-500" />
-          </div>
-        )}
-        
         {/* Progress bar */}
         {autoClose && duration > 0 && !persistent && (
           <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200 rounded-t-lg overflow-hidden">

@@ -1,9 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Filter, X, Check } from 'lucide-react';
 import DynamicTransition from './DynamicTransition';
-import ProgressiveLoader from './ProgressiveLoader';
-import { StaggeredList } from './ProgressiveLoader';
-import VirtualizedDataTable from './VirtualizedDataTable';
 
 export default function DataTable({
   data = [],
@@ -22,42 +19,8 @@ export default function DataTable({
   className = '',
   loading = false,
   error = null,
-  enableVirtualScrolling = false,
-  enableProgressiveLoading = false,
-  onLoadMore = null,
-  hasMore = false,
-  enableAnimations = true,
-  virtualScrollThreshold = 100,
-  itemHeight = 60,
-  containerHeight = 600
+  enableAnimations = true
 }) {
-  // Use virtualized table for large datasets
-  if (enableVirtualScrolling || data.length > virtualScrollThreshold) {
-    return (
-      <VirtualizedDataTable
-        data={data}
-        columns={columns}
-        searchable={searchable}
-        filterable={filterable}
-        filterOptions={filterOptions}
-        sortable={sortable}
-        pagination={pagination}
-        pageSize={pageSize}
-        selectable={selectable}
-        selectedItems={selectedItems}
-        onSelectAll={onSelectAll}
-        onSelectRow={onSelectRow}
-        onFiltersChange={onFiltersChange}
-        className={className}
-        loading={loading}
-        error={error}
-        enableVirtualScrolling={true}
-        itemHeight={itemHeight}
-        containerHeight={containerHeight}
-      />
-    );
-  }
-
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
@@ -458,26 +421,7 @@ export default function DataTable({
               </tr>
             </thead>
             <tbody className="bg-background divide-y divide-border">
-              {enableProgressiveLoading ? (
-                <tr>
-                  <td colSpan={columns.length + (selectable ? 1 : 0)}>
-                    <ProgressiveLoader
-                      data={paginatedData}
-                      renderItem={(item, index) => renderTableRow(item, index)}
-                      onLoadMore={onLoadMore}
-                      loading={loading}
-                      hasMore={hasMore}
-                      enableVirtualScrolling={enableVirtualScrolling}
-                    />
-                  </td>
-                </tr>
-              ) : enableAnimations ? (
-                <StaggeredList staggerDelay={50}>
-                  {paginatedData.map((item, index) => renderTableRow(item, index))}
-                </StaggeredList>
-              ) : (
-                paginatedData.map((item, index) => renderTableRow(item, index))
-              )}
+              {paginatedData.map((item, index) => renderTableRow(item, index))}
             </tbody>
           </table>
         </div>

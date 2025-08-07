@@ -2,9 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useContent } from '@/hooks/useContent';
-import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
-import { PresenceIndicators } from '@/components/shared/CollaborationIndicators';
-import { useInteractionTracking } from '@/services/realTimeAnalytics';
 import { analyticsService } from '@/services/analyticsService';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
@@ -19,8 +16,6 @@ import toast from 'react-hot-toast';
 export default function ManageContentPage({ activeBlogId }) {
   const { content, setContent, loading, error, refetch, invalidateCache } = useContent(activeBlogId);
   const { getAuthToken, currentUser } = useAuth();
-  const { executeOperation } = useRealTimeOperations();
-  const { trackInteraction } = useInteractionTracking();
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, content: null });
   const [analyticsModal, setAnalyticsModal] = useState({ isOpen: false, content: null });
   const [selectedItems, setSelectedItems] = useState([]);
@@ -59,44 +54,30 @@ export default function ManageContentPage({ activeBlogId }) {
     try {
       setPublishingLoading(true);
       
-      await executeOperation({
-        type: 'bulk-publish-content',
-        dataKey: `content-${activeBlogId}`,
-        optimisticUpdate: content.map(item =>
-          selectedItems.includes(item.id) ? { ...item, status: 'published' } : item
-        ),
-        rollbackData: content,
-        execute: async () => {
-          const token = await getAuthToken();
-          
-          const promises = selectedItems.map(async (itemId) => {
-            const response = await fetch(`/.netlify/functions/admin-content`, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({ 
-                id: itemId, 
-                blogId: activeBlogId,
-                status: 'published'
-              })
-            });
-            
-            if (!response.ok) {
-              throw new Error(`Failed to publish item ${itemId}`);
-            }
-          });
-
-          await Promise.all(promises);
-          return content.map(item =>
-            selectedItems.includes(item.id) ? { ...item, status: 'published' } : item
-          );
-        },
-        successMessage: `Successfully published ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`,
-        errorMessage: 'Some items failed to publish',
-        context: { area: 'content-manager' }
+      const token = await getAuthToken();
+      
+      const promises = selectedItems.map(async (itemId) => {
+        const response = await fetch(`/.netlify/functions/admin-content`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            id: itemId, 
+            blogId: activeBlogId,
+            status: 'published'
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to publish item ${itemId}`);
+        }
       });
+
+      await Promise.all(promises);
+      
+      toast.success(`Successfully published ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
       
       setSelectedItems([]);
       invalidateCache();
@@ -116,44 +97,30 @@ export default function ManageContentPage({ activeBlogId }) {
     try {
       setUnpublishingLoading(true);
       
-      await executeOperation({
-        type: 'bulk-unpublish-content',
-        dataKey: `content-${activeBlogId}`,
-        optimisticUpdate: content.map(item =>
-          selectedItems.includes(item.id) ? { ...item, status: 'draft' } : item
-        ),
-        rollbackData: content,
-        execute: async () => {
-          const token = await getAuthToken();
-          
-          const promises = selectedItems.map(async (itemId) => {
-            const response = await fetch(`/.netlify/functions/admin-content`, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({ 
-                id: itemId, 
-                blogId: activeBlogId,
-                status: 'draft'
-              })
-            });
-            
-            if (!response.ok) {
-              throw new Error(`Failed to unpublish item ${itemId}`);
-            }
-          });
-
-          await Promise.all(promises);
-          return content.map(item =>
-            selectedItems.includes(item.id) ? { ...item, status: 'draft' } : item
-          );
-        },
-        successMessage: `Successfully unpublished ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`,
-        errorMessage: 'Some items failed to unpublish',
-        context: { area: 'content-manager' }
+      const token = await getAuthToken();
+      
+      const promises = selectedItems.map(async (itemId) => {
+        const response = await fetch(`/.netlify/functions/admin-content`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            id: itemId, 
+            blogId: activeBlogId,
+            status: 'draft'
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to unpublish item ${itemId}`);
+        }
       });
+
+      await Promise.all(promises);
+      
+      toast.success(`Successfully unpublished ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
       
       setSelectedItems([]);
       invalidateCache();
@@ -177,39 +144,29 @@ export default function ManageContentPage({ activeBlogId }) {
     try {
       setDeletingLoading(true);
       
-      await executeOperation({
-        type: 'bulk-delete-content',
-        dataKey: `content-${activeBlogId}`,
-        optimisticUpdate: content.filter(item => !selectedItems.includes(item.id)),
-        rollbackData: content,
-        execute: async () => {
-          const token = await getAuthToken();
-          
-          const promises = selectedItems.map(async (itemId) => {
-            const response = await fetch(`/.netlify/functions/admin-content`, {
-              method: 'DELETE',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({ 
-                id: itemId, 
-                blogId: activeBlogId
-              })
-            });
-            
-            if (!response.ok) {
-              throw new Error(`Failed to delete item ${itemId}`);
-            }
-          });
-
-          await Promise.all(promises);
-          return content.filter(item => !selectedItems.includes(item.id));
-        },
-        successMessage: `Successfully deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`,
-        errorMessage: 'Some items failed to delete',
-        context: { area: 'content-manager' }
+      const token = await getAuthToken();
+      
+      const promises = selectedItems.map(async (itemId) => {
+        const response = await fetch(`/.netlify/functions/admin-content`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            id: itemId, 
+            blogId: activeBlogId
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to delete item ${itemId}`);
+        }
       });
+
+      await Promise.all(promises);
+      
+      toast.success(`Successfully deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
       
       setSelectedItems([]);
       invalidateCache();
@@ -419,32 +376,21 @@ export default function ManageContentPage({ activeBlogId }) {
     try {
       setDeletingItemId(contentItem.id);
       
-      await executeOperation({
-        type: 'delete-content',
-        dataKey: `content-${activeBlogId}`,
-        optimisticUpdate: content.filter(item => item.id !== contentItem.id),
-        rollbackData: content,
-        execute: async () => {
-          const token = await getAuthToken();
-          const response = await fetch(`/.netlify/functions/admin-content`, {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ id: contentItem.id, blogId: activeBlogId })
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to delete content');
-          }
-          
-          return content.filter(item => item.id !== contentItem.id);
+      const token = await getAuthToken();
+      const response = await fetch(`/.netlify/functions/admin-content`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        successMessage: 'Content deleted successfully',
-        errorMessage: 'Failed to delete content',
-        context: { area: 'content-manager' }
+        body: JSON.stringify({ id: contentItem.id, blogId: activeBlogId })
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete content');
+      }
+      
+      toast.success('Content deleted successfully');
       
       setDeleteModal({ isOpen: false, content: null });
       invalidateCache();
@@ -623,10 +569,6 @@ export default function ManageContentPage({ activeBlogId }) {
                 <button
                   onClick={handleBulkPublish}
                   disabled={publishingLoading}
-                  onClick={() => {
-                    trackInteraction('bulk_publish', { count: selectedItems.length });
-                    handleBulkPublish();
-                  }}
                   className="btn-secondary btn-sm min-w-[120px]"
                 >
                   {publishingLoading ? 'Publishing...' : 'Publish Selected'}
@@ -634,10 +576,6 @@ export default function ManageContentPage({ activeBlogId }) {
                 <button
                   onClick={handleBulkUnpublish}
                   disabled={unpublishingLoading}
-                  onClick={() => {
-                    trackInteraction('bulk_unpublish', { count: selectedItems.length });
-                    handleBulkUnpublish();
-                  }}
                   className="btn-secondary btn-sm min-w-[130px]"
                 >
                   {unpublishingLoading ? 'Unpublishing...' : 'Unpublish Selected'}
@@ -645,10 +583,6 @@ export default function ManageContentPage({ activeBlogId }) {
                 <button
                   onClick={handleBulkDelete}
                   disabled={deletingLoading}
-                  onClick={() => {
-                    trackInteraction('bulk_delete', { count: selectedItems.length });
-                    handleBulkDelete();
-                  }}
                   className="btn-danger btn-sm min-w-[120px]"
                 >
                   {deletingLoading ? 'Deleting...' : 'Delete Selected'}
@@ -675,10 +609,6 @@ export default function ManageContentPage({ activeBlogId }) {
           </Link>
           <LoadingButton
             onClick={handleImport}
-            onClick={() => {
-              trackInteraction('import_content');
-              handleImport();
-            }}
             loading={importing}
             loadingText="Importing..."
             variant="secondary"
@@ -688,10 +618,6 @@ export default function ManageContentPage({ activeBlogId }) {
           </LoadingButton>
           <LoadingButton
             onClick={handleExportAll}
-            onClick={() => {
-              trackInteraction('export_all_content');
-              handleExportAll();
-            }}
             loading={exportingAllLoading}
             loadingText="Exporting..."
             variant="secondary"

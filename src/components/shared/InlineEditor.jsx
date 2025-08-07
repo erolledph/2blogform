@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Check, X, Edit } from 'lucide-react';
-import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
 import LoadingSpinner from './LoadingSpinner';
 
 // Inline editor for quick field updates
@@ -65,16 +64,8 @@ export default function InlineEditor({
       setSaving(true);
       setError(null);
       
-      await executeOperation({
-        type: 'inline-edit',
-        dataKey: 'inline-edit',
-        execute: async () => {
-          await onSave(editValue);
-          return editValue;
-        },
-        successMessage: 'Updated successfully',
-        errorMessage: 'Failed to update'
-      });
+      await onSave(editValue);
+      toast.success('Updated successfully');
       
       setIsEditing(false);
     } catch (error) {
@@ -173,7 +164,6 @@ export function StatusToggle({
   statuses = ['draft', 'published']
 }) {
   const [toggling, setToggling] = useState(false);
-  const { executeOperation } = useRealTimeOperations();
 
   const handleToggle = async () => {
     if (disabled || toggling) return;
@@ -183,16 +173,8 @@ export function StatusToggle({
     try {
       setToggling(true);
       
-      await executeOperation({
-        type: 'toggle-status',
-        dataKey: 'status-toggle',
-        execute: async () => {
-          await onToggle(newStatus);
-          return newStatus;
-        },
-        successMessage: `Status changed to ${newStatus}`,
-        errorMessage: 'Failed to change status'
-      });
+      await onToggle(newStatus);
+      toast.success(`Status changed to ${newStatus}`);
     } catch (error) {
       console.error('Error toggling status:', error);
     } finally {

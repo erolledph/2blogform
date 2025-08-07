@@ -3,7 +3,6 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { storageService } from '@/services/storageService';
-import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
 import { fromBlob } from 'image-resize-compress';
 import InputField from './InputField';
 import LoadingSpinner from './LoadingSpinner';
@@ -54,7 +53,6 @@ export default function ImageUploader({
   const [confirmUploadModal, setConfirmUploadModal] = useState(false);
   const [finalCompressedBlob, setFinalCompressedBlob] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const { executeOperation } = useRealTimeOperations();
 
   useEffect(() => {
     if (currentUser?.uid && storageService) {
@@ -283,58 +281,42 @@ export default function ImageUploader({
       setUploading(true);
       setUploadProgress(0);
       
-      await executeOperation({
-        type: 'upload-image',
-        dataKey: 'file-storage',
-        execute: async () => {
-          // Simulate upload progress
-          const progressInterval = setInterval(() => {
-            setUploadProgress(prev => {
-              if (prev >= 90) {
-                clearInterval(progressInterval);
-                return 90;
-              }
-              return prev + 10;
-            });
-          }, 200);
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
 
-          // Create storage path
-          const fileName = `${newFileName.trim()}.${outputFormat}`;
-          const fullPath = userStoragePath ? `${userStoragePath}/${fileName}` : `users/${currentUser?.uid}/public_images/${fileName}`;
-          const storageRef = ref(storage, fullPath);
-          
-          // Upload compressed image
-          await uploadBytes(storageRef, blobToUpload, {
-            contentType: `image/${outputFormat}`,
-            customMetadata: {
-              originalName: selectedFile.name,
-              originalSize: selectedFile.size.toString(),
-              compressedSize: blobToUpload.size.toString(),
-              compressionRatio: compressionStats?.compressionRatio || '0',
-              quality: imageQuality.toString(),
-              maxWidth: imageMaxWidth.toString(),
-              maxHeight: imageMaxHeight.toString()
-            }
-          });
-          
-          clearInterval(progressInterval);
-          setUploadProgress(100);
-          
-          const downloadURL = await getDownloadURL(storageRef);
-          
-          return {
-            fileName,
-            fullPath,
-            downloadURL,
-            size: blobToUpload.size,
-            originalSize: selectedFile.size,
-            compressionRatio: compressionStats?.compressionRatio || '0'
-          };
-        },
-        successMessage: 'Image uploaded and optimized successfully!',
-        errorMessage: 'Failed to upload image',
-        context: { area: 'file-storage' }
+      // Create storage path
+      const fileName = `${newFileName.trim()}.${outputFormat}`;
+      const fullPath = userStoragePath ? `${userStoragePath}/${fileName}` : `users/${currentUser?.uid}/public_images/${fileName}`;
+      const storageRef = ref(storage, fullPath);
+      
+      // Upload compressed image
+      await uploadBytes(storageRef, blobToUpload, {
+        contentType: `image/${outputFormat}`,
+        customMetadata: {
+          originalName: selectedFile.name,
+          originalSize: selectedFile.size.toString(),
+          compressedSize: blobToUpload.size.toString(),
+          compressionRatio: compressionStats?.compressionRatio || '0',
+          quality: imageQuality.toString(),
+          maxWidth: imageMaxWidth.toString(),
+          maxHeight: imageMaxHeight.toString()
+        }
       });
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      toast.success('Image uploaded and optimized successfully!');
       
       // Reset form
       resetForm();

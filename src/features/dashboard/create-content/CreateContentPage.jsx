@@ -3,9 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useContentById } from '@/hooks/useContent';
 import { useAutoSave } from '@/hooks/useAutoSave';
-import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
-import CollaborativeEditor from '@/components/shared/CollaborativeEditor';
-import { PresenceIndicators } from '@/components/shared/CollaborationIndicators';
+import SimpleMDE from 'react-simplemde-editor';
 import InputField from '@/components/shared/InputField';
 import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import AutoSaveIndicator from '@/components/shared/AutoSaveIndicator';
@@ -22,7 +20,6 @@ export default function CreateContentPage({ activeBlogId }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getAuthToken } = useAuth();
-  const { executeOperation } = useRealTimeOperations();
   const isEditing = Boolean(id);
   const { content: existingContent, loading: contentLoading } = useContentById(id, activeBlogId);
 
@@ -312,45 +309,29 @@ export default function CreateContentPage({ activeBlogId }) {
     try {
       setLoading(true);
       
-      await executeOperation({
-        type: isEditing ? 'update-content' : 'create-content',
-        dataKey: `content-${activeBlogId}`,
-        execute: async () => {
-          const token = await getAuthToken();
-          const url = `/.netlify/functions/admin-content`;
-          
-          const method = isEditing ? 'PUT' : 'POST';
-          const body = isEditing 
-            ? { id, blogId: finalFormData.blogId, ...finalFormData }
-            : finalFormData;
+      const token = await getAuthToken();
+      const url = `/.netlify/functions/admin-content`;
+      
+      const method = isEditing ? 'PUT' : 'POST';
+      const body = isEditing 
+        ? { id, blogId: finalFormData.blogId, ...finalFormData }
+        : finalFormData;
 
-          const response = await fetch(url, {
-            method,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(body)
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `HTTP ${response.status}`);
-          }
-
-          return await response.json();
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        successMessage: isEditing ? 'Content updated successfully' : 'Content created successfully',
-        errorMessage: 'Failed to save content',
-        context: { area: 'content-editor' },
-        successActions: [
-          {
-            label: 'View Content',
-            onClick: () => navigate('/dashboard/manage'),
-            primary: true
-          }
-        ]
+        body: JSON.stringify(body)
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      toast.success(isEditing ? 'Content updated successfully' : 'Content created successfully');
       
       // Navigate with smooth transition
       setTimeout(() => navigate('/dashboard/manage'), 500);
@@ -378,9 +359,6 @@ export default function CreateContentPage({ activeBlogId }) {
             <h1 className="page-title">
               {isEditing ? 'Edit Content' : 'Create New Content'}
             </h1>
-            <div className="flex items-center space-x-4 mt-2">
-              <PresenceIndicators location="content-editor" />
-            </div>
             {/* Auto-save indicator for editing */}
             {isEditing && (
               <div className="mt-4">
@@ -456,7 +434,7 @@ export default function CreateContentPage({ activeBlogId }) {
                   <label className="block text-base font-medium text-foreground mb-4">
                     Content <span className="text-destructive">*</span>
                   </label>
-                  <CollaborativeEditor
+                  <SimpleMDE
                     value={formData.content}
                     onChange={(value) => {
                       setFormData(prev => ({ ...prev, content: value }));
@@ -464,8 +442,6 @@ export default function CreateContentPage({ activeBlogId }) {
                         setErrors(prev => ({ ...prev, content: '' }));
                       }
                     }}
-                    contentId={id || 'new-content'}
-                    onSave={handleSubmit}
                     options={simpleMDEOptions}
                   />
                   {errors.content && (

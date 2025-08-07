@@ -34,14 +34,6 @@ export default function LoginPage() {
     // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    } else if (formData.password.length > 128) {
-      newErrors.password = 'Password is too long';
-    } else if (formData.password.includes(' ')) {
-      newErrors.password = 'Password cannot contain spaces';
-    } else if (!/^(?=.*[a-zA-Z])/.test(formData.password)) {
-      newErrors.password = 'Password must contain at least one letter';
     }
     
     setErrors(newErrors);

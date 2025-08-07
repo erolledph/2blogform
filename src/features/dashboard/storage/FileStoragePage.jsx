@@ -3,7 +3,6 @@ import { ref, listAll, getMetadata, getDownloadURL, deleteObject, uploadBytes } 
 import { storage } from '@/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { storageService } from '@/services/storageService';
-import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
 import DynamicTransition from '@/components/shared/DynamicTransition';
@@ -53,7 +52,6 @@ export default function FileStoragePage() {
   const [selectedDestination, setSelectedDestination] = useState('');
   const [availableFolders, setAvailableFolders] = useState([]);
   const { currentUser, getAuthToken } = useAuth();
-  const { executeOperation } = useRealTimeOperations();
   
   // Initialize user-specific base path
   useEffect(() => {
@@ -228,32 +226,10 @@ export default function FileStoragePage() {
     try {
       const folderPath = `${currentPath}/${newFolderName.trim()}`;
       
-      await executeOperation({
-        type: 'create-folder',
-        dataKey: 'file-storage',
-        optimisticUpdate: [...items, {
-          id: folderPath,
-          name: newFolderName.trim(),
-          fullPath: folderPath,
-          type: 'folder',
-          size: 0,
-          timeCreated: null
-        }].sort((a, b) => {
-          if (a.type !== b.type) {
-            return a.type === 'folder' ? -1 : 1;
-          }
-          return a.name.localeCompare(b.name);
-        }),
-        rollbackData: items,
-        execute: async () => {
-          const token = await getAuthToken();
-          await storageService.createFolder(folderPath, token);
-          return folderPath;
-        },
-        successMessage: 'Folder created successfully',
-        errorMessage: 'Failed to create folder',
-        context: { area: 'file-storage' }
-      });
+      const token = await getAuthToken();
+      await storageService.createFolder(folderPath, token);
+      
+      toast.success('Folder created successfully');
       
       // Close the appropriate modal based on context
       if (createFolderInMoveModal) {
@@ -284,30 +260,15 @@ export default function FileStoragePage() {
     try {
       const item = renameModal.item;
       
-      await executeOperation({
-        type: `rename-${item.type}`,
-        dataKey: 'file-storage',
-        optimisticUpdate: items.map(currentItem => 
-          currentItem.id === item.id 
-            ? { ...currentItem, name: newItemName.trim() }
-            : currentItem
-        ),
-        rollbackData: items,
-        execute: async () => {
-          const token = await getAuthToken();
+      const token = await getAuthToken();
 
-          if (item.type === 'file') {
-            await storageService.renameFile(item.fullPath, newItemName.trim(), token);
-          } else {
-            await storageService.renameFolder(item.fullPath, newItemName.trim(), token);
-          }
-          
-          return newItemName.trim();
-        },
-        successMessage: 'Item renamed successfully',
-        errorMessage: 'Failed to rename item',
-        context: { area: 'file-storage' }
-      });
+      if (item.type === 'file') {
+        await storageService.renameFile(item.fullPath, newItemName.trim(), token);
+      } else {
+        await storageService.renameFolder(item.fullPath, newItemName.trim(), token);
+      }
+      
+      toast.success('Item renamed successfully');
       
       setRenameModal({ isOpen: false, item: null });
       setNewItemName('');
@@ -365,27 +326,16 @@ export default function FileStoragePage() {
     try {
       const item = moveModal.item;
       
-      await executeOperation({
-        type: `move-${item.type}`,
-        dataKey: 'file-storage',
-        optimisticUpdate: items.filter(currentItem => currentItem.id !== item.id),
-        rollbackData: items,
-        execute: async () => {
-          const token = await getAuthToken();
+      const token = await getAuthToken();
 
-          if (item.type === 'file') {
-            const destPath = `${selectedDestination}/${item.name}`;
-            await storageService.moveFile(item.fullPath, destPath, token);
-          } else {
-            await storageService.moveFolder(item.fullPath, selectedDestination, token);
-          }
-          
-          return selectedDestination;
-        },
-        successMessage: 'Item moved successfully',
-        errorMessage: 'Failed to move item',
-        context: { area: 'file-storage' }
-      });
+      if (item.type === 'file') {
+        const destPath = `${selectedDestination}/${item.name}`;
+        await storageService.moveFile(item.fullPath, destPath, token);
+      } else {
+        await storageService.moveFolder(item.fullPath, selectedDestination, token);
+      }
+      
+      toast.success('Item moved successfully');
       
       setMoveModal({ isOpen: false, item: null });
       setSelectedDestination('');
@@ -438,20 +388,10 @@ export default function FileStoragePage() {
 
   const handleDelete = async (item) => {
     try {
-      await executeOperation({
-        type: `delete-${item.type}`,
-        dataKey: 'file-storage',
-        optimisticUpdate: items.filter(currentItem => currentItem.id !== item.id),
-        rollbackData: items,
-        execute: async () => {
-          const token = await getAuthToken();
-          await storageService.deleteFile(item.fullPath, token, item.type === 'folder');
-          return item.fullPath;
-        },
-        successMessage: `${item.type === 'folder' ? 'Folder' : 'File'} deleted successfully`,
-        errorMessage: `Failed to delete ${item.type}`,
-        context: { area: 'file-storage' }
-      });
+      const token = await getAuthToken();
+      await storageService.deleteFile(item.fullPath, token, item.type === 'folder');
+      
+      toast.success(`${item.type === 'folder' ? 'Folder' : 'File'} deleted successfully`);
       
       setDeleteModal({ isOpen: false, item: null });
     } catch (error) {

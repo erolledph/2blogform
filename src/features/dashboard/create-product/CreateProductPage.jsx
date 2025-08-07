@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useAutoSave } from '@/hooks/useAutoSave';
-import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
 import { settingsService } from '@/services/settingsService';
 import { productsService } from '@/services/productsService';
 import SimpleMDE from 'react-simplemde-editor';
@@ -22,7 +21,6 @@ export default function CreateProductPage({ activeBlogId }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { getAuthToken, currentUser } = useAuth();
-  const { executeOperation } = useRealTimeOperations();
   const isEditing = Boolean(id);
 
   const [formData, setFormData] = useState({
@@ -350,45 +348,29 @@ export default function CreateProductPage({ activeBlogId }) {
     try {
       setLoading(true);
       
-      await executeOperation({
-        type: isEditing ? 'update-product' : 'create-product',
-        dataKey: `products-${activeBlogId}`,
-        execute: async () => {
-          const token = await getAuthToken();
-          const url = `/.netlify/functions/admin-product`;
-          
-          const method = isEditing ? 'PUT' : 'POST';
-          const body = isEditing 
-            ? { id, ...finalFormData }
-            : finalFormData;
+      const token = await getAuthToken();
+      const url = `/.netlify/functions/admin-product`;
+      
+      const method = isEditing ? 'PUT' : 'POST';
+      const body = isEditing 
+        ? { id, ...finalFormData }
+        : finalFormData;
 
-          const response = await fetch(url, {
-            method,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(body)
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `HTTP ${response.status}`);
-          }
-
-          return await response.json();
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        successMessage: isEditing ? 'Product updated successfully' : 'Product created successfully',
-        errorMessage: 'Failed to save product',
-        context: { area: 'product-manager' },
-        successActions: [
-          {
-            label: 'View Products',
-            onClick: () => navigate('/dashboard/manage-products'),
-            primary: true
-          }
-        ]
+        body: JSON.stringify(body)
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      toast.success(isEditing ? 'Product updated successfully' : 'Product created successfully');
       
       setTimeout(() => navigate('/dashboard/manage-products'), 500);
     } catch (error) {
