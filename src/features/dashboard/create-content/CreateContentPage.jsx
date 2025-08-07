@@ -194,7 +194,7 @@ export default function CreateContentPage({ activeBlogId }) {
     // Ensure array fields are updated with current input values before submitting
     const finalFormData = {
       ...formData,
-      blogId: activeBlogId,
+      blogId: isEditing ? existingContent?.blogId || activeBlogId : activeBlogId,
       featuredImageUrl: formData.featuredImageUrl || '',
       keywords: parseArrayInput(keywordsInput),
       categories: parseArrayInput(categoriesInput),
@@ -209,7 +209,7 @@ export default function CreateContentPage({ activeBlogId }) {
       
       const method = isEditing ? 'PUT' : 'POST';
       const body = isEditing 
-        ? { id, ...finalFormData }
+        ? { id, blogId: finalFormData.blogId, ...finalFormData }
         : finalFormData;
 
       const response = await fetch(url, {
