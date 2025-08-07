@@ -557,9 +557,6 @@ export default function ManageContentPage({ activeBlogId }) {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
         <div className="page-header mb-0">
           <h1 className="page-title mb-2">Manage Content</h1>
-          <div className="flex items-center space-x-4 mt-2">
-            <PresenceIndicators location="content-manager" />
-          </div>
           {selectedItems.length > 0 && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <p className="text-base text-primary font-medium">
