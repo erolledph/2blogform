@@ -144,7 +144,7 @@ export const imageDebugger = {
   
   
   // Comprehensive storage debugging
-  async debugUserStorage(userId) {
+  debugUserStorage: async (userId) => {
     console.log('=== USER STORAGE DEBUG ===');
     console.log('User ID:', userId);
     
@@ -181,7 +181,7 @@ export const imageDebugger = {
   }
   
   // Comprehensive image display test
-  async testImageDisplay(userId, blogId) {
+  testImageDisplay: async (userId, blogId) => {
     console.log('=== TESTING IMAGE DISPLAY PIPELINE ===');
     
     try {
@@ -220,7 +220,7 @@ export const imageDebugger = {
   },
   
   // Test content image associations
-  async testContentImageAssociations(userId, blogId) {
+  testContentImageAssociations: async (userId, blogId) => {
     console.log('Testing content image associations...');
     
     try {
@@ -296,7 +296,7 @@ export const imageDebugger = {
   },
   
   // Test image URL accessibility
-  async testImageUrlAccessibility(imageUrls) {
+  testImageUrlAccessibility: async (imageUrls) => {
     console.log('Testing image URL accessibility...');
     
     const results = [];
@@ -357,7 +357,7 @@ export const imageDebugger = {
   },
   
   // Test offline cache interference
-  async testOfflineCacheInterference() {
+  testOfflineCacheInterference: async () => {
     console.log('Testing offline cache interference...');
     
     try {
