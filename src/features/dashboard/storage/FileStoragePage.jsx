@@ -70,7 +70,7 @@ export default function FileStoragePage() {
     if (currentPath && userBasePath) {
       fetchItems();
     }
-  }, [currentPath, userBasePath]);
+  }, [currentPath, userBasePath, currentUser?.uid]);
 
   const fetchItems = async () => {
     if (!currentPath) return;
