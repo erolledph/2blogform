@@ -295,9 +295,6 @@ export default function CreateContentPage({ activeBlogId }) {
   };
 
   const handleUploadSuccess = (uploadResult) => {
-    // Refresh items to get the latest state
-    fetchItems();
-    
     setUploadModal({ isOpen: false });
     
     // Update featured image URL with the actual download URL
@@ -306,12 +303,12 @@ export default function CreateContentPage({ activeBlogId }) {
       featuredImageUrl: uploadResult.downloadURL
     }));
     
-    toast.success('Image uploaded and set as featured image');
+    toast.success(`Image uploaded and set as featured image: ${uploadResult.fileName}`);
   };
 
   const handleUploadError = (error) => {
     console.error('Upload error:', error);
-    toast.error('Failed to upload image');
+    toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
   };
 
   const handleSubmit = async (e) => {

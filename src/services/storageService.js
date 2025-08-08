@@ -13,6 +13,8 @@ export const storageService = {
       if (!userId) {
         throw new Error('User ID is required');
       }
+      
+      console.log('Calculating storage usage for user:', userId);
 
       // Calculate storage from user's public images
       const publicImagesUsage = await this.calculatePathStorageUsage(`users/${userId}/public_images`);
@@ -27,7 +29,8 @@ export const storageService = {
       
       const totalUsage = publicImagesUsage + privateFilesUsage + legacyImagesUsage;
       
-      console.log(`Storage usage for user ${userId}:`, {
+      console.log('Storage usage calculation completed:', {
+        userId,
         publicImages: publicImagesUsage,
         privateFiles: privateFilesUsage,
         legacyImages: legacyImagesUsage,
@@ -37,6 +40,11 @@ export const storageService = {
       return totalUsage;
     } catch (error) {
       console.error('Error calculating user storage usage:', error);
+      console.error('Storage calculation error details:', {
+        userId,
+        error: error.message,
+        code: error.code
+      });
       // Return 0 on error to avoid blocking uploads, but log the error
       return 0;
     }
@@ -49,10 +57,16 @@ export const storageService = {
    */
   async calculatePathStorageUsage(path) {
     try {
+      console.log('Calculating storage for path:', path);
       const storageRef = ref(storage, path);
       return await this.calculateStorageRecursive(storageRef);
     } catch (error) {
       console.error(`Error calculating storage for path ${path}:`, error);
+      console.error('Path calculation error details:', {
+        path,
+        error: error.message,
+        code: error.code
+      });
       return 0;
     }
   },
@@ -64,6 +78,7 @@ export const storageService = {
    */
   async calculateStorageRecursive(storageRef) {
     try {
+      console.log('Listing files in:', storageRef.fullPath);
       const result = await listAll(storageRef);
       let totalSize = 0;
       
@@ -96,7 +111,11 @@ export const storageService = {
       
       return totalSize;
     } catch (error) {
-      console.error(`Error in calculateStorageRecursive for ${storageRef.fullPath}:`, error);
+      console.error('Error in calculateStorageRecursive:', {
+        path: storageRef.fullPath,
+        error: error.message,
+        code: error.code
+      });
       return 0;
     }
   },
@@ -165,8 +184,22 @@ export const storageService = {
    */
   async canUserUploadFile(userId, fileSizeBytes, limitMB = 100) {
     try {
+      console.log('Checking upload permission:', {
+        userId,
+        fileSizeBytes,
+        limitMB
+      });
+      
       const stats = await this.getUserStorageStats(userId, limitMB);
       const canUpload = stats.remainingBytes >= fileSizeBytes;
+      
+      console.log('Upload permission result:', {
+        canUpload,
+        currentUsage: stats.usedBytes,
+        limit: stats.limitBytes,
+        fileSize: fileSizeBytes,
+        remaining: stats.remainingBytes
+      });
       
       return {
         canUpload,
@@ -178,6 +211,12 @@ export const storageService = {
       };
     } catch (error) {
       console.error('Error checking upload permission:', error);
+      console.error('Upload permission error details:', {
+        userId,
+        fileSizeBytes,
+        limitMB,
+        error: error.message
+      });
       // Allow upload on error to avoid blocking users
       return {
         canUpload: true,

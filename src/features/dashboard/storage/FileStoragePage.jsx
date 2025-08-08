@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { formatBytes } from '@/utils/helpers';
 import toast from 'react-hot-toast';
+import UploadTestButton from '@/components/shared/UploadTestButton';
 
 export default function FileStoragePage() {
   const [items, setItems] = useState([]);
@@ -426,12 +427,12 @@ export default function FileStoragePage() {
     fetchItems();
     
     setUploadModal({ isOpen: false });
-    toast.success('Image uploaded successfully to storage');
+    toast.success(`Image uploaded successfully: ${uploadResult.fileName}`);
   };
 
   const handleUploadError = (error) => {
     console.error('Upload error:', error);
-    toast.error('Failed to upload image to storage');
+    toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
   };
 
   const getItemIcon = (item) => {
@@ -940,15 +941,19 @@ export default function FileStoragePage() {
         title="Upload & Compress Image"
         size="xl"
       >
-        <ImageUploader
-          currentPath={currentPath === userBasePath ? null : currentPath}
-          onUploadSuccess={handleUploadSuccess}
-          onUploadError={handleUploadError}
-          maxFileSize={10 * 1024 * 1024} // 10MB
-          initialQuality={80}
-          initialMaxWidth={1920}
-          initialMaxHeight={1080}
-        />
+        <div className="space-y-6">
+          <UploadTestButton />
+          
+          <ImageUploader
+            currentPath={currentPath === userBasePath ? null : currentPath}
+            onUploadSuccess={handleUploadSuccess}
+            onUploadError={handleUploadError}
+            maxFileSize={10 * 1024 * 1024} // 10MB
+            initialQuality={80}
+            initialMaxWidth={1920}
+            initialMaxHeight={1080}
+          />
+        </div>
       </Modal>
 
       {/* Create Folder Modal */}

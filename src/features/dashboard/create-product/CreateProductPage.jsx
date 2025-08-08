@@ -735,14 +735,14 @@ export default function CreateProductPage({ activeBlogId }) {
                 imageUrls: [...prev.imageUrls, uploadResult.downloadURL]
               }));
               setUploadModal({ isOpen: false });
-              toast.success(`Product image uploaded successfully (${formData.imageUrls.length + 1}/5)`);
+              toast.success(`Product image uploaded: ${uploadResult.fileName} (${formData.imageUrls.length + 1}/5)`);
             } else {
               toast.error('Maximum of 5 images allowed per product');
             }
           }}
           onUploadError={(error) => {
             console.error('Upload error:', error);
-            toast.error('Failed to upload image');
+            toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
           }}
           maxFileSize={10 * 1024 * 1024} // 10MB
           initialQuality={80}

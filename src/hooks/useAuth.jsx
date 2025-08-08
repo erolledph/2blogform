@@ -87,6 +87,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        console.log('Auth state changed - User authenticated:', {
+          uid: user.uid,
+          email: user.email,
+          emailVerified: user.emailVerified
+        });
+        
         try {
           // Fetch user settings to get role and multi-blog permissions
           const userSettings = await settingsService.getUserSettings(user.uid);
@@ -118,6 +124,10 @@ export function AuthProvider({ children }) {
           setUserProfile(newProfile);
         } catch (error) {
           console.error('Error fetching user settings:', error);
+          console.error('Auth error details:', {
+            uid: user.uid,
+            error: error.message
+          });
           // Set user and default profile if fetch fails
           setCurrentUser(user);
           setUserProfile({
@@ -129,6 +139,7 @@ export function AuthProvider({ children }) {
           });
         }
       } else {
+        console.log('Auth state changed - User logged out');
         setCurrentUser(null);
         setUserProfile(null);
         setLastNotificationCheck(null);

@@ -9,6 +9,7 @@ import LoadingSpinner from './LoadingSpinner';
 import DynamicTransition from './DynamicTransition';
 import Modal from './Modal';
 import { Upload, Image as ImageIcon, FileImage, CheckCircle, AlertTriangle, Settings, Zap } from 'lucide-react';
+import { firebaseErrorHandler } from '@/utils/firebaseErrorHandler';
 import { formatBytes } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 
@@ -338,23 +339,17 @@ export default function ImageUploader({
 
     } catch (error) {
       console.error('Error uploading image:', error);
-      
-      if (onUploadError) {
-        onUploadError(error);
+        onUploadError({
+          ...error,
+          userMessage: errorInfo.userMessage,
+          technical: errorInfo.technical,
+          action: errorInfo.action
+        });
       }
     } finally {
       setUploading(false);
       setUploadProgress(0);
-    }
-  };
-
-  const handleConfirmUpload = async () => {
-    setConfirmUploadModal(false);
-    await executeUpload(finalCompressedBlob);
-  };
-
-  const handleCancelUpload = () => {
-    setConfirmUploadModal(false);
+      const errorInfo = firebaseErrorHandler.handleStorageError(error);
     setFinalCompressedBlob(null);
   };
 
@@ -678,7 +673,7 @@ export default function ImageUploader({
         </div>
       </div>
       
-      {/* Format Information */}
+      toast.error(errorInfo.userMessage);
       <div className="card">
         <div className="card-header">
           <div className="flex items-center space-x-3">
