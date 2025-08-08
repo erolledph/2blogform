@@ -355,6 +355,13 @@ export default function ImageUploader({
       
       const downloadURL = await getDownloadURL(storageRef);
       
+      console.log('Upload completed successfully:', {
+        fileName,
+        fullPath,
+        downloadURL,
+        size: blobToUpload.size
+      });
+      
       // Verify the upload was successful by checking if file exists
       try {
         const metadata = await getMetadata(storageRef);

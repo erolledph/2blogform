@@ -18,16 +18,20 @@ export default function ProgressiveImage({
   useEffect(() => {
     if (!src) return;
 
+    console.log('ProgressiveImage loading:', src);
+
     const img = new Image();
     
     img.onload = () => {
       setCurrentSrc(src);
       setImageLoaded(true);
+      console.log('ProgressiveImage loaded successfully:', src);
       if (onLoad) onLoad();
     };
     
     img.onerror = () => {
       setImageError(true);
+      console.error('ProgressiveImage failed to load:', src);
       if (onError) onError();
     };
     
@@ -40,6 +44,7 @@ export default function ProgressiveImage({
   }, [src, onLoad, onError]);
 
   if (imageError) {
+    console.log('ProgressiveImage showing error state for:', src);
     return (
       <div className={`bg-muted rounded flex items-center justify-center ${className} ${placeholderClassName}`}>
         <ImageIcon className="h-8 w-8 text-muted-foreground" />

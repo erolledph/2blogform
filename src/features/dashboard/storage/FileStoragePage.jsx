@@ -743,6 +743,7 @@ export default function FileStoragePage() {
           >
             Refresh
           </LoadingButton>
+          <UploadTestButton />
         </div>
       </div>
 

@@ -86,6 +86,7 @@ export const storageService = {
       const filePromises = result.items.map(async (itemRef) => {
         try {
           const metadata = await getMetadata(itemRef);
+          console.log(`File: ${itemRef.name}, Size: ${metadata.size}, Path: ${itemRef.fullPath}`);
           return metadata.size || 0;
         } catch (error) {
           console.warn(`Error getting metadata for ${itemRef.fullPath}:`, error);

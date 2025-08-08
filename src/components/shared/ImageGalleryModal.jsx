@@ -386,6 +386,8 @@ export default function ImageGalleryModal({
                             src={image.downloadURL}
                             alt={image.name}
                             className="aspect-square"
+                            onLoad={() => console.log('Gallery image loaded:', image.name)}
+                            onError={() => console.error('Gallery image failed:', image.name, image.downloadURL)}
                           />
                           
                           {/* Selection indicator */}
@@ -465,6 +467,8 @@ export default function ImageGalleryModal({
                             src={image.downloadURL}
                             alt={image.name}
                             className="w-12 h-12 flex-shrink-0 rounded border border-border"
+                            onLoad={() => console.log('List view image loaded:', image.name)}
+                            onError={() => console.error('List view image failed:', image.name, image.downloadURL)}
                           />
                           
                           <div className="flex-1 min-w-0">
