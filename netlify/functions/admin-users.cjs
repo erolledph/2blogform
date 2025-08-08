@@ -1,7 +1,20 @@
 const admin = require('firebase-admin');
 
+console.log('Admin Users Function: Starting initialization...');
+console.log('Environment check:', {
+  hasProjectId: !!process.env.FIREBASE_PROJECT_ID,
+  hasPrivateKeyId: !!process.env.FIREBASE_PRIVATE_KEY_ID,
+  hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
+  hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+  hasClientId: !!process.env.FIREBASE_CLIENT_ID,
+  hasClientX509CertUrl: !!process.env.FIREBASE_CLIENT_X509_CERT_URL,
+  nodeEnv: process.env.NODE_ENV
+});
+
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
+  console.log('Admin Users Function: No existing Firebase apps, initializing...');
+  
   const serviceAccount = {
     type: "service_account",
     project_id: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph",
@@ -15,10 +28,37 @@ if (!admin.apps.length) {
     client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
   };
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    projectId: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph"
+  console.log('Admin Users Function: Service account config (excluding private_key):', {
+    type: serviceAccount.type,
+    project_id: serviceAccount.project_id,
+    private_key_id: serviceAccount.private_key_id,
+    private_key_length: serviceAccount.private_key ? serviceAccount.private_key.length : 0,
+    private_key_starts_with: serviceAccount.private_key ? serviceAccount.private_key.substring(0, 30) + '...' : 'undefined',
+    client_email: serviceAccount.client_email,
+    client_id: serviceAccount.client_id,
+    client_x509_cert_url: serviceAccount.client_x509_cert_url
   });
+
+  try {
+    console.log('Admin Users Function: Attempting to initialize Firebase Admin SDK...');
+    
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      projectId: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph"
+    });
+    
+    console.log('Admin Users Function: Firebase Admin SDK initialized successfully');
+  } catch (initError) {
+    console.error('Admin Users Function: Failed to initialize Firebase Admin SDK:', initError);
+    console.error('Admin Users Function: Init error details:', {
+      code: initError.code,
+      message: initError.message,
+      stack: initError.stack
+    });
+    throw initError;
+  }
+} else {
+  console.log('Admin Users Function: Firebase Admin SDK already initialized');
 }
 
 const db = admin.firestore();
@@ -60,6 +100,13 @@ async function deleteQueryBatch(query, resolve, reject) {
 }
 
 exports.handler = async (event, context) => {
+  console.log('Admin Users Function: Handler called', {
+    method: event.httpMethod,
+    path: event.path,
+    hasAuthHeader: !!event.headers.authorization,
+    timestamp: new Date().toISOString()
+  });
+  
   // Set CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -70,6 +117,7 @@ exports.handler = async (event, context) => {
 
   // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
+    console.log('Admin Users Function: Handling OPTIONS request');
     return {
       statusCode: 200,
       headers,
@@ -78,9 +126,12 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    console.log('Admin Users Function: Processing request...');
+    
     // Verify authentication
     const authHeader = event.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('Admin Users Function: Missing or invalid authorization header');
       return {
         statusCode: 401,
         headers,
@@ -89,9 +140,13 @@ exports.handler = async (event, context) => {
     }
 
     const token = authHeader.split('Bearer ')[1];
+    console.log('Admin Users Function: Attempting to verify token...');
+    
     const decodedToken = await auth.verifyIdToken(token);
+    console.log('Admin Users Function: Token verified successfully for user:', decodedToken.uid);
     
     if (!decodedToken) {
+      console.log('Admin Users Function: Token verification returned null');
       return {
         statusCode: 401,
         headers,
@@ -100,12 +155,20 @@ exports.handler = async (event, context) => {
     }
 
     const requestingUserId = decodedToken.uid;
+    console.log('Admin Users Function: Checking admin privileges for user:', requestingUserId);
 
     // Verify the requesting user is an admin
     const adminSettingsRef = db.collection('users').doc(requestingUserId).collection('userSettings').doc('preferences');
     const adminSettingsDoc = await adminSettingsRef.get();
     
+    console.log('Admin Users Function: Admin settings doc exists:', adminSettingsDoc.exists);
+    if (adminSettingsDoc.exists) {
+      const adminData = adminSettingsDoc.data();
+      console.log('Admin Users Function: User role:', adminData.role);
+    }
+    
     if (!adminSettingsDoc.exists || adminSettingsDoc.data().role !== 'admin') {
+      console.log('Admin Users Function: Access denied - user is not admin');
       return {
         statusCode: 403,
         headers,
@@ -113,23 +176,34 @@ exports.handler = async (event, context) => {
       };
     }
 
+    console.log('Admin Users Function: Admin access confirmed, processing', event.httpMethod, 'request');
     const { httpMethod } = event;
     
     switch (httpMethod) {
       case 'GET': {
+        console.log('Admin Users Function: Fetching users list...');
         // List all users with their settings
         try {
           // Use pagination to handle large user lists
+          console.log('Admin Users Function: Calling auth.listUsers...');
           const listUsersResult = await auth.listUsers(1000); // Max 1000 users per request
+          console.log('Admin Users Function: Retrieved', listUsersResult.users.length, 'users from Firebase Auth');
           const users = [];
 
           for (const userRecord of listUsersResult.users) {
             try {
+              console.log('Admin Users Function: Processing user:', userRecord.uid);
               // Get user settings from Firestore
               const userSettingsRef = db.collection('users').doc(userRecord.uid).collection('userSettings').doc('preferences');
               const userSettingsDoc = await userSettingsRef.get();
               
               const settings = userSettingsDoc.exists ? userSettingsDoc.data() : {};
+              console.log('Admin Users Function: User settings for', userRecord.uid, ':', {
+                exists: userSettingsDoc.exists,
+                role: settings.role,
+                maxBlogs: settings.maxBlogs,
+                totalStorageMB: settings.totalStorageMB
+              });
               
               users.push({
                 uid: userRecord.uid,
@@ -146,7 +220,7 @@ exports.handler = async (event, context) => {
                 totalStorageMB: settings.totalStorageMB || 100
               });
             } catch (error) {
-              console.warn(`Error fetching settings for user ${userRecord.uid}:`, error);
+              console.warn('Admin Users Function: Error fetching settings for user', userRecord.uid, ':', error);
               // Include user with default settings if we can't fetch their settings
               users.push({
                 uid: userRecord.uid,
@@ -165,13 +239,19 @@ exports.handler = async (event, context) => {
             }
           }
 
+          console.log('Admin Users Function: Successfully processed', users.length, 'users');
           return {
             statusCode: 200,
             headers,
             body: JSON.stringify({ users })
           };
         } catch (error) {
-          console.error('Error listing users:', error);
+          console.error('Admin Users Function: Error in GET operation:', error);
+          console.error('Admin Users Function: Error details:', {
+            code: error.code,
+            message: error.message,
+            stack: error.stack
+          });
           
           // Provide more specific error information
           let errorMessage = 'Failed to list users';
@@ -194,8 +274,15 @@ exports.handler = async (event, context) => {
       }
 
       case 'PUT': {
+        console.log('Admin Users Function: Processing PUT request...');
         // Update user settings
         const data = JSON.parse(event.body);
+        console.log('Admin Users Function: PUT request data:', {
+          userId: data.userId,
+          role: data.role,
+          maxBlogs: data.maxBlogs,
+          totalStorageMB: data.totalStorageMB
+        });
         const { userId, role, canManageMultipleBlogs, maxBlogs, totalStorageMB } = data;
         
         // Enhanced input validation
@@ -251,9 +338,12 @@ exports.handler = async (event, context) => {
           };
         }
         try {
+          console.log('Admin Users Function: Verifying target user exists:', userId);
           // Verify the target user exists
           await auth.getUser(userId);
+          console.log('Admin Users Function: Target user verified');
 
+          console.log('Admin Users Function: Updating user settings in Firestore...');
           // Update user settings in Firestore
           const userSettingsRef = db.collection('users').doc(userId).collection('userSettings').doc('preferences');
           const updateData = {
@@ -276,7 +366,10 @@ exports.handler = async (event, context) => {
           if (totalStorageMB !== undefined) {
             updateData.totalStorageMB = totalStorageMB;
           }
+          
+          console.log('Admin Users Function: Update data:', updateData);
           await userSettingsRef.set(updateData, { merge: true });
+          console.log('Admin Users Function: User settings updated successfully');
 
           return {
             statusCode: 200,
@@ -287,7 +380,7 @@ exports.handler = async (event, context) => {
             })
           };
         } catch (error) {
-          console.error('Error updating user settings:', error);
+          console.error('Admin Users Function: Error in PUT operation:', error);
           
           if (error.code === 'auth/user-not-found') {
             return {
@@ -306,8 +399,10 @@ exports.handler = async (event, context) => {
       }
 
       case 'DELETE': {
+        console.log('Admin Users Function: Processing DELETE request...');
         // Delete user account and all associated data
         const data = JSON.parse(event.body);
+        console.log('Admin Users Function: DELETE request data:', { userId: data.userId });
         const { userId } = data;
         
         if (!userId) {
@@ -340,6 +435,7 @@ exports.handler = async (event, context) => {
         }
 
         try {
+          console.log('Admin Users Function: Verifying target user for deletion:', userId);
           // Verify the target user exists
           const userRecord = await auth.getUser(userId);
           
@@ -478,7 +574,13 @@ exports.handler = async (event, context) => {
     }
 
   } catch (error) {
-    console.error('Admin users function error:', error);
+    console.error('Admin Users Function: Unhandled error:', error);
+    console.error('Admin Users Function: Error details:', {
+      code: error.code,
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
     
     // Provide more detailed error information
     let errorMessage = 'Internal server error';
