@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, getMetadata } from 'firebase/storage';
 import { storage } from '@/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { storageService } from '@/services/storageService';
@@ -282,6 +282,26 @@ export default function ImageUploader({
       setUploading(true);
       setUploadProgress(0);
       
+      // Pre-upload validation
+      if (!currentUser?.uid) {
+        throw new Error('User not authenticated');
+      }
+      
+      if (!userStoragePath) {
+        throw new Error('Storage path not configured');
+      }
+      
+      // Validate file size against user limits
+      const storageCheck = await storageService.canUserUploadFile(
+        currentUser.uid,
+        blobToUpload.size,
+        currentUser?.totalStorageMB || 100
+      );
+      
+      if (!storageCheck.canUpload) {
+        throw new Error(`Upload would exceed storage limit: ${storageCheck.reason}`);
+      }
+      
       // Simulate upload progress
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
@@ -295,7 +315,23 @@ export default function ImageUploader({
 
       // Create storage path
       const fileName = `${newFileName.trim()}.${outputFormat}`;
-      const fullPath = userStoragePath ? `${userStoragePath}/${fileName}` : `users/${currentUser?.uid}/public_images/${fileName}`;
+      const fullPath = userStoragePath.endsWith('/') 
+        ? `${userStoragePath}${fileName}` 
+        : `${userStoragePath}/${fileName}`;
+      
+      // Validate the final path
+      if (!fullPath.startsWith(`users/${currentUser.uid}/`)) {
+        throw new Error('Invalid upload path - security violation');
+      }
+      
+      console.log('Upload details:', {
+        userId: currentUser.uid,
+        fileName,
+        fullPath,
+        blobSize: blobToUpload.size,
+        userStoragePath
+      });
+      
       const storageRef = ref(storage, fullPath);
       
       // Upload compressed image
@@ -308,7 +344,9 @@ export default function ImageUploader({
           compressionRatio: compressionStats?.compressionRatio || '0',
           quality: imageQuality.toString(),
           maxWidth: imageMaxWidth.toString(),
-          maxHeight: imageMaxHeight.toString()
+          maxHeight: imageMaxHeight.toString(),
+          uploadedBy: currentUser.uid,
+          uploadedAt: new Date().toISOString()
         }
       });
       
@@ -316,6 +354,20 @@ export default function ImageUploader({
       setUploadProgress(100);
       
       const downloadURL = await getDownloadURL(storageRef);
+      
+      // Verify the upload was successful by checking if file exists
+      try {
+        const metadata = await getMetadata(storageRef);
+        console.log('Upload verification successful:', {
+          fileName,
+          size: metadata.size,
+          contentType: metadata.contentType,
+          downloadURL
+        });
+      } catch (verifyError) {
+        console.error('Upload verification failed:', verifyError);
+        throw new Error('Upload completed but verification failed');
+      }
       
       toast.success('Image uploaded and optimized successfully!');
       
@@ -329,28 +381,40 @@ export default function ImageUploader({
       if (onUploadSuccess) {
         onUploadSuccess({
           fileName: `${newFileName.trim()}.${outputFormat}`,
-          fullPath: userStoragePath ? `${userStoragePath}/${newFileName.trim()}.${outputFormat}` : `users/${currentUser?.uid}/public_images/${newFileName.trim()}.${outputFormat}`,
+          fullPath: fullPath,
           downloadURL: downloadURL,
           size: blobToUpload.size,
           originalSize: selectedFile.size,
-          compressionRatio: compressionStats?.compressionRatio || '0'
+          compressionRatio: compressionStats?.compressionRatio || '0',
+          metadata: {
+            uploadedBy: currentUser.uid,
+            uploadedAt: new Date().toISOString(),
+            originalName: selectedFile.name
+          }
         });
       }
 
     } catch (error) {
       console.error('Error uploading image:', error);
+      
+      // Enhanced error handling with specific guidance
+      const errorInfo = firebaseErrorHandler.handleStorageError(error);
+      
+      if (onUploadError) {
         onUploadError({
           ...error,
           userMessage: errorInfo.userMessage,
           technical: errorInfo.technical,
           action: errorInfo.action
         });
+      } else {
+        toast.error(errorInfo.userMessage);
       }
     } finally {
       setUploading(false);
       setUploadProgress(0);
-      const errorInfo = firebaseErrorHandler.handleStorageError(error);
-    setFinalCompressedBlob(null);
+      setFinalCompressedBlob(null);
+    }
   };
 
   const resetForm = () => {
@@ -365,6 +429,18 @@ export default function ImageUploader({
     
     const fileInput = document.getElementById('image-upload-input');
     if (fileInput) fileInput.value = '';
+  };
+
+  const handleCancelUpload = () => {
+    setConfirmUploadModal(false);
+    setFinalCompressedBlob(null);
+  };
+  
+  const handleConfirmUpload = async () => {
+    if (finalCompressedBlob) {
+      setConfirmUploadModal(false);
+      await executeUpload(finalCompressedBlob);
+    }
   };
 
   const isProcessing = compressing || uploading;
@@ -673,7 +749,6 @@ export default function ImageUploader({
         </div>
       </div>
       
-      toast.error(errorInfo.userMessage);
       <div className="card">
         <div className="card-header">
           <div className="flex items-center space-x-3">

@@ -942,7 +942,7 @@ export default function FileStoragePage() {
         size="xl"
       >
         <div className="space-y-6">
-          <UploadTestButton />
+          <UploadDiagnostics />
           
           <ImageUploader
             currentPath={currentPath === userBasePath ? null : currentPath}

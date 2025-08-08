@@ -133,5 +133,47 @@ export const contentService = {
     } catch (error) {
       console.error('Error initializing content analytics:', error);
     }
+  },
+  
+  // Update content with image URL after successful upload
+  async updateContentImage(userId, contentId, blogId, imageUrl, imageMetadata = {}) {
+    try {
+      if (!blogId) {
+        throw new Error('blogId is required');
+      }
+      
+      const actualBlogId = blogId;
+      const contentRef = doc(db, 'users', userId, 'blogs', actualBlogId, 'content', contentId);
+      
+      // Get current content to preserve existing data
+      const contentDoc = await getDoc(contentRef);
+      if (!contentDoc.exists()) {
+        throw new Error('Content not found');
+      }
+      
+      const updateData = {
+        featuredImageUrl: imageUrl,
+        updatedAt: new Date(),
+        imageMetadata: {
+          uploadedAt: new Date().toISOString(),
+          originalName: imageMetadata.originalName || '',
+          fileSize: imageMetadata.fileSize || 0,
+          ...imageMetadata
+        }
+      };
+      
+      await updateDoc(contentRef, updateData);
+      
+      console.log('Content image updated successfully:', {
+        contentId,
+        imageUrl,
+        metadata: imageMetadata
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating content image:', error);
+      throw error;
+    }
   }
 };

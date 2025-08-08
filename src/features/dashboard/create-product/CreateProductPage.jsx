@@ -12,6 +12,7 @@ import DynamicTransition from '@/components/shared/DynamicTransition';
 import ImageGalleryModal from '@/components/shared/ImageGalleryModal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import Modal from '@/components/shared/Modal';
+import UploadDiagnostics from '@/components/shared/UploadDiagnostics';
 import { Save, ArrowLeft, DollarSign, Percent, Image as ImageIcon, Trash2, Plus, Upload } from 'lucide-react';
 import { generateSlug, parseArrayInput } from '@/utils/helpers';
 import toast from 'react-hot-toast';
@@ -720,35 +721,39 @@ export default function CreateProductPage({ activeBlogId }) {
         title="Select Product Images"
       />
 
-      {/* Image Upload Modal */}
-      <Modal
-        isOpen={uploadModal.isOpen}
-        onClose={() => setUploadModal({ isOpen: false })}
-        title="Upload & Optimize Product Image"
-        size="xl"
-      >
-        <ImageUploader
-          onUploadSuccess={(uploadResult) => {
-            if (formData.imageUrls.length < 5) {
-              setFormData(prev => ({
-                ...prev,
-                imageUrls: [...prev.imageUrls, uploadResult.downloadURL]
-              }));
-              setUploadModal({ isOpen: false });
-              toast.success(`Product image uploaded: ${uploadResult.fileName} (${formData.imageUrls.length + 1}/5)`);
-            } else {
-              toast.error('Maximum of 5 images allowed per product');
-            }
-          }}
-          onUploadError={(error) => {
-            console.error('Upload error:', error);
-            toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
-          }}
-          maxFileSize={10 * 1024 * 1024} // 10MB
-          initialQuality={80}
-          initialMaxWidth={1920}
-          initialMaxHeight={1080}
-        />
+        <div className="space-y-6">
+          <UploadDiagnostics />
+          
+          <ImageUploader
+            onUploadSuccess={(uploadResult) => {
+              if (formData.imageUrls.length < 5) {
+                const newImageUrls = [...formData.imageUrls, uploadResult.downloadURL];
+                setFormData(prev => ({
+                  ...prev,
+                  imageUrls: newImageUrls
+                }));
+                
+                // If editing existing product, immediately update the database
+                if (isEditing && id) {
+                  updateProductImagesInDatabase(newImageUrls, uploadResult);
+                }
+                
+                setUploadModal({ isOpen: false });
+                toast.success(`Product image uploaded: ${uploadResult.fileName} (${formData.imageUrls.length + 1}/5)`);
+              } else {
+                toast.error('Maximum of 5 images allowed per product');
+              }
+            }}
+            onUploadError={(error) => {
+              console.error('Upload error:', error);
+              toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
+            }}
+            maxFileSize={10 * 1024 * 1024} // 10MB
+            initialQuality={80}
+            initialMaxWidth={1920}
+            initialMaxHeight={1080}
+          />
+        </div>
       </Modal>
     </DynamicTransition>
   );

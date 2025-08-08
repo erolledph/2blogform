@@ -11,6 +11,7 @@ import DynamicTransition from '@/components/shared/DynamicTransition';
 import ImageGalleryModal from '@/components/shared/ImageGalleryModal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import Modal from '@/components/shared/Modal';
+import UploadDiagnostics from '@/components/shared/UploadDiagnostics';
 import { Save, ArrowLeft, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 import { generateSlug, parseArrayInput } from '@/utils/helpers';
 import toast from 'react-hot-toast';
@@ -682,14 +683,18 @@ export default function CreateContentPage({ activeBlogId }) {
         title="Upload & Optimize Featured Image"
         size="xl"
       >
-        <ImageUploader
-          onUploadSuccess={handleUploadSuccess}
-          onUploadError={handleUploadError}
-          maxFileSize={10 * 1024 * 1024} // 10MB
-          initialQuality={80}
-          initialMaxWidth={1920}
-          initialMaxHeight={1080}
-        />
+        <div className="space-y-6">
+          <UploadDiagnostics />
+          
+          <ImageUploader
+            onUploadSuccess={handleUploadSuccess}
+            onUploadError={handleUploadError}
+            maxFileSize={10 * 1024 * 1024} // 10MB
+            initialQuality={80}
+            initialMaxWidth={1920}
+            initialMaxHeight={1080}
+          />
+        </div>
       </Modal>
     </DynamicTransition>
   );

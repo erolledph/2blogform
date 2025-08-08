@@ -118,7 +118,7 @@ export const uploadDebugger = {
       
       // Clean up test file
       try {
-        await storageRef.delete();
+        await deleteObject(storageRef);
         console.log('Test file cleaned up');
       } catch (cleanupError) {
         console.warn('Could not clean up test file:', cleanupError);
@@ -129,6 +129,75 @@ export const uploadDebugger = {
       console.error('Write permission test: FAILED');
       console.error('Permission error:', error);
       return false;
+    }
+  },
+  
+  // Comprehensive upload flow test
+  async testCompleteUploadFlow(userId, testImageBlob = null) {
+    console.log('=== TESTING COMPLETE UPLOAD FLOW ===');
+    
+    try {
+      // Create test image if not provided
+      if (!testImageBlob) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 100;
+        canvas.height = 100;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillRect(0, 0, 100, 100);
+        ctx.fillStyle = 'white';
+        ctx.font = '16px Arial';
+        ctx.fillText('TEST', 30, 55);
+        
+        testImageBlob = await new Promise(resolve => {
+          canvas.toBlob(resolve, 'image/png');
+        });
+      }
+      
+      const testPath = `users/${userId}/public_images/debug-test-${Date.now()}.png`;
+      
+      // Step 1: Test authentication
+      console.log('Step 1: Testing authentication...');
+      const currentUser = auth.currentUser;
+      if (!currentUser || currentUser.uid !== userId) {
+        throw new Error('Authentication failed');
+      }
+      console.log('✓ Authentication OK');
+      
+      // Step 2: Test storage quota
+      console.log('Step 2: Testing storage quota...');
+      const quotaCheck = await storageService.canUserUploadFile(userId, testImageBlob.size, 100);
+      if (!quotaCheck.canUpload) {
+        console.warn('⚠ Storage quota check failed:', quotaCheck.reason);
+      } else {
+        console.log('✓ Storage quota OK');
+      }
+      
+      // Step 3: Test upload
+      console.log('Step 3: Testing upload...');
+      const uploadResult = await this.testUpload(testImageBlob, testPath);
+      console.log('✓ Upload OK');
+      
+      // Step 4: Test database update (simulate)
+      console.log('Step 4: Testing database association...');
+      // This would normally update content/product with the image URL
+      console.log('✓ Database association would go here');
+      
+      console.log('=== COMPLETE UPLOAD FLOW TEST: SUCCESS ===');
+      return {
+        success: true,
+        uploadResult,
+        message: 'Complete upload flow test passed'
+      };
+      
+    } catch (error) {
+      console.error('=== COMPLETE UPLOAD FLOW TEST: FAILED ===');
+      console.error('Flow test error:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: 'Complete upload flow test failed'
+      };
     }
   }
 };

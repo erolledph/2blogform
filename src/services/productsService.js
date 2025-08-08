@@ -113,5 +113,50 @@ export const productsService = {
       console.error('Error fetching product stats:', error);
       throw error;
     }
+  },
+  
+  // Update product with new image URLs after successful upload
+  async updateProductImages(userId, productId, blogId, imageUrls, imageMetadata = {}) {
+    try {
+      if (!blogId) {
+        throw new Error('blogId is required');
+      }
+      
+      const actualBlogId = blogId;
+      const productRef = doc(db, 'users', userId, 'blogs', actualBlogId, 'products', productId);
+      
+      // Get current product to preserve existing data
+      const productDoc = await getDoc(productRef);
+      if (!productDoc.exists()) {
+        throw new Error('Product not found');
+      }
+      
+      const currentData = productDoc.data();
+      const updatedImageUrls = Array.isArray(imageUrls) ? imageUrls : [imageUrls];
+      
+      const updateData = {
+        imageUrls: updatedImageUrls,
+        imageUrl: updatedImageUrls[0] || '', // Backward compatibility
+        updatedAt: new Date(),
+        imageMetadata: {
+          uploadedAt: new Date().toISOString(),
+          totalImages: updatedImageUrls.length,
+          ...imageMetadata
+        }
+      };
+      
+      await updateDoc(productRef, updateData);
+      
+      console.log('Product images updated successfully:', {
+        productId,
+        imageUrls: updatedImageUrls,
+        metadata: imageMetadata
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating product images:', error);
+      throw error;
+    }
   }
 };
