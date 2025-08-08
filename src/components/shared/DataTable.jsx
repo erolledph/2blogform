@@ -370,9 +370,6 @@ export default function DataTable({
             {data.length !== processedData.length && (
               <span> (filtered from {data.length} total)</span>
             )}
-            {data.length > virtualScrollThreshold && (
-              <span className="ml-2 text-blue-600">• Virtual scrolling enabled</span>
-            )}
           </div>
           {selectable && selectedItems.length > 0 && (
             <div className="text-primary font-medium">
