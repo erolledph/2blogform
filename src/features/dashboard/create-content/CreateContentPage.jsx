@@ -12,6 +12,7 @@ import ImageGalleryModal from '@/components/shared/ImageGalleryModal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import Modal from '@/components/shared/Modal';
 import UploadDiagnostics from '@/components/shared/UploadDiagnostics';
+import ImageDisplayDiagnostics from '@/components/shared/ImageDisplayDiagnostics';
 import { Save, ArrowLeft, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 import { generateSlug, parseArrayInput } from '@/utils/helpers';
 import toast from 'react-hot-toast';
@@ -298,13 +299,24 @@ export default function CreateContentPage({ activeBlogId }) {
   const handleUploadSuccess = (uploadResult) => {
     setUploadModal({ isOpen: false });
     
-    // Update featured image URL with the actual download URL
+    // Update featured image URL and verify it's accessible
+    const newImageUrl = uploadResult.downloadURL;
     setFormData(prev => ({
       ...prev,
-      featuredImageUrl: uploadResult.downloadURL
+      featuredImageUrl: newImageUrl
     }));
     
-    toast.success(`Image uploaded and set as featured image: ${uploadResult.fileName}`);
+    // Test image accessibility immediately
+    const testImg = new Image();
+    testImg.onload = () => {
+      console.log('Uploaded image verified accessible:', newImageUrl);
+      toast.success(`Image uploaded and verified: ${uploadResult.fileName}`);
+    };
+    testImg.onerror = () => {
+      console.error('Uploaded image not accessible:', newImageUrl);
+      toast.warning('Image uploaded but may not display correctly. Check diagnostics.');
+    };
+    testImg.src = newImageUrl;
   };
 
   const handleUploadError = (error) => {
@@ -685,6 +697,7 @@ export default function CreateContentPage({ activeBlogId }) {
       >
         <div className="space-y-6">
           <UploadDiagnostics />
+          <ImageDisplayDiagnostics activeBlogId={activeBlogId} />
           
           <ImageUploader
             onUploadSuccess={handleUploadSuccess}

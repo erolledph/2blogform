@@ -1,6 +1,7 @@
 // Image debugging utility for troubleshooting display issues
 import { ref, listAll, getMetadata, getDownloadURL } from 'firebase/storage';
 import { storage, auth } from '@/firebase';
+import { storageService } from '@/services/storageService';
 
 export const imageDebugger = {
   // Test image fetching for a specific path
@@ -141,6 +142,7 @@ export const imageDebugger = {
     }
   },
   
+  
   // Comprehensive storage debugging
   async debugUserStorage(userId) {
     console.log('=== USER STORAGE DEBUG ===');
@@ -176,6 +178,292 @@ export const imageDebugger = {
     console.log(results);
     
     return results;
+  }
+  
+  // Comprehensive image display test
+  async testImageDisplay(userId, blogId) {
+    console.log('=== TESTING IMAGE DISPLAY PIPELINE ===');
+    
+    try {
+      // Step 1: Test storage access
+      console.log('Step 1: Testing storage access...');
+      const storageResults = await this.debugUserStorage(userId);
+      
+      // Step 2: Test content/product image associations
+      console.log('Step 2: Testing content image associations...');
+      const contentResults = await this.testContentImageAssociations(userId, blogId);
+      
+      // Step 3: Test image URL accessibility
+      console.log('Step 3: Testing image URL accessibility...');
+      const urlResults = await this.testImageUrlAccessibility(contentResults.imageUrls);
+      
+      // Step 4: Test offline cache interference
+      console.log('Step 4: Testing offline cache interference...');
+      const cacheResults = await this.testOfflineCacheInterference();
+      
+      return {
+        storage: storageResults,
+        content: contentResults,
+        urls: urlResults,
+        cache: cacheResults,
+        summary: this.generateDiagnosticSummary(storageResults, contentResults, urlResults, cacheResults)
+      };
+      
+    } catch (error) {
+      console.error('=== IMAGE DISPLAY TEST FAILED ===');
+      console.error('Error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+  
+  // Test content image associations
+  async testContentImageAssociations(userId, blogId) {
+    console.log('Testing content image associations...');
+    
+    try {
+      // Fetch content from API to see what images are associated
+      const contentResponse = await fetch(`/users/${userId}/blogs/${blogId}/api/content.json`);
+      const contentData = await contentResponse.json();
+      const content = Array.isArray(contentData) ? contentData : contentData.data || [];
+      
+      // Fetch products from API
+      const productsResponse = await fetch(`/users/${userId}/blogs/${blogId}/api/products.json`);
+      const productsData = await productsResponse.json();
+      const products = Array.isArray(productsData) ? productsData : productsData.data || [];
+      
+      const imageUrls = [];
+      
+      // Collect all image URLs from content
+      content.forEach(item => {
+        if (item.featuredImageUrl) {
+          imageUrls.push({
+            url: item.featuredImageUrl,
+            source: 'content',
+            itemId: item.id,
+            itemTitle: item.title
+          });
+        }
+      });
+      
+      // Collect all image URLs from products
+      products.forEach(item => {
+        if (item.imageUrls && Array.isArray(item.imageUrls)) {
+          item.imageUrls.forEach((url, index) => {
+            imageUrls.push({
+              url,
+              source: 'product',
+              itemId: item.id,
+              itemTitle: item.name,
+              imageIndex: index
+            });
+          });
+        } else if (item.imageUrl) {
+          imageUrls.push({
+            url: item.imageUrl,
+            source: 'product',
+            itemId: item.id,
+            itemTitle: item.name,
+            imageIndex: 0
+          });
+        }
+      });
+      
+      console.log('Found image associations:', {
+        totalContent: content.length,
+        totalProducts: products.length,
+        totalImageUrls: imageUrls.length,
+        imageUrls
+      });
+      
+      return {
+        success: true,
+        content,
+        products,
+        imageUrls,
+        totalImages: imageUrls.length
+      };
+      
+    } catch (error) {
+      console.error('Error testing content image associations:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+  
+  // Test image URL accessibility
+  async testImageUrlAccessibility(imageUrls) {
+    console.log('Testing image URL accessibility...');
+    
+    const results = [];
+    
+    for (const imageData of imageUrls) {
+      try {
+        console.log(`Testing URL: ${imageData.url}`);
+        
+        // Test fetch
+        const response = await fetch(imageData.url, { method: 'HEAD' });
+        
+        // Test image loading
+        const img = new Image();
+        const loadPromise = new Promise((resolve, reject) => {
+          img.onload = () => resolve(true);
+          img.onerror = () => reject(new Error('Image load failed'));
+          setTimeout(() => reject(new Error('Image load timeout')), 10000);
+        });
+        
+        img.src = imageData.url;
+        await loadPromise;
+        
+        results.push({
+          ...imageData,
+          accessible: true,
+          status: response.status,
+          contentType: response.headers.get('content-type')
+        });
+        
+      } catch (error) {
+        console.error(`URL test failed for ${imageData.url}:`, error);
+        results.push({
+          ...imageData,
+          accessible: false,
+          error: error.message
+        });
+      }
+    }
+    
+    const accessibleCount = results.filter(r => r.accessible).length;
+    const failedCount = results.filter(r => !r.accessible).length;
+    
+    console.log('URL accessibility results:', {
+      total: results.length,
+      accessible: accessibleCount,
+      failed: failedCount
+    });
+    
+    return {
+      success: true,
+      results,
+      summary: {
+        total: results.length,
+        accessible: accessibleCount,
+        failed: failedCount
+      }
+    };
+  },
+  
+  // Test offline cache interference
+  async testOfflineCacheInterference() {
+    console.log('Testing offline cache interference...');
+    
+    try {
+      const results = {
+        serviceWorkerActive: false,
+        cacheNames: [],
+        imagesCached: 0,
+        potentialConflicts: []
+      };
+      
+      // Check if service worker is active
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration();
+        results.serviceWorkerActive = !!registration;
+        
+        if (registration) {
+          console.log('Service worker is active:', registration);
+        }
+      }
+      
+      // Check cache storage
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        results.cacheNames = cacheNames;
+        
+        // Check for cached images
+        for (const cacheName of cacheNames) {
+          const cache = await caches.open(cacheName);
+          const requests = await cache.keys();
+          
+          const imageRequests = requests.filter(req => {
+            const url = new URL(req.url);
+            return url.pathname.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ||
+                   url.hostname.includes('firebasestorage');
+          });
+          
+          results.imagesCached += imageRequests.length;
+          
+          if (imageRequests.length > 0) {
+            results.potentialConflicts.push({
+              cacheName,
+              imageCount: imageRequests.length,
+              urls: imageRequests.slice(0, 5).map(req => req.url)
+            });
+          }
+        }
+      }
+      
+      console.log('Cache interference results:', results);
+      
+      return {
+        success: true,
+        ...results
+      };
+      
+    } catch (error) {
+      console.error('Error testing cache interference:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+  
+  // Generate diagnostic summary
+  generateDiagnosticSummary(storageResults, contentResults, urlResults, cacheResults) {
+    const issues = [];
+    const recommendations = [];
+    
+    // Analyze storage results
+    Object.entries(storageResults).forEach(([path, result]) => {
+      if (!result.success) {
+        issues.push(`Storage access failed for ${path}: ${result.error}`);
+        recommendations.push(`Check Firebase Storage rules for path: ${path}`);
+      } else if (result.totalImages === 0) {
+        issues.push(`No images found in ${path}`);
+        recommendations.push(`Upload images to ${path} or check upload process`);
+      }
+    });
+    
+    // Analyze content associations
+    if (!contentResults.success) {
+      issues.push(`Content image association failed: ${contentResults.error}`);
+      recommendations.push('Check API endpoints and data structure');
+    } else if (contentResults.totalImages === 0) {
+      issues.push('No image URLs found in content/products');
+      recommendations.push('Verify images are being saved to content/product records');
+    }
+    
+    // Analyze URL accessibility
+    if (urlResults.success && urlResults.summary.failed > 0) {
+      issues.push(`${urlResults.summary.failed} image URLs are not accessible`);
+      recommendations.push('Check Firebase Storage rules and image URL generation');
+    }
+    
+    // Analyze cache interference
+    if (cacheResults.success && cacheResults.imagesCached > 0) {
+      issues.push(`${cacheResults.imagesCached} images are cached - potential stale data`);
+      recommendations.push('Clear browser cache or disable service worker temporarily');
+    }
+    
+    return {
+      issues,
+      recommendations,
+      severity: issues.length > 3 ? 'high' : issues.length > 1 ? 'medium' : 'low'
+    };
   }
 };
 

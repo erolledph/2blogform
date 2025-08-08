@@ -430,14 +430,10 @@ export default function ManageProductsPage({ activeBlogId }) {
         <div className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0">
           <div className="relative">
           {((row.imageUrls && row.imageUrls.length > 0) || row.imageUrl) ? (
-            <img
+            <EnhancedProductThumbnail
               src={(row.imageUrls && row.imageUrls.length > 0) ? row.imageUrls[0] : row.imageUrl}
               alt={row.name}
               className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-md border border-border"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
             />
           ) : null}
           <div 
@@ -778,5 +774,36 @@ export default function ManageProductsPage({ activeBlogId }) {
         </div>
       </Modal>
     </DynamicTransition>
+  );
+}
+
+// Enhanced thumbnail component for product table
+function EnhancedProductThumbnail({ src, alt, className = '' }) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  
+  return (
+    <div className="relative">
+      {!imageError && (
+        <img
+          src={src}
+          alt={alt}
+          className={`${className} ${imageLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+          onLoad={() => {
+            setImageLoaded(true);
+            console.log('Product thumbnail loaded:', src);
+          }}
+          onError={(e) => {
+            setImageError(true);
+            console.error('Product thumbnail failed to load:', src);
+          }}
+        />
+      )}
+      {(imageError || !imageLoaded) && (
+        <div className={`${className} bg-muted flex items-center justify-center ${imageError ? '' : 'absolute inset-0'}`}>
+          <ImageIcon className="h-4 w-4 sm:h-6 sm:w-6 text-muted-foreground" />
+        </div>
+      )}
+    </div>
   );
 }

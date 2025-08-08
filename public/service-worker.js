@@ -122,6 +122,11 @@ self.addEventListener('fetch', (event) => {
 async function handleRequest(request, strategy, cacheName) {
   const cache = await caches.open(cacheName);
   
+  // Special handling for Firebase Storage images
+  if (isFirebaseStorageImage(request.url)) {
+    return handleFirebaseStorageImage(request, cache);
+  }
+  
   switch (strategy) {
     case CACHE_STRATEGIES.CACHE_FIRST:
       return cacheFirst(request, cache);
@@ -140,6 +145,53 @@ async function handleRequest(request, strategy, cacheName) {
       
     default:
       return networkFirst(request, cache);
+  }
+}
+
+// Special handler for Firebase Storage images
+async function handleFirebaseStorageImage(request, cache) {
+  try {
+    // Always try network first for Firebase Storage to get fresh images
+    const networkResponse = await fetch(request);
+    
+    if (networkResponse.ok) {
+      // Cache successful responses
+      cache.put(request, networkResponse.clone());
+      return networkResponse;
+    }
+    
+    // If network fails, try cache
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) {
+      console.log('Serving cached Firebase Storage image:', request.url);
+      return cachedResponse;
+    }
+    
+    // Return network response even if not ok (let browser handle error)
+    return networkResponse;
+    
+  } catch (error) {
+    console.warn('Firebase Storage image request failed:', error);
+    
+    // Try cache as fallback
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+    
+    // Return offline fallback for images
+    return getOfflineFallback(request);
+  }
+}
+
+// Check if URL is a Firebase Storage image
+function isFirebaseStorageImage(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.includes('firebasestorage') || 
+           urlObj.hostname.includes('googleapis.com');
+  } catch {
+    return false;
   }
 }
 
@@ -283,9 +335,15 @@ function isApiEndpoint(url) {
 }
 
 function isImageRequest(url) {
-  return url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|bmp|tiff)$/i) ||
-         url.hostname.includes('firebasestorage') ||
-         url.hostname.includes('pexels.com');
+  const pathname = url.pathname.toLowerCase();
+  const hostname = url.hostname.toLowerCase();
+  
+  return pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|bmp|tiff)$/i) ||
+         hostname.includes('firebasestorage') ||
+         hostname.includes('googleapis.com') ||
+         hostname.includes('pexels.com') ||
+         pathname.includes('/images/') ||
+         pathname.includes('/media/');
 }
 
 function isAdminFunction(url) {

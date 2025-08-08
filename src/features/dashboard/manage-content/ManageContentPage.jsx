@@ -418,14 +418,10 @@ export default function ManageContentPage({ activeBlogId }) {
       render: (value, row) => (
         <div className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0">
           {value ? (
-            <img
+            <EnhancedContentThumbnail
               src={value}
               alt={row.title}
               className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-md border border-border"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
             />
           ) : null}
           <div 
@@ -872,6 +868,35 @@ function ContentAnalyticsModal({ contentId, contentTitle, activeBlogId }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Enhanced thumbnail component for content table
+function EnhancedContentThumbnail({ src, alt, className = '' }) {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  
+  return (
+    <div className="relative">
+      <img
+        src={src}
+        alt={alt}
+        className={`${className} ${imageLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+        onLoad={() => {
+          setImageLoaded(true);
+          console.log('Content thumbnail loaded:', src);
+        }}
+        onError={() => {
+          setImageError(true);
+          console.error('Content thumbnail failed to load:', src);
+        }}
+      />
+      {(imageError || !imageLoaded) && (
+        <div className={`${className} bg-muted flex items-center justify-center ${imageError ? '' : 'absolute inset-0'}`}>
+          <ImageIcon className="h-4 w-4 sm:h-6 sm:w-6 text-muted-foreground" />
+        </div>
+      )}
     </div>
   );
 }

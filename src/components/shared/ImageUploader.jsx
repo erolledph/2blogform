@@ -400,6 +400,20 @@ export default function ImageUploader({
           }
         });
       }
+      
+      // Test image accessibility immediately after upload
+      console.log('Testing uploaded image accessibility...');
+      try {
+        const testResult = await imageDebugger.testImageUrl(downloadURL);
+        if (!testResult.success) {
+          console.warn('Uploaded image may not be accessible:', testResult.error);
+          toast.warning('Image uploaded but may not display correctly. Check console for details.');
+        } else {
+          console.log('Uploaded image is accessible and should display correctly');
+        }
+      } catch (testError) {
+        console.warn('Could not test uploaded image accessibility:', testError);
+      }
 
     } catch (error) {
       console.error('Error uploading image:', error);

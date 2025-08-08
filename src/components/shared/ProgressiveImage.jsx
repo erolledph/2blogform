@@ -9,30 +9,45 @@ export default function ProgressiveImage({
   lowQualitySrc = null,
   onLoad = null,
   onError = null,
+  debug = false,
   ...props
 }) {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [currentSrc, setCurrentSrc] = useState(lowQualitySrc || null);
+  const [loadAttempts, setLoadAttempts] = useState(0);
 
   useEffect(() => {
     if (!src) return;
 
-    console.log('ProgressiveImage loading:', src);
+    if (debug) console.log('ProgressiveImage loading:', src);
+    
+    setLoadAttempts(prev => prev + 1);
 
     const img = new Image();
     
     img.onload = () => {
       setCurrentSrc(src);
       setImageLoaded(true);
-      console.log('ProgressiveImage loaded successfully:', src);
+      setImageError(false);
+      if (debug) console.log('ProgressiveImage loaded successfully:', src);
       if (onLoad) onLoad();
     };
     
     img.onerror = () => {
       setImageError(true);
-      console.error('ProgressiveImage failed to load:', src);
+      setImageLoaded(false);
+      if (debug) console.error('ProgressiveImage failed to load:', src, 'Attempt:', loadAttempts);
       if (onError) onError();
+      
+      // Auto-retry once after 2 seconds for network issues
+      if (loadAttempts === 1) {
+        setTimeout(() => {
+          if (debug) console.log('Retrying image load:', src);
+          setImageError(false);
+          img.src = src + '?retry=' + Date.now(); // Cache busting
+        }, 2000);
+      }
     };
     
     img.src = src;
@@ -41,13 +56,18 @@ export default function ProgressiveImage({
       img.onload = null;
       img.onerror = null;
     };
-  }, [src, onLoad, onError]);
+  }, [src, onLoad, onError, debug]);
 
   if (imageError) {
-    console.log('ProgressiveImage showing error state for:', src);
+    if (debug) console.log('ProgressiveImage showing error state for:', src);
     return (
-      <div className={`bg-muted rounded flex items-center justify-center ${className} ${placeholderClassName}`}>
+      <div className={`bg-muted rounded flex items-center justify-center ${className} ${placeholderClassName}`} title={`Failed to load: ${src}`}>
         <ImageIcon className="h-8 w-8 text-muted-foreground" />
+        {debug && (
+          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+            Load Failed
+          </div>
+        )}
       </div>
     );
   }
@@ -94,7 +114,7 @@ export default function ProgressiveImage({
 }
 
 // Specialized component for gallery images
-export function GalleryImage({ src, alt, className = '', onClick = null }) {
+export function GalleryImage({ src, alt, className = '', onClick = null, debug = false }) {
   return (
     <div 
       className={`cursor-pointer transition-transform duration-200 hover:scale-105 ${className}`}
@@ -105,19 +125,21 @@ export function GalleryImage({ src, alt, className = '', onClick = null }) {
         alt={alt}
         className="w-full h-full rounded-lg"
         placeholderClassName="rounded-lg"
+        debug={debug}
       />
     </div>
   );
 }
 
 // Specialized component for content featured images
-export function FeaturedImage({ src, alt, className = '' }) {
+export function FeaturedImage({ src, alt, className = '', debug = false }) {
   return (
     <ProgressiveImage
       src={src}
       alt={alt}
       className={`w-full rounded-xl shadow-lg ${className}`}
       placeholderClassName="rounded-xl"
+      debug={debug}
     />
   );
 }

@@ -13,6 +13,7 @@ import ImageGalleryModal from '@/components/shared/ImageGalleryModal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import Modal from '@/components/shared/Modal';
 import UploadDiagnostics from '@/components/shared/UploadDiagnostics';
+import ImageDisplayDiagnostics from '@/components/shared/ImageDisplayDiagnostics';
 import { Save, ArrowLeft, DollarSign, Percent, Image as ImageIcon, Trash2, Plus, Upload } from 'lucide-react';
 import { generateSlug, parseArrayInput } from '@/utils/helpers';
 import toast from 'react-hot-toast';
@@ -83,6 +84,28 @@ export default function CreateProductPage({ activeBlogId }) {
       showNotifications: false
     }
   );
+
+  // Update product images in database immediately after upload
+  const updateProductImagesInDatabase = async (newImageUrls, uploadResult) => {
+    if (!isEditing || !id) return;
+    
+    try {
+      await productsService.updateProductImages(
+        currentUser.uid,
+        id,
+        activeBlogId,
+        newImageUrls,
+        {
+          lastUpload: uploadResult.fileName,
+          uploadedAt: new Date().toISOString()
+        }
+      );
+      console.log('Product images updated in database:', newImageUrls);
+    } catch (error) {
+      console.error('Failed to update product images in database:', error);
+      toast.warning('Image uploaded but database update failed. Save the product to persist changes.');
+    }
+  };
 
   // Memoize SimpleMDE options
   const simpleMDEOptions = useMemo(() => ({
@@ -721,8 +744,15 @@ export default function CreateProductPage({ activeBlogId }) {
         title="Select Product Images"
       />
 
+      <Modal
+        isOpen={uploadModal.isOpen}
+        onClose={() => setUploadModal({ isOpen: false })}
+        title="Upload Product Image"
+        size="lg"
+      >
         <div className="space-y-6">
           <UploadDiagnostics />
+          <ImageDisplayDiagnostics activeBlogId={activeBlogId} />
           
           <ImageUploader
             onUploadSuccess={(uploadResult) => {
@@ -739,7 +769,16 @@ export default function CreateProductPage({ activeBlogId }) {
                 }
                 
                 setUploadModal({ isOpen: false });
-                toast.success(`Product image uploaded: ${uploadResult.fileName} (${formData.imageUrls.length + 1}/5)`);
+                
+                // Test image accessibility
+                const testImg = new Image();
+                testImg.onload = () => {
+                  toast.success(`Product image uploaded and verified: ${uploadResult.fileName} (${formData.imageUrls.length + 1}/5)`);
+                };
+                testImg.onerror = () => {
+                  toast.warning(`Image uploaded but may not display: ${uploadResult.fileName}`);
+                };
+                testImg.src = uploadResult.downloadURL;
               } else {
                 toast.error('Maximum of 5 images allowed per product');
               }

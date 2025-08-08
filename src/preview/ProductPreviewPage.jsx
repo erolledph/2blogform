@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { ProductPreviewSkeleton } from '@/components/shared/SkeletonLoader';
 import { FeaturedImage, GalleryImage } from '@/components/shared/ProgressiveImage';
+import { useImageLoader, useMultipleImageLoader } from '@/hooks/useImageLoader';
 import { settingsService } from '@/services/settingsService';
 
 export default function ProductPreviewPage() {
@@ -98,6 +99,10 @@ export default function ProductPreviewPage() {
     }
     return [];
   };
+  
+  // Use enhanced image loading for product images
+  const productImages = getProductImages();
+  const { loading: imagesLoading, results: imageResults, errors: imageErrors } = useMultipleImageLoader(productImages);
 
   const nextImage = () => {
     const images = getProductImages();
@@ -172,10 +177,11 @@ export default function ProductPreviewPage() {
                   <>
                     {/* Main Image */}
                     <div className="relative aspect-square bg-gray-100 rounded-2xl overflow-hidden shadow-lg">
-                      <FeaturedImage
+                      <EnhancedProductImage
                         src={getProductImages()[currentImageIndex]}
                         alt={product?.name}
                         className="w-full h-full object-cover"
+                        debug={true}
                       />
                       
                       {/* Navigation arrows for multiple images */}
@@ -212,10 +218,11 @@ export default function ProductPreviewPage() {
                                   : 'border-gray-200 hover:border-gray-300'
                               }`}
                             >
-                              <GalleryImage
+                              <EnhancedProductThumbnail
                                 src={imageUrl}
                                 alt={`${product?.name} ${index + 1}`}
                                 className="w-full h-full object-cover"
+                                debug={true}
                               />
                             </button>
                           ))}
@@ -460,10 +467,11 @@ function RelatedProductsSection({ allProducts, currentProductId, uid, blogId, us
             >
               {mainImage ? (
                 <div className="relative">
-                  <GalleryImage
+                  <EnhancedProductImage
                     src={mainImage}
                     alt={item.name}
                     className="aspect-[4/3] group-hover:scale-110 transition-transform duration-500"
+                    debug={true}
                   />
                   {hasDiscount && (
                     <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
@@ -543,5 +551,86 @@ function RelatedProductsSection({ allProducts, currentProductId, uid, blogId, us
         </Link>
       </div>
     </section>
+  );
+}
+
+// Enhanced product image components with error handling
+function EnhancedProductImage({ src, alt, className = '', debug = false }) {
+  const { loading, error, retry } = useImageLoader(src);
+  
+  if (error) {
+    return (
+      <div className={`bg-red-50 border border-red-200 rounded-2xl flex items-center justify-center ${className}`}>
+        <div className="text-center p-8">
+          <Package className="h-16 w-16 mx-auto mb-4 text-red-500" />
+          <p className="text-lg font-medium text-red-600 mb-2">Image failed to load</p>
+          {debug && <p className="text-sm text-red-500 mb-4">{error}</p>}
+          <button onClick={retry} className="btn-secondary btn-sm">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  if (loading) {
+    return (
+      <div className={`bg-muted animate-pulse rounded-2xl ${className}`}>
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">Loading product image...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <FeaturedImage
+      src={src}
+      alt={alt}
+      className={className}
+      debug={debug}
+    />
+  );
+}
+
+function EnhancedProductThumbnail({ src, alt, className = '', debug = false }) {
+  const { loading, error, retry } = useImageLoader(src);
+  
+  if (error) {
+    return (
+      <div className={`bg-red-50 border border-red-200 rounded-xl flex items-center justify-center ${className}`}>
+        <div className="text-center p-2">
+          <Package className="h-6 w-6 mx-auto mb-1 text-red-500" />
+          <p className="text-xs text-red-600">Failed</p>
+          {debug && (
+            <button onClick={retry} className="text-xs text-blue-600 hover:underline">
+              Retry
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+  
+  if (loading) {
+    return (
+      <div className={`bg-muted animate-pulse rounded-xl ${className}`}>
+        <div className="flex items-center justify-center h-full">
+          <Package className="h-6 w-6 text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <GalleryImage
+      src={src}
+      alt={alt}
+      className={className}
+      debug={debug}
+    />
   );
 }

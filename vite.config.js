@@ -69,7 +69,6 @@ export default defineConfig({
         passes: 2
       },
       mangle: {
-        safari10: true
       },
       format: {
         comments: false

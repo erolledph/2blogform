@@ -32,6 +32,7 @@ import {
 import { formatBytes } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 import UploadTestButton from '@/components/shared/UploadTestButton';
+import ImageDisplayDiagnostics from '@/components/shared/ImageDisplayDiagnostics';
 
 export default function FileStoragePage() {
   const [items, setItems] = useState([]);
@@ -744,6 +745,7 @@ export default function FileStoragePage() {
             Refresh
           </LoadingButton>
           <UploadTestButton />
+          <ImageDisplayDiagnostics />
         </div>
       </div>
 

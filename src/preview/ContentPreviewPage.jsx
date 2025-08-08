@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import { Calendar, User, Tag, ArrowLeft, Eye, Clock, FileText, Share2, Bookmark } from 'lucide-react';
 import { ContentPreviewSkeleton } from '@/components/shared/SkeletonLoader';
 import { FeaturedImage, GalleryImage } from '@/components/shared/ProgressiveImage';
+import { useImageLoader } from '@/hooks/useImageLoader';
 
 export default function ContentPreviewPage() {
   const { uid, blogId, slug } = useParams();
@@ -210,10 +211,11 @@ export default function ContentPreviewPage() {
                 {/* Featured Image */}
                 {content?.featuredImageUrl && (
                   <div className="mb-12 sm:mb-16 lg:mb-20">
-                    <FeaturedImage
+                    <EnhancedFeaturedImage
                       src={content.featuredImageUrl}
                       alt={content.title}
                       className="max-h-[70vh] shadow-2xl"
+                      debug={true}
                     />
                   </div>
                 )}
@@ -339,10 +341,11 @@ function RelatedContentSection({ allContent, currentContentId, uid, blogId, form
             className="group block bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-2xl transition-all duration-300 hover:-translate-y-2"
           >
             {item.featuredImageUrl ? (
-              <GalleryImage
+              <EnhancedGalleryImage
                 src={item.featuredImageUrl}
                 alt={item.title}
                 className="aspect-[4/3] group-hover:scale-110 transition-transform duration-500"
+                debug={true}
               />
             ) : (
               <div className="aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
@@ -398,5 +401,86 @@ function RelatedContentSection({ allContent, currentContentId, uid, blogId, form
         </Link>
       </div>
     </section>
+  );
+}
+
+// Enhanced image components with debugging
+function EnhancedFeaturedImage({ src, alt, className = '', debug = false }) {
+  const { loading, error, imageData, retry } = useImageLoader(src);
+  
+  if (error) {
+    return (
+      <div className={`bg-red-50 border border-red-200 rounded-xl p-8 text-center ${className}`}>
+        <div className="text-red-600 mb-4">
+          <FileText className="h-16 w-16 mx-auto mb-4" />
+          <p className="text-lg font-medium">Image failed to load</p>
+          {debug && <p className="text-sm mt-2">{error}</p>}
+        </div>
+        <button onClick={retry} className="btn-secondary btn-sm">
+          Retry
+        </button>
+      </div>
+    );
+  }
+  
+  if (loading) {
+    return (
+      <div className={`bg-muted animate-pulse rounded-xl ${className}`} style={{ minHeight: '300px' }}>
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">Loading image...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <FeaturedImage
+      src={src}
+      alt={alt}
+      className={className}
+      debug={debug}
+    />
+  );
+}
+
+function EnhancedGalleryImage({ src, alt, className = '', debug = false }) {
+  const { loading, error, retry } = useImageLoader(src);
+  
+  if (error) {
+    return (
+      <div className={`bg-red-50 border border-red-200 rounded-lg flex items-center justify-center ${className}`}>
+        <div className="text-center p-4">
+          <FileText className="h-8 w-8 mx-auto mb-2 text-red-500" />
+          <p className="text-xs text-red-600">Failed to load</p>
+          {debug && (
+            <button onClick={retry} className="text-xs text-blue-600 hover:underline mt-1">
+              Retry
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+  
+  if (loading) {
+    return (
+      <div className={`bg-muted animate-pulse rounded-lg ${className}`}>
+        <div className="flex items-center justify-center h-full">
+          <FileText className="h-8 w-8 text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <GalleryImage
+      src={src}
+      alt={alt}
+      className={className}
+      debug={debug}
+    />
   );
 }
