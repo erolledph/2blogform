@@ -252,7 +252,6 @@ export default function ManageContentPage({ activeBlogId }) {
         if (results.successCount > 0) {
           toast.success(`Successfully imported ${results.successCount} of ${results.totalItems} content item${results.successCount !== 1 ? 's' : ''}`);
           invalidateCache();
-          refetch();
         }
 
         if (results.errorCount > 0) {
@@ -264,6 +263,8 @@ export default function ManageContentPage({ activeBlogId }) {
         toast.error(error.message || 'Failed to import content');
       } finally {
         setImporting(false);
+        // Always refetch after import operations to ensure UI is up to date
+        refetch();
       }
     };
     input.click();

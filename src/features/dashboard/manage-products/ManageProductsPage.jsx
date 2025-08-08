@@ -130,7 +130,6 @@ export default function ManageProductsPage({ activeBlogId }) {
         
         if (results.successCount > 0) {
           toast.success(`Successfully imported ${results.successCount} of ${results.totalItems} product${results.successCount !== 1 ? 's' : ''}`);
-          refetch(); // Only refetch for imports since we need to get new data
         }
 
         if (results.errorCount > 0) {
@@ -142,6 +141,8 @@ export default function ManageProductsPage({ activeBlogId }) {
         toast.error(error.message || 'Failed to import products');
       } finally {
         setImporting(false);
+        // Always refetch after import operations to ensure UI is up to date
+        refetch();
       }
     };
     input.click();

@@ -426,10 +426,12 @@ export default function FileStoragePage() {
     fetchItems();
     
     setUploadModal({ isOpen: false });
+    toast.success('Image uploaded successfully to storage');
   };
 
   const handleUploadError = (error) => {
     console.error('Upload error:', error);
+    toast.error('Failed to upload image to storage');
   };
 
   const getItemIcon = (item) => {

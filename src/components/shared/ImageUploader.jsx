@@ -329,7 +329,7 @@ export default function ImageUploader({
         onUploadSuccess({
           fileName: `${newFileName.trim()}.${outputFormat}`,
           fullPath: userStoragePath ? `${userStoragePath}/${newFileName.trim()}.${outputFormat}` : `users/${currentUser?.uid}/public_images/${newFileName.trim()}.${outputFormat}`,
-          downloadURL: '', // Will be set by the operation
+          downloadURL: downloadURL,
           size: blobToUpload.size,
           originalSize: selectedFile.size,
           compressionRatio: compressionStats?.compressionRatio || '0'

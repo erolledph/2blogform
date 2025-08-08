@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { useContentById } from '@/hooks/useContent';
+import { useContentById, useContent } from '@/hooks/useContent';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import SimpleMDE from 'react-simplemde-editor';
 import InputField from '@/components/shared/InputField';
@@ -22,6 +22,7 @@ export default function CreateContentPage({ activeBlogId }) {
   const { getAuthToken } = useAuth();
   const isEditing = Boolean(id);
   const { content: existingContent, loading: contentLoading } = useContentById(id, activeBlogId);
+  const { invalidateCache, refetch } = useContent(activeBlogId);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -71,6 +72,11 @@ export default function CreateContentPage({ activeBlogId }) {
 
     if (!response.ok) {
       throw new Error('Auto-save failed');
+    }
+    
+    // Invalidate cache after successful auto-save
+    if (invalidateCache) {
+      invalidateCache();
     }
   };
 
@@ -288,6 +294,26 @@ export default function CreateContentPage({ activeBlogId }) {
     }));
   };
 
+  const handleUploadSuccess = (uploadResult) => {
+    // Refresh items to get the latest state
+    fetchItems();
+    
+    setUploadModal({ isOpen: false });
+    
+    // Update featured image URL with the actual download URL
+    setFormData(prev => ({
+      ...prev,
+      featuredImageUrl: uploadResult.downloadURL
+    }));
+    
+    toast.success('Image uploaded and set as featured image');
+  };
+
+  const handleUploadError = (error) => {
+    console.error('Upload error:', error);
+    toast.error('Failed to upload image');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -333,10 +359,19 @@ export default function CreateContentPage({ activeBlogId }) {
 
       toast.success(isEditing ? 'Content updated successfully' : 'Content created successfully');
       
+      // Invalidate cache and refresh data to ensure UI synchronization
+      if (invalidateCache) {
+        invalidateCache();
+      }
+      if (refetch) {
+        refetch();
+      }
+      
       // Navigate with smooth transition
       setTimeout(() => navigate('/dashboard/manage'), 500);
     } catch (error) {
       console.error('Error saving content:', error);
+      toast.error(error.message || 'Failed to save content');
     } finally {
       setLoading(false);
     }
@@ -651,18 +686,8 @@ export default function CreateContentPage({ activeBlogId }) {
         size="xl"
       >
         <ImageUploader
-          onUploadSuccess={(uploadResult) => {
-            setFormData(prev => ({
-              ...prev,
-              featuredImageUrl: uploadResult.downloadURL
-            }));
-            setUploadModal({ isOpen: false });
-            toast.success('Featured image uploaded successfully');
-          }}
-          onUploadError={(error) => {
-            console.error('Upload error:', error);
-            toast.error('Failed to upload image');
-          }}
+          onUploadSuccess={handleUploadSuccess}
+          onUploadError={handleUploadError}
           maxFileSize={10 * 1024 * 1024} // 10MB
           initialQuality={80}
           initialMaxWidth={1920}
