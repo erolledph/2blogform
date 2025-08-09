@@ -748,51 +748,46 @@ export default function CreateProductPage({ activeBlogId }) {
         isOpen={uploadModal.isOpen}
         onClose={() => setUploadModal({ isOpen: false })}
         title="Upload Product Image"
-        size="lg"
+        size="xl"
       >
-        <div className="space-y-6">
-          <UploadDiagnostics />
-          <ImageDisplayDiagnostics activeBlogId={activeBlogId} />
-          
-          <ImageUploader
-            onUploadSuccess={(uploadResult) => {
-              if (formData.imageUrls.length < 5) {
-                const newImageUrls = [...formData.imageUrls, uploadResult.downloadURL];
-                setFormData(prev => ({
-                  ...prev,
-                  imageUrls: newImageUrls
-                }));
-                
-                // If editing existing product, immediately update the database
-                if (isEditing && id) {
-                  updateProductImagesInDatabase(newImageUrls, uploadResult);
-                }
-                
-                setUploadModal({ isOpen: false });
-                
-                // Test image accessibility
-                const testImg = new Image();
-                testImg.onload = () => {
-                  toast.success(`Product image uploaded and verified: ${uploadResult.fileName} (${formData.imageUrls.length + 1}/5)`);
-                };
-                testImg.onerror = () => {
-                  toast.warning(`Image uploaded but may not display: ${uploadResult.fileName}`);
-                };
-                testImg.src = uploadResult.downloadURL;
-              } else {
-                toast.error('Maximum of 5 images allowed per product');
+        <ImageUploader
+          onUploadSuccess={(uploadResult) => {
+            if (formData.imageUrls.length < 5) {
+              const newImageUrls = [...formData.imageUrls, uploadResult.downloadURL];
+              setFormData(prev => ({
+                ...prev,
+                imageUrls: newImageUrls
+              }));
+              
+              // If editing existing product, immediately update the database
+              if (isEditing && id) {
+                updateProductImagesInDatabase(newImageUrls, uploadResult);
               }
-            }}
-            onUploadError={(error) => {
-              console.error('Upload error:', error);
-              toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
-            }}
-            maxFileSize={10 * 1024 * 1024} // 10MB
-            initialQuality={80}
-            initialMaxWidth={1920}
-            initialMaxHeight={1080}
-          />
-        </div>
+              
+              setUploadModal({ isOpen: false });
+              
+              // Test image accessibility
+              const testImg = new Image();
+              testImg.onload = () => {
+                toast.success(`Product image uploaded and verified: ${uploadResult.fileName} (${formData.imageUrls.length + 1}/5)`);
+              };
+              testImg.onerror = () => {
+                toast.warning(`Image uploaded but may not display: ${uploadResult.fileName}`);
+              };
+              testImg.src = uploadResult.downloadURL;
+            } else {
+              toast.error('Maximum of 5 images allowed per product');
+            }
+          }}
+          onUploadError={(error) => {
+            console.error('Upload error:', error);
+            toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
+          }}
+          maxFileSize={10 * 1024 * 1024} // 10MB
+          initialQuality={80}
+          initialMaxWidth={1920}
+          initialMaxHeight={1080}
+        />
       </Modal>
     </DynamicTransition>
   );
