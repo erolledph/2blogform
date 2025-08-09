@@ -159,7 +159,6 @@
 
   .nav-menu {
     @apply list-none py-2 flex-1 overflow-y-auto; /* py-2 = 8px */
-    max-height: calc(100vh - 10rem); /* 160px */
     scrollbar-width: thin;
     scrollbar-color: hsla(var(--foreground), 0.2) transparent; /* Scrollbar color adjustment */
   }
@@ -295,7 +294,6 @@
     }
 
     .sidebar.open .nav-menu {
-      max-height: calc(100vh - 160px); /* 10rem = 160px */
     }
 
     .sidebar.open .logo,
@@ -349,9 +347,6 @@
     .main-content {
       @apply ml-16 pt-6; /* Added top padding for desktop */
       min-height: 100vh;
-    }
-    .nav-menu {
-      max-height: calc(100vh - 160px); /* 10rem = 160px */
     }
 
     /* Prevent hover expansion when manually expanded */
