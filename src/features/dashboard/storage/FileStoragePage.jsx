@@ -7,6 +7,7 @@ import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
 import DynamicTransition from '@/components/shared/DynamicTransition';
 import { TableSkeleton } from '@/components/shared/SkeletonLoader';
+import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import Modal from '@/components/shared/Modal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import InputField from '@/components/shared/InputField';
