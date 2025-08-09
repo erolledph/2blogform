@@ -1,6 +1,7 @@
 // Debug utility for Firebase Storage uploads
 import { ref, uploadBytes, getDownloadURL, getMetadata } from 'firebase/storage';
 import { storage, auth } from '@/firebase';
+import { storageService } from '@/services/storageService';
 
 export const uploadDebugger = {
   // Test upload with detailed logging
