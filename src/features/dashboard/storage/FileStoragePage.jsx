@@ -32,8 +32,6 @@ import {
 } from 'lucide-react';
 import { formatBytes } from '@/utils/helpers';
 import toast from 'react-hot-toast';
-import UploadTestButton from '@/components/shared/UploadTestButton';
-import ImageDisplayDiagnostics from '@/components/shared/ImageDisplayDiagnostics';
 
 export default function FileStoragePage() {
   const [items, setItems] = useState([]);
@@ -55,6 +53,7 @@ export default function FileStoragePage() {
   const [selectedDestination, setSelectedDestination] = useState('');
   const [availableFolders, setAvailableFolders] = useState([]);
   const [operationLoading, setOperationLoading] = useState(false);
+  const [deletingItemId, setDeletingItemId] = useState(null);
   const { currentUser, getAuthToken } = useAuth();
   
   // Initialize user-specific base path
@@ -520,7 +519,11 @@ export default function FileStoragePage() {
   };
 
   const getBreadcrumbs = () => {
-    if (!currentPath) return [{ name: 'Root', path: '' }];
+    if (!currentPath || !userBasePath) return [{ name: 'My Storage', path: userBasePath || '' }];
+    
+    if (currentPath === userBasePath) {
+      return [{ name: 'My Storage', path: userBasePath }];
+    }
     
     // Get the relative path from user base path
     const relativePath = currentPath.replace(userBasePath + '/', '');
@@ -813,10 +816,30 @@ export default function FileStoragePage() {
           >
             Refresh
           </LoadingButton>
-          <UploadTestButton />
-          <ImageDisplayDiagnostics />
         </div>
       </div>
+
+      {/* Breadcrumb Navigation */}
+      <nav className="flex items-center space-x-2 text-sm text-muted-foreground mb-6">
+        <button
+          onClick={navigateToUserRoot}
+          className="flex items-center hover:text-foreground transition-colors"
+        >
+          <Home className="h-4 w-4" />
+        </button>
+        
+        {getBreadcrumbs().slice(1).map((crumb, index) => (
+          <React.Fragment key={crumb.path}>
+            <ChevronRight className="h-4 w-4" />
+            <button
+              onClick={() => navigateToPath(crumb.path)}
+              className="hover:text-foreground transition-colors"
+            >
+              {crumb.name}
+            </button>
+          </React.Fragment>
+        ))}
+      </nav>
 
       {/* Breadcrumb Navigation */}
 
@@ -942,9 +965,6 @@ export default function FileStoragePage() {
           <p className="text-sm text-muted-foreground">
             This action cannot be undone. The {deleteModal.item?.type} will be permanently removed from Firebase Storage.
           </p>
-          <p className="text-sm text-muted-foreground">
-            This action cannot be undone. The {deleteModal.item?.type} will be permanently removed from storage.
-          </p>
           <div className="flex justify-end space-x-4 pt-4">
             <button
               onClick={() => setDeleteModal({ isOpen: false, item: null })}
@@ -1039,7 +1059,6 @@ export default function FileStoragePage() {
         size="xl"
       >
         <div className="space-y-6">
-          <UploadDiagnostics />
           
           <ImageUploader
             currentPath={currentPath === userBasePath ? null : currentPath}
@@ -1081,9 +1100,6 @@ export default function FileStoragePage() {
                 Maximum 50 characters. Cannot contain slashes or start/end with periods.
               </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Maximum 50 characters. Cannot contain slashes or start/end with periods.
-            </p>
           </div>
           <div className="flex justify-end space-x-4 pt-4">
             <button
@@ -1150,7 +1166,7 @@ export default function FileStoragePage() {
             onChange={(e) => setNewItemName(e.target.value)}
             placeholder="Enter new name"
             maxLength={100}
-            disabled={loading}
+            disabled={operationLoading}
             autoFocus
           />
           <div className="space-y-2">
@@ -1170,7 +1186,7 @@ export default function FileStoragePage() {
                 setRenameModal({ isOpen: false, item: null });
                 setNewItemName('');
               }}
-              disabled={loading}
+              disabled={operationLoading}
               className="btn-secondary"
             >
               Cancel
@@ -1182,7 +1198,7 @@ export default function FileStoragePage() {
             >
               {operationLoading ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
                   {renameModal.item?.type === 'folder' ? 'Moving folder...' : 'Renaming...'}
                 </>
               ) : (
@@ -1237,7 +1253,7 @@ export default function FileStoragePage() {
             <select
               value={selectedDestination}
               onChange={(e) => setSelectedDestination(e.target.value)}
-              disabled={loading}
+              disabled={operationLoading}
               className="input-field"
             >
               <option value="">Select destination...</option>
@@ -1256,7 +1272,7 @@ export default function FileStoragePage() {
                 type="button"
                 onClick={() => setCreateFolderInMoveModal(true)}
                 className="btn-secondary btn-sm inline-flex items-center"
-                disabled={loading}
+                disabled={operationLoading}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Create New Folder Here
@@ -1275,7 +1291,7 @@ export default function FileStoragePage() {
                 setSelectedDestination('');
                 setCreateFolderInMoveModal(false);
               }}
-              disabled={loading}
+              disabled={operationLoading}
               className="btn-secondary"
             >
               Cancel
@@ -1287,7 +1303,7 @@ export default function FileStoragePage() {
             >
               {operationLoading ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
                   {moveModal.item?.type === 'folder' ? 'Moving folder...' : 'Moving file...'}
                 </>
               ) : (
@@ -1349,7 +1365,7 @@ export default function FileStoragePage() {
             >
               {operationLoading ? (
                 <>
-                  <LoadingSpinner size="sm" className="mr-2" />
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
                   Creating...
                 </>
               ) : (
