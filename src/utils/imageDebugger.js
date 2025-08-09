@@ -178,7 +178,7 @@ export const imageDebugger = {
     console.log(results);
     
     return results;
-  }
+  },
   
   // Comprehensive image display test
   testImageDisplay: async (userId, blogId) => {
