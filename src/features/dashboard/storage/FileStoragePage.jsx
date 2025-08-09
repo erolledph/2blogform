@@ -552,7 +552,6 @@ export default function FileStoragePage() {
               onError={(e) => {
                 e.target.style.display = 'none';
                 e.target.nextSibling.style.display = 'flex';
-              maxLength={50}
               }}
             />
           ) : null}
