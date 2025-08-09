@@ -4,7 +4,7 @@ import { imageDebugger } from '@/utils/imageDebugger';
 import { TestTube, CheckCircle, XCircle, AlertTriangle, RefreshCw, Eye, Database, Wifi, HardDrive } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
-import { ProgressiveImage } from './ProgressiveImage';
+import ProgressiveImage from './ProgressiveImage';
 import toast from 'react-hot-toast';
 
 export default function ImageDisplayDiagnostics({ activeBlogId, className = '' }) {
