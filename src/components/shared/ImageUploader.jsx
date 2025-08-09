@@ -8,7 +8,7 @@ import InputField from './InputField';
 import LoadingSpinner from './LoadingSpinner';
 import DynamicTransition from './DynamicTransition';
 import Modal from './Modal';
-import { Upload, Image as ImageIcon, FileImage, CheckCircle, AlertTriangle, Settings, Zap } from 'lucide-react';
+import { Upload, Image as ImageIcon, FileImage, CheckCircle, AlertTriangle, Settings } from 'lucide-react';
 import { firebaseErrorHandler } from '@/utils/firebaseErrorHandler';
 import { formatBytes } from '@/utils/helpers';
 import toast from 'react-hot-toast';
@@ -130,9 +130,6 @@ export default function ImageUploader({
         // Create preview URL
         const url = URL.createObjectURL(file);
         setPreviewUrl(url);
-        
-        // Run compression preview with the detected dimensions
-        // Note: runCompressionPreview will be triggered by useEffect when dimensions change
       };
       img.src = event.target.result;
     };
@@ -452,61 +449,10 @@ export default function ImageUploader({
 
   const isProcessing = compressing || uploading;
 
-  const getUploadButtonText = () => {
-    if (compressing) return 'Compressing...';
-    if (uploading) return 'Uploading to Firebase...';
-    return 'Upload Optimized Image';
-  };
-
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Storage Usage Display */}
-      <DynamicTransition transitionType="slide-down">
-        <div className="card border-blue-200 bg-blue-50">
-          <div className="card-content p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-blue-800">Storage Usage</h4>
-              <div className="flex items-center space-x-2">
-                {checkingStorage && <LoadingSpinner size="sm" />}
-                <button
-                  onClick={checkStorageUsage}
-                  className="text-blue-600 hover:text-blue-800 text-xs"
-                  title="Refresh storage usage"
-                >
-                  Refresh
-                </button>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-blue-700">Used: {(storageUsage.used).toFixed(1)} MB</span>
-                <span className="text-blue-700">Limit: {storageUsage.limit} MB</span>
-              </div>
-              <div className="w-full bg-blue-200 rounded-full h-2">
-                <div 
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    (storageUsage.used / storageUsage.limit) > 0.9 ? 'bg-red-500' :
-                    (storageUsage.used / storageUsage.limit) > 0.7 ? 'bg-yellow-500' : 'bg-blue-500'
-                  }`}
-                  style={{ width: `${Math.min((storageUsage.used / storageUsage.limit) * 100, 100)}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-blue-600">
-                Your personal storage space
-              </p>
-            </div>
-          </div>
-        </div>
-      </DynamicTransition>
-
       {/* File Selection */}
       <div className="card">
-        <div className="card-header">
-          <h3 className="card-title">Upload & Optimize Image</h3>
-          <p className="card-description">
-            Select an image and customize optimization settings
-          </p>
-        </div>
         <div className="card-content space-y-6">
           {/* File Input */}
           <div>
@@ -665,15 +611,6 @@ export default function ImageUploader({
 
       {/* Optimization Settings */}
       <div className="card">
-        <div className="card-header">
-          <div className="flex items-center space-x-3">
-            <Settings className="h-6 w-6 text-primary" />
-            <h3 className="card-title">Optimization Settings</h3>
-          </div>
-          <p className="card-description">
-            Customize compression parameters for optimal results
-          </p>
-        </div>
         <div className="card-content space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <InputField
@@ -753,42 +690,6 @@ export default function ImageUploader({
               </button>
             </div>
           )}
-        </div>
-      </div>
-      
-      <div className="card">
-        <div className="card-header">
-          <div className="flex items-center space-x-3">
-            <Zap className="h-6 w-6 text-blue-600" />
-            <h3 className="card-title">Format Information</h3>
-          </div>
-        </div>
-        <div className="card-content">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="font-semibold text-green-800 mb-2">WebP (Default)</h4>
-              <ul className="text-sm text-green-700 space-y-1">
-                <li>• Best compression ratio</li>
-                <li>• Modern browser support</li>
-                <li>• Ideal for web use</li>
-              </ul>
-            </div>
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="font-semibold text-blue-800 mb-2">JPEG</h4>
-              <ul className="text-sm text-blue-700 space-y-1">
-                <li>• Universal compatibility</li>
-                <li>• Good for photos</li>
-                <li>• Lossy compression</li>
-              </ul>
-            </div>
-            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-              <h4 className="font-semibold text-purple-800 mb-2">PNG</h4>
-              <ul className="text-sm text-purple-700 space-y-1">
-                <li>• Lossless compression</li>
-                <li>• Supports transparency</li>
-              </ul>
-            </div>
-          </div>
         </div>
       </div>
 
