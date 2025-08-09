@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 export default function Modal({ 
@@ -36,7 +37,8 @@ export default function Modal({
 
   if (!isOpen) return null;
 
-  return (
+  // Create portal to render modal outside of parent component hierarchy
+  const modalContent = (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         {/* Backdrop */}
@@ -73,4 +75,7 @@ export default function Modal({
       </div>
     </div>
   );
+
+  // Render modal using React Portal to ensure it appears above all other content
+  return createPortal(modalContent, document.body);
 }
