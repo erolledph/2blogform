@@ -695,19 +695,14 @@ export default function CreateContentPage({ activeBlogId }) {
         title="Upload & Optimize Featured Image"
         size="xl"
       >
-        <div className="space-y-6">
-          <UploadDiagnostics />
-          <ImageDisplayDiagnostics activeBlogId={activeBlogId} />
-          
-          <ImageUploader
-            onUploadSuccess={handleUploadSuccess}
-            onUploadError={handleUploadError}
-            maxFileSize={10 * 1024 * 1024} // 10MB
-            initialQuality={80}
-            initialMaxWidth={1920}
-            initialMaxHeight={1080}
-          />
-        </div>
+        <ImageUploader
+          onUploadSuccess={handleUploadSuccess}
+          onUploadError={handleUploadError}
+          maxFileSize={10 * 1024 * 1024} // 10MB
+          initialQuality={80}
+          initialMaxWidth={1920}
+          initialMaxHeight={1080}
+        />
       </Modal>
     </DynamicTransition>
   );
