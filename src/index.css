@@ -45,6 +45,12 @@
     --code-background: 150 10% 92%; /* Slightly darker than --secondary */
   }
 
+  html, body {
+    height: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
     background-color: hsl(var(--background));
@@ -91,42 +97,37 @@
 @layer components {
   /* Dashboard Layout Components */
   .dashboard-container {
-    @apply flex min-h-screen; /* Using Tailwind utilities */
+    @apply flex min-h-screen w-full;
   }
 
   .sidebar {
-    @apply transition-all duration-300 ease-in-out fixed top-0 left-0 h-screen z-50 flex flex-col w-16; /* w-16 = 64px */
-    /* Changed sidebar background to a light color from secondary */
-    background: hsl(var(--secondary)); /* Use secondary for light sidebar background */
-    color: hsl(var(--foreground)); /* Dark text on light background */
+    @apply transition-all duration-300 ease-in-out sticky top-0 self-start h-screen z-50 flex flex-col w-16;
+    background: hsl(var(--secondary));
+    color: hsl(var(--foreground));
   }
 
   .sidebar.expanded {
-    @apply w-64; /* 256px */
+    @apply w-64;
   }
 
   .sidebar-header {
-    @apply p-4 flex items-center justify-between relative h-16; /* p-4 = 16px, h-16 = 64px */
-    /* Adjusted border color for contrast on lighter background */
-    @apply border-b border-border;
+    @apply p-4 flex items-center justify-between relative h-16 border-b border-border;
   }
 
   .logo {
-    @apply flex items-center transition-all duration-300 ease-in-out space-x-2; /* space-x-2 = 8px */
+    @apply flex items-center transition-all duration-300 ease-in-out space-x-2;
   }
 
   .logo-icon {
-    @apply w-8 h-8 flex-shrink-0 transition-all duration-300 ease-in-out; /* w-8 h-8 = 32px */
-    /* Make SVG match foreground text color */
-    filter: none; /* Remove invert filter if not needed */
-    color: hsl(var(--foreground)); /* Set icon color explicitly */
+    @apply w-8 h-8 flex-shrink-0 transition-all duration-300 ease-in-out;
+    color: hsl(var(--foreground));
   }
 
   .logo-text {
     @apply text-sm font-bold transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden;
     opacity: 1;
     width: auto;
-    color: hsl(var(--foreground)); /* Text color matches foreground */
+    color: hsl(var(--foreground));
   }
 
   .sidebar:not(.expanded) .logo-text {
@@ -141,15 +142,15 @@
   }
 
   .hamburger {
-    @apply bg-transparent border-none text-lg cursor-pointer p-2 rounded-md transition-colors duration-200 flex items-center justify-center w-8 h-8; /* p-2 = 8px, w-8 h-8 = 32px */
-    color: hsl(var(--foreground)); /* Hamburger icon color */
+    @apply bg-transparent border-none text-lg cursor-pointer p-2 rounded-md transition-colors duration-200 flex items-center justify-center w-8 h-8;
+    color: hsl(var(--foreground));
     opacity: 0;
     width: 0;
     overflow: hidden;
   }
 
   .hamburger:hover {
-    background-color: hsla(var(--accent), 0.5); /* Hover effect using accent color */
+    background-color: hsla(var(--accent), 0.5);
   }
 
   .sidebar.expanded .hamburger {
@@ -158,13 +159,13 @@
   }
 
   .nav-menu {
-    @apply list-none py-2 flex-1 overflow-y-auto; /* py-2 = 8px */
+    @apply list-none py-2 flex-1 overflow-y-auto min-h-0;
     scrollbar-width: thin;
-    scrollbar-color: hsla(var(--foreground), 0.2) transparent; /* Scrollbar color adjustment */
+    scrollbar-color: hsla(var(--foreground), 0.2) transparent;
   }
 
   .nav-menu::-webkit-scrollbar {
-    @apply w-1; /* 4px */
+    @apply w-1;
   }
 
   .nav-menu::-webkit-scrollbar-track {
@@ -172,8 +173,8 @@
   }
 
   .nav-menu::-webkit-scrollbar-thumb {
-    background-color: hsla(var(--foreground), 0.2); /* Scrollbar thumb color adjustment */
-    @apply rounded-sm; /* 2px */
+    background-color: hsla(var(--foreground), 0.2);
+    @apply rounded-sm;
   }
 
   .nav-menu::-webkit-scrollbar-thumb:hover {
@@ -181,22 +182,22 @@
   }
 
   .nav-item {
-    @apply m-0; /* No margin */
+    @apply m-0;
     position: relative;
   }
 
   .nav-link {
-    @apply flex items-center py-3 px-3 no-underline transition-all duration-300 ease-in-out cursor-pointer border-l-4 border-transparent relative h-12; /* py-3 px-3 = 12px, h-12 = 48px */
-    color: hsl(var(--foreground)); /* Nav link text color */
+    @apply flex items-center py-3 px-3 no-underline transition-all duration-300 ease-in-out cursor-pointer border-l-4 border-transparent relative h-12;
+    color: hsl(var(--foreground));
   }
 
   .nav-link-icon {
-    @apply flex-shrink-0 transition-all duration-300 ease-in-out w-5 h-5; /* w-5 h-5 = 20px */
-    color: hsl(var(--muted-foreground)); /* Muted icon color by default */
+    @apply flex-shrink-0 transition-all duration-300 ease-in-out w-5 h-5;
+    color: hsl(var(--muted-foreground));
   }
 
   .nav-link-text {
-    @apply transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden ml-4; /* ml-4 = 16px */
+    @apply transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden ml-4;
     opacity: 0;
     width: 0;
     display: flex;
@@ -210,20 +211,19 @@
     width: auto;
   }
 
-  /* Tooltip for collapsed state */
   .nav-tooltip {
-    @apply absolute left-full ml-2 px-3 py-2 text-sm rounded-md whitespace-nowrap z-50 pointer-events-none transition-all duration-200; /* ml-2 = 8px, px-3 py-2 = 12px 8px */
-    background-color: hsl(var(--foreground)); /* Dark tooltip background */
-    color: hsl(var(--background)); /* Light text on tooltip */
+    @apply absolute left-full ml-2 px-3 py-2 text-sm rounded-md whitespace-nowrap z-50 pointer-events-none transition-all duration-200;
+    background-color: hsl(var(--foreground));
+    color: hsl(var(--background));
     opacity: 0;
-    transform: translateX(-8px); /* -0.5rem = -8px */
+    transform: translateX(-8px);
   }
 
   .nav-tooltip::before {
     content: '';
     @apply absolute right-full top-1/2 transform -translate-y-1/2;
-    border: 6px solid transparent; /* 0.375rem = 6px */
-    border-right-color: hsl(var(--foreground)); /* Tooltip arrow color */
+    border: 6px solid transparent;
+    border-right-color: hsl(var(--foreground));
   }
 
   .sidebar:not(.expanded):not(.open) .nav-item:hover .nav-tooltip {
@@ -232,40 +232,39 @@
   }
 
   .nav-link:hover {
-    background-color: hsl(var(--accent)); /* Hover background using accent */
-    border-left-color: hsl(var(--primary)); /* Green border on hover */
-    color: hsl(var(--foreground)); /* Keep text color on hover */
+    background-color: hsl(var(--accent));
+    border-left-color: hsl(var(--primary));
+    color: hsl(var(--foreground));
   }
 
   .nav-link.active {
-    background-color: hsl(var(--secondary)); /* Active background using secondary/lighter green */
-    border-left-color: hsl(var(--primary)); /* Primary green border on active */
+    background-color: hsl(var(--secondary));
+    border-left-color: hsl(var(--primary));
     @apply font-semibold;
-    color: hsl(var(--foreground)); /* Keep text color on active */
+    color: hsl(var(--foreground));
   }
 
   .nav-link.active .nav-link-icon {
-    color: hsl(var(--primary)); /* Active icon color is primary green */
+    color: hsl(var(--primary));
   }
 
   .main-content {
-    @apply flex-1 overflow-x-auto;
+    @apply flex-1 overflow-x-hidden w-full min-h-screen;
     background-color: hsl(var(--background));
-    @apply pt-0; /* padding-top: 0 */
-    transition: margin-left 300ms ease-in-out;
+    transition: all 300ms ease-in-out;
   }
 
   .content-section {
-    @apply bg-white min-h-screen pt-0; /* padding-top: 0 */
+    @apply bg-white min-h-screen;
   }
 
   .mobile-header {
-    @apply hidden items-center justify-between p-4 sm:p-5 m-0 shadow-md sticky top-0 z-30 backdrop-blur-sm; /* p-4 sm:p-5 = 16px sm:20px */
-    background: hsla(var(--card), 0.8); /* Semi-transparent card background */
+    @apply hidden items-center justify-between p-4 sm:p-5 m-0 shadow-md sticky top-0 z-30 backdrop-blur-sm;
+    background: hsla(var(--card), 0.8);
   }
 
   .mobile-hamburger {
-    @apply bg-transparent border-none text-2xl cursor-pointer p-2 rounded-md hover:bg-accent transition-colors; /* p-2 = 8px */
+    @apply bg-transparent border-none text-2xl cursor-pointer p-2 rounded-md hover:bg-accent transition-colors;
     color: hsl(var(--foreground));
   }
 
@@ -276,7 +275,7 @@
 
   .overlay {
     @apply hidden fixed inset-0 w-full h-full z-40;
-    background-color: hsla(var(--foreground), 0.5); /* Overlay uses foreground with transparency */
+    background-color: hsla(var(--foreground), 0.5);
   }
 
   .overlay.active {
@@ -286,14 +285,11 @@
   /* Mobile Styles */
   @media (max-width: 1023px) {
     .sidebar {
-      @apply fixed left-0 top-0 h-screen z-50 transform -translate-x-full w-64; /* w-64 = 256px = 16rem */
+      @apply fixed left-0 top-0 h-screen z-50 transform -translate-x-full w-64;
     }
 
     .sidebar.open {
       @apply transform translate-x-0;
-    }
-
-    .sidebar.open .nav-menu {
     }
 
     .sidebar.open .logo,
@@ -302,14 +298,13 @@
     .sidebar.open .hamburger {
       opacity: 1 !important;
       width: auto !important;
-      @apply ml-3 !important; /* ml-3 = 12px */
+      @apply ml-3 !important;
     }
 
     .sidebar.open .logo {
-      @apply ml-3 !important; /* ml-3 = 12px */
+      @apply ml-3 !important;
     }
 
-    /* Hide tooltips on mobile */
     .nav-tooltip {
       @apply hidden;
     }
@@ -320,8 +315,7 @@
     }
 
     .main-content {
-      @apply p-0 w-full ml-0; /* margin-left: 0 */
-      min-height: 100vh;
+      @apply p-0 w-full min-h-screen;
     }
 
     .mobile-header {
@@ -329,49 +323,60 @@
     }
 
     .content-section {
-      @apply pt-4; /* Added top padding for mobile */
-      min-height: calc(100vh - 64px); /* 4rem = 64px */
+      @apply pt-4;
+      min-height: calc(100vh - 64px);
     }
     
     /* Mobile-specific page container adjustments */
     .page-container {
-      @apply px-4 py-8; /* Reduced padding on mobile for better space usage */
+      @apply px-4 py-8;
     }
   }
 
+  /* Desktop Styles */
   @media (min-width: 1024px) {
     .mobile-header {
       @apply hidden;
     }
 
-    .main-content {
-      @apply ml-16 pt-6; /* Added top padding for desktop */
-      min-height: 100vh;
+    .sidebar {
+      @apply sticky top-0 self-start h-screen z-50 w-16;
     }
 
-    /* Prevent hover expansion when manually expanded */
-    .sidebar.expanded:hover {
-      @apply w-64; /* 256px */
+    .sidebar.expanded {
+      @apply w-64;
+    }
+
+    .main-content {
+      @apply flex-1 min-h-screen;
+    }
+
+    .content-section {
+      @apply min-h-screen;
+    }
+
+    .page-container {
+      @apply container mx-auto px-6 sm:px-8 lg:px-12 py-12 max-w-7xl;
     }
   }
 
   /* Logout button styling */
   .logout-section {
-    @apply p-3 mt-auto border-t border-border; /* p-3 = 12px */
+    @apply p-3 mt-auto border-t border-border flex-shrink-0;
   }
 
   .logout-button {
-    @apply flex items-center py-3 px-3 no-underline transition-all duration-300 ease-in-out cursor-pointer border-l-4 border-transparent w-full text-left relative h-12; /* py-3 px-3 = 12px, h-12 = 48px */
-    color: hsl(var(--foreground)); /* Logout button text color */
+    @apply flex items-center py-3 px-3 no-underline transition-all duration-300 ease-in-out cursor-pointer border-l-4 border-transparent w-full text-left relative h-12;
+    color: hsl(var(--foreground));
   }
 
   .logout-button-icon {
-    @apply flex-shrink-0 transition-all duration-300 ease-in-out w-5 h-5; /* w-5 h-5 = 20px */
-    color: hsl(var(--muted-foreground)); /* Muted icon color */
+    @apply flex-shrink-0 transition-all duration-300 ease-in-out w-5 h-5;
+    color: hsl(var(--muted-foreground));
   }
 
   .logout-button-text {
-    @apply transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden ml-4; /* ml-4 = 16px */
+    @apply transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden ml-4;
     opacity: 0;
     width: 0;
   }
@@ -382,9 +387,9 @@
   }
 
   .logout-button:hover {
-    background-color: hsl(var(--accent)); /* Hover background using accent */
-    border-left-color: hsl(var(--primary)); /* Green border on hover */
-    color: hsl(var(--foreground)); /* Keep text color on hover */
+    background-color: hsl(var(--accent));
+    border-left-color: hsl(var(--primary));
+    color: hsl(var(--foreground));
   }
 
   /* Enhanced Button Styles */
