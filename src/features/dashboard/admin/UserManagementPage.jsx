@@ -419,7 +419,7 @@ export default function UserManagementPage() {
 
   return (
     <div className="section-spacing">
-      <div className="page-header">
+      <div className="page-header mb-16">
         <h1 className="page-title">User Management</h1>
         <p className="page-description">
           Manage user roles and multi-blog access permissions
@@ -427,13 +427,13 @@ export default function UserManagementPage() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-16">
         <div className="card border-blue-200 bg-blue-50">
-          <div className="card-content p-6">
+          <div className="card-content p-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-600 mb-2">Total Users</p>
-                <p className="text-3xl font-bold text-blue-900">{users.length}</p>
+                <p className="text-sm font-medium text-blue-600 mb-3">Total Users</p>
+                <p className="text-3xl font-bold text-blue-900 leading-none">{users.length}</p>
               </div>
               <Users className="h-8 w-8 text-blue-600" />
             </div>
@@ -441,11 +441,11 @@ export default function UserManagementPage() {
         </div>
 
         <div className="card border-amber-200 bg-amber-50">
-          <div className="card-content p-6">
+          <div className="card-content p-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-amber-600 mb-2">Administrators</p>
-                <p className="text-3xl font-bold text-amber-900">
+                <p className="text-sm font-medium text-amber-600 mb-3">Administrators</p>
+                <p className="text-3xl font-bold text-amber-900 leading-none">
                   {users.filter(u => u.role === 'admin').length}
                 </p>
               </div>
@@ -455,11 +455,11 @@ export default function UserManagementPage() {
         </div>
 
         <div className="card border-green-200 bg-green-50">
-          <div className="card-content p-6">
+          <div className="card-content p-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-600 mb-2">Multi-Blog Users</p>
-                <p className="text-3xl font-bold text-green-900">
+                <p className="text-sm font-medium text-green-600 mb-3">Multi-Blog Users</p>
+                <p className="text-3xl font-bold text-green-900 leading-none">
                   {users.filter(u => (u.maxBlogs && u.maxBlogs > 1)).length}
                 </p>
               </div>
@@ -469,11 +469,11 @@ export default function UserManagementPage() {
         </div>
 
         <div className="card border-orange-200 bg-orange-50">
-          <div className="card-content p-6">
+          <div className="card-content p-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-orange-600 mb-2">Total Storage</p>
-                <p className="text-3xl font-bold text-orange-900">
+                <p className="text-sm font-medium text-orange-600 mb-3">Total Storage</p>
+                <p className="text-3xl font-bold text-orange-900 leading-none">
                   {(users.reduce((sum, u) => sum + (u.totalStorageMB || 100), 0) / 1024).toFixed(1)} GB
                 </p>
               </div>

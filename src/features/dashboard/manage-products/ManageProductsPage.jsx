@@ -595,15 +595,15 @@ export default function ManageProductsPage({ activeBlogId }) {
 
   return (
     <DynamicTransition loading={loading} error={error} className="section-spacing">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
-        <div className="page-header mb-0">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-12">
+        <div className="page-header mb-0 flex-1">
           <h1 className="page-title mb-2">Manage Products</h1>
           {selectedItems.length > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-6 mt-6">
               <p className="text-base text-primary font-medium">
                 {selectedItems.length} product{selectedItems.length !== 1 ? 's' : ''} selected
               </p>
-              <div className="flex flex-wrap gap-2 sm:gap-3">
+              <div className="flex flex-wrap gap-3 sm:gap-4">
                 <button
                   onClick={handleBulkPublish}
                   disabled={publishingLoading}
@@ -640,7 +640,7 @@ export default function ManageProductsPage({ activeBlogId }) {
             </div>
           )}
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-4">
           <Link to="/dashboard/create-product" className="btn-primary inline-flex items-center">
             <Plus className="h-5 w-5 mr-3" />
             Add Product
@@ -668,21 +668,21 @@ export default function ManageProductsPage({ activeBlogId }) {
 
       {products.length === 0 ? (
         <div className="card">
-          <div className="card-content text-center py-16">
+          <div className="card-content text-center py-20">
             <Package className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
             <h3 className="text-2xl font-semibold text-foreground mb-4">No products found</h3>
-            <p className="text-lg text-muted-foreground mb-8">
+            <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
               Get started by adding your first product to the catalog. Once you have products, you can export them to get a genuine JSON template that matches your data structure.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <Link to="/dashboard/create-product" className="btn-primary">
                 <Plus className="h-5 w-5 mr-3" />
                 Add Your First Product
               </Link>
             </div>
-            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-lg max-w-2xl mx-auto">
               <h4 className="text-sm font-medium text-green-800 mb-2">💡 Pro Tip: Generate Your Own JSON Template</h4>
-              <p className="text-sm text-green-700">
+              <p className="text-sm text-green-700 leading-relaxed">
                 Create at least one product, then use the "Export All" button to generate a JSON template that perfectly matches your data structure and image references.
               </p>
             </div>
@@ -721,7 +721,7 @@ export default function ManageProductsPage({ activeBlogId }) {
 
       {/* Clear Selection Button */}
       {selectedItems.length > 0 && (
-        <div className="flex justify-center">
+        <div className="flex justify-center mt-8">
           <button
             onClick={() => setSelectedItems([])}
             className="btn-ghost btn-sm"

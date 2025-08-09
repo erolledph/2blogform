@@ -21,7 +21,7 @@ export default function InputField({
       {label && (
         <label 
           htmlFor={inputId}
-          className="block text-base font-medium text-foreground mb-4"
+          className="block text-base font-medium text-foreground mb-3"
         >
           {label}
           {required && <span className="text-destructive ml-1">*</span>}
@@ -29,25 +29,25 @@ export default function InputField({
       )}
       <div className="relative">
         {Icon && (
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
             <Icon className="h-5 w-5 text-muted-foreground" />
           </div>
         )}
         {currencySymbol && (
-          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
             <span className="text-base font-medium text-muted-foreground">{currencySymbol}</span>
           </div>
         )}
         <input
           id={inputId}
           type={actualType}
-          className={`input-field ${Icon || currencySymbol ? 'pl-12' : ''} ${showPasswordToggle ? 'pr-12' : ''} ${error ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+          className={`input-field ${Icon || currencySymbol ? 'pl-14' : ''} ${showPasswordToggle ? 'pr-14' : ''} ${error ? 'border-destructive focus-visible:ring-destructive' : ''}`}
           {...props}
         />
         {showPasswordToggle && (
           <button
             type="button"
-            className="absolute inset-y-0 right-0 pr-4 flex items-center"
+            className="absolute inset-y-0 right-0 pr-6 flex items-center"
             onClick={() => setShowPassword(!showPassword)}
           >
             {showPassword ? (
@@ -59,7 +59,7 @@ export default function InputField({
         )}
       </div>
       {error && (
-        <p className="mt-2 text-sm text-destructive">{error}</p>
+        <p className="mt-3 text-sm text-destructive leading-relaxed">{error}</p>
       )}
     </div>
   );

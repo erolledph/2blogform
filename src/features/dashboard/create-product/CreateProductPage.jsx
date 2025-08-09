@@ -420,15 +420,15 @@ export default function CreateProductPage({ activeBlogId }) {
   return (
     <DynamicTransition loading={loading && isEditing} className="section-spacing">
       {/* Header */}
-      <div className="page-header">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+      <div className="page-header mb-16">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
           <div>
             <h1 className="page-title">
               {isEditing ? 'Edit Product' : 'Create New Product'}
             </h1>
             {/* Auto-save indicator for editing */}
             {isEditing && (
-              <div className="mt-4">
+              <div className="mt-6">
                 <AutoSaveIndicator 
                   status={autoSaveStatus}
                   lastSaved={lastSaved}
@@ -443,7 +443,7 @@ export default function CreateProductPage({ activeBlogId }) {
         </div>
         
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row justify-end space-y-4 sm:space-y-0 sm:space-x-4 pt-6 border-t border-border">
+        <div className="flex flex-col sm:flex-row justify-end space-y-4 sm:space-y-0 sm:space-x-6 pt-8 border-t border-border">
           <button
             type="button"
             onClick={() => navigate('/dashboard/manage-products')}
@@ -464,16 +464,16 @@ export default function CreateProductPage({ activeBlogId }) {
       </div>
 
       <form id="product-form" onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 lg:gap-10">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-10 lg:gap-12">
           
           {/* Left Column - Main Content */}
-          <div className="xl:col-span-2 space-y-8">
+          <div className="xl:col-span-2 space-y-10">
             {/* Product Details */}
             <div className="card">
               <div className="card-header">
                 <h2 className="card-title">Product Details</h2>
               </div>
-              <div className="card-content space-y-6">
+              <div className="card-content space-y-8">
                 <div className="grid-responsive-2">
                   <InputField
                     label="Product Name"
@@ -497,7 +497,7 @@ export default function CreateProductPage({ activeBlogId }) {
                 </div>
 
                 <div>
-                  <label className="block text-base font-medium text-foreground mb-4">
+                  <label className="block text-base font-medium text-foreground mb-3">
                     Description <span className="text-destructive">*</span>
                   </label>
                   <SimpleMDE
@@ -511,7 +511,7 @@ export default function CreateProductPage({ activeBlogId }) {
                     options={simpleMDEOptions}
                   />
                   {errors.description && (
-                    <p className="mt-2 text-sm text-destructive">{errors.description}</p>
+                    <p className="mt-3 text-sm text-destructive">{errors.description}</p>
                   )}
                 </div>
               </div>
@@ -523,27 +523,27 @@ export default function CreateProductPage({ activeBlogId }) {
                 <h3 className="card-title">Product Images</h3>
                 <p className="card-description">Add up to 5 product images</p>
               </div>
-              <div className="card-content space-y-6">
+              <div className="card-content space-y-8">
                 {/* Image Grid */}
                 {formData.imageUrls.length > 0 && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
                     {formData.imageUrls.map((imageUrl, index) => (
                       <div key={index} className="relative group">
                         <img
                           src={imageUrl}
                           alt={`Product ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg border border-border shadow-sm"
+                          className="w-full h-40 object-cover rounded-lg border border-border shadow-sm"
                         />
                         <button
                           type="button"
                           onClick={() => handleRemoveImage(index)}
-                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                          className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
                           title="Remove image"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
                         {index === 0 && (
-                          <div className="absolute bottom-2 left-2 px-2 py-1 bg-primary text-primary-foreground text-xs rounded">
+                          <div className="absolute bottom-3 left-3 px-3 py-1 bg-primary text-primary-foreground text-xs rounded">
                             Main
                           </div>
                         )}
@@ -554,7 +554,7 @@ export default function CreateProductPage({ activeBlogId }) {
                 
                 {/* Add Images Button */}
                 {formData.imageUrls.length < 5 && (
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <div className="flex flex-col sm:flex-row gap-6 justify-center">
                     <button
                       type="button"
                       onClick={() => setGalleryModal({ isOpen: true })}
@@ -575,9 +575,9 @@ export default function CreateProductPage({ activeBlogId }) {
                 )}
                 
                 {/* Image URL Input as Alternative */}
-                <div className="border-t border-border pt-6">
-                  <h4 className="text-base font-medium text-foreground mb-4">Or add image URL</h4>
-                  <div className="flex gap-3">
+                <div className="border-t border-border pt-8">
+                  <h4 className="text-base font-medium text-foreground mb-3">Or add image URL</h4>
+                  <div className="flex gap-4">
                     <input
                       type="url"
                       placeholder="https://example.com/image.jpg"
@@ -623,13 +623,13 @@ export default function CreateProductPage({ activeBlogId }) {
           </div>
 
           {/* Right Column - Settings */}
-          <div className="space-y-8">
+          <div className="space-y-10">
             {/* Pricing */}
             <div className="card">
               <div className="card-header">
                 <h3 className="card-title">Pricing</h3>
               </div>
-              <div className="card-content space-y-6">
+              <div className="card-content space-y-8">
                 <InputField
                   label="Price"
                   name="price"
@@ -666,9 +666,9 @@ export default function CreateProductPage({ activeBlogId }) {
               <div className="card-header">
                 <h3 className="card-title">Publish Settings</h3>
               </div>
-              <div className="card-content space-y-6">
+              <div className="card-content space-y-8">
                 <div>
-                  <label className="block text-base font-medium text-foreground mb-4">
+                  <label className="block text-base font-medium text-foreground mb-3">
                     Status
                   </label>
                   <select
@@ -699,7 +699,7 @@ export default function CreateProductPage({ activeBlogId }) {
               </div>
               <div className="card-content">
                 <div>
-                  <label className="block text-base font-medium text-foreground mb-4">
+                  <label className="block text-base font-medium text-foreground mb-3">
                     Tags (comma separated)
                   </label>
                   <input

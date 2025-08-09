@@ -779,12 +779,12 @@ export default function FileStoragePage() {
   }
 
   return (
-    <DynamicTransition loading={loading} error={error} className="space-y-10">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+    <DynamicTransition loading={loading} error={error} className="space-y-12">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-12">
         <div>
-          <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">File Storage</h1>
+          <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">File Storage</h1>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-wrap items-center gap-4">
           {currentPath && currentPath !== userBasePath && (
             <LoadingButton
               onClick={navigateBack}
@@ -821,7 +821,7 @@ export default function FileStoragePage() {
       </div>
 
       {/* Breadcrumb Navigation */}
-      <nav className="flex items-center space-x-2 text-sm text-muted-foreground mb-6">
+      <nav className="flex items-center space-x-3 text-sm text-muted-foreground mb-8 p-4 bg-muted/20 rounded-lg">
         <button
           onClick={navigateToUserRoot}
           className="flex items-center hover:text-foreground transition-colors"
@@ -845,13 +845,13 @@ export default function FileStoragePage() {
       {/* Breadcrumb Navigation */}
 
       {/* Storage Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
         <div className="card border-blue-200 bg-blue-50">
-          <div className="card-content p-6">
+          <div className="card-content p-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-600 mb-2">Total Files</p>
-                <p className="text-3xl font-bold text-blue-900">{storageStats.totalFiles}</p>
+                <p className="text-sm font-medium text-blue-600 mb-3">Total Files</p>
+                <p className="text-3xl font-bold text-blue-900 leading-none">{storageStats.totalFiles}</p>
               </div>
               <Folder className="h-8 w-8 text-blue-600" />
             </div>
@@ -859,11 +859,11 @@ export default function FileStoragePage() {
         </div>
 
         <div className="card border-green-200 bg-green-50">
-          <div className="card-content p-6">
+          <div className="card-content p-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-600 mb-2">Total Size</p>
-                <p className="text-3xl font-bold text-green-900">{formatBytes(storageStats.totalSize)}</p>
+                <p className="text-sm font-medium text-green-600 mb-3">Total Size</p>
+                <p className="text-3xl font-bold text-green-900 leading-none">{formatBytes(storageStats.totalSize)}</p>
                 <p className="text-sm text-green-600">of {currentUser?.totalStorageMB || 100} MB limit</p>
               </div>
               <HardDrive className="h-8 w-8 text-green-600" />
@@ -872,11 +872,11 @@ export default function FileStoragePage() {
         </div>
 
         <div className="card border-purple-200 bg-purple-50">
-          <div className="card-content p-6">
+          <div className="card-content p-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-600 mb-2">Storage Usage</p>
-                <p className="text-2xl font-bold text-purple-900">
+                <p className="text-sm font-medium text-purple-600 mb-3">Storage Usage</p>
+                <p className="text-3xl font-bold text-purple-900 leading-none">
                   {((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100) * 100).toFixed(1)}%
                 </p>
                 <p className="text-sm text-purple-600">used</p>
@@ -891,18 +891,18 @@ export default function FileStoragePage() {
       {error ? (
         <DynamicTransition transitionType="fade">
           <div className="card border-red-200 bg-red-50">
-            <div className="card-content p-8 text-center">
+            <div className="card-content p-12 text-center">
               <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
               <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Storage Items</h3>
               <p className="text-lg text-red-700 mb-6">{error}</p>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <button onClick={fetchItems} className="btn-secondary">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Try Again
                 </button>
                 <div className="text-sm text-red-600">
                   <p>If this error persists, try:</p>
-                  <ul className="list-disc list-inside mt-2 space-y-1">
+                  <ul className="list-disc list-inside mt-3 space-y-2">
                     <li>Refreshing the page</li>
                     <li>Checking your internet connection</li>
                     <li>Logging out and back in</li>
@@ -915,12 +915,12 @@ export default function FileStoragePage() {
         </DynamicTransition>
       ) : items.length === 0 ? (
         <div className="card">
-          <div className="card-content text-center py-16">
+          <div className="card-content text-center py-20">
             <Folder className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
             <h3 className="text-2xl font-semibold text-foreground mb-4">
               {currentPath && currentPath !== userBasePath ? 'Folder is empty' : 'No files in your storage'}
             </h3>
-            <p className="text-lg text-muted-foreground mb-8">
+            <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
               {currentPath && currentPath !== userBasePath
                 ? 'This folder contains no files or subfolders.'
                 : 'Upload some images through the content creation process or use the upload button to add files to your personal storage.'
@@ -929,14 +929,18 @@ export default function FileStoragePage() {
           </div>
         </div>
       ) : (
-        <DataTable
-          data={items}
-          columns={columns}
-          searchable={true}
-          sortable={true}
-          pagination={true}
-          pageSize={20}
-        />
+        <div className="card">
+          <div className="card-content p-0">
+            <DataTable
+              data={items}
+              columns={columns}
+              searchable={true}
+              sortable={true}
+              pagination={true}
+              pageSize={20}
+            />
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation Modal */}

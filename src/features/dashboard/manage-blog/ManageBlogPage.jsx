@@ -250,14 +250,14 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
 
   return (
     <div className="section-spacing">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
-        <div className="page-header mb-0">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-12">
+        <div className="page-header mb-0 flex-1">
           <h1 className="page-title mb-2">Manage Blog</h1>
           <p className="page-description">
             Configure your blog settings and create new blogs
           </p>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-6">
           <button
             onClick={refreshBlogData}
             disabled={refreshing}
@@ -271,19 +271,19 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
 
       {/* Current Blog Status Bar */}
       {currentBlog && (
-        <div className="card border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 mb-8">
-          <div className="card-content p-6">
+        <div className="card border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 mb-12">
+          <div className="card-content p-8">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-6">
                 <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
                   <BookOpen className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-blue-900">Currently Managing: {currentBlog.name}</h2>
-                  <p className="text-blue-700">
+                  <h2 className="text-xl font-bold text-blue-900 mb-2">Currently Managing: {currentBlog.name}</h2>
+                  <p className="text-blue-700 leading-relaxed">
                     {currentBlog.description || 'No description provided'}
                   </p>
-                  <div className="flex items-center space-x-4 mt-2 text-sm text-blue-600">
+                  <div className="flex items-center space-x-4 mt-3 text-sm text-blue-600">
                     <span>Blog ID: {currentBlog.id.substring(0, 12)}...</span>
                     <span>•</span>
                     <span>Created: {currentBlog.createdAt?.toDate().toLocaleDateString()}</span>
@@ -291,7 +291,7 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-blue-900">{allBlogs.length}</div>
+                <div className="text-3xl font-bold text-blue-900 leading-none">{allBlogs.length}</div>
                 <div className="text-sm text-blue-600">Total Blogs</div>
               </div>
             </div>
@@ -299,12 +299,12 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* Current Blog Settings */}
         <div className="card">
           <div className="card-header">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="p-3 bg-green-100 rounded-lg">
+            <div className="flex items-center space-x-4">
+              <div className="p-4 bg-green-100 rounded-lg">
                 <Edit className="h-8 w-8 text-green-600" />
               </div>
               <h2 className="card-title">Edit Blog Details</h2>
@@ -314,7 +314,7 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
             </p>
           </div>
           <div className="card-content">
-            <form onSubmit={handleSave} className="space-y-6">
+            <form onSubmit={handleSave} className="space-y-8">
               <InputField
                 label="Blog Name"
                 name="name"
@@ -326,12 +326,12 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               />
 
               <div>
-                <label className="block text-base font-medium text-foreground mb-4">
+                <label className="block text-base font-medium text-foreground mb-3">
                   Description (Optional)
                 </label>
                 <textarea
                   name="description"
-                  rows={4}
+                  rows={5}
                   className="input-field resize-none"
                   value={formData.description}
                   onChange={handleInputChange}
@@ -343,7 +343,7 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               <button
                 type="submit"
                 disabled={saving || !formData.name.trim()}
-                className="btn-primary w-full h-12"
+                className="btn-primary w-full"
               >
                 {saved ? (
                   <>
@@ -361,14 +361,14 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
 
             {/* Delete Blog Section */}
             {allBlogs.length > 1 && (
-              <div className="border-t border-border pt-6">
-                <h4 className="text-base font-medium text-foreground mb-4">Danger Zone</h4>
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="border-t border-border pt-8">
+                <h4 className="text-base font-medium text-foreground mb-6">Danger Zone</h4>
+                <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-start space-x-3">
                     <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                     <div className="flex-1">
-                      <h5 className="text-sm font-medium text-red-800 mb-2">Delete This Blog</h5>
-                      <p className="text-sm text-red-700 mb-4">
+                      <h5 className="text-sm font-medium text-red-800 mb-3">Delete This Blog</h5>
+                      <p className="text-sm text-red-700 mb-6 leading-relaxed">
                         This will permanently delete this blog and all its content and products. This action cannot be undone.
                       </p>
                       <button
@@ -390,8 +390,8 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
         {/* Blog Management */}
         <div className="card">
           <div className="card-header">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="p-3 bg-purple-100 rounded-lg">
+            <div className="flex items-center space-x-4">
+              <div className="p-4 bg-purple-100 rounded-lg">
                 <Database className="h-8 w-8 text-purple-600" />
               </div>
               <h2 className="card-title">Blog Management</h2>
@@ -400,23 +400,23 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               Switch between blogs and create new ones
             </p>
           </div>
-          <div className="card-content space-y-6">
+          <div className="card-content space-y-8">
             {/* Current Blogs List */}
             <div>
-              <h3 className="text-lg font-semibold text-foreground mb-4">Your Blogs</h3>
-              <div className="space-y-3">
+              <h3 className="text-lg font-semibold text-foreground mb-6">Your Blogs</h3>
+              <div className="space-y-4">
                 {allBlogs.map((blog) => (
                   <div
                     key={blog.id}
                     onClick={() => handleBlogSwitch(blog)}
-                    className={`p-4 border-2 rounded-xl transition-all duration-200 ${
+                    className={`p-6 border-2 rounded-xl transition-all duration-200 ${
                       blog.id === activeBlogId
                         ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-blue-100 shadow-lg transform scale-105'
                         : 'border-gray-200 bg-white hover:bg-gray-50 cursor-pointer hover:border-blue-300 hover:shadow-md'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-4">
                         <div className={`p-2 rounded-lg ${
                           blog.id === activeBlogId 
                             ? 'bg-blue-500' 
@@ -437,7 +437,7 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                             {blog.name}
                           </div>
                           {blog.description && (
-                            <div className={`text-sm mt-1 ${
+                            <div className={`text-sm mt-2 leading-relaxed ${
                               blog.id === activeBlogId 
                                 ? 'text-blue-700' 
                                 : 'text-gray-600'
@@ -445,7 +445,7 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                               {blog.description}
                             </div>
                           )}
-                          <div className={`text-xs mt-1 ${
+                          <div className={`text-xs mt-2 ${
                             blog.id === activeBlogId 
                               ? 'text-blue-600' 
                               : 'text-gray-500'
@@ -454,9 +454,9 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-3">
                         {blog.id === activeBlogId && (
-                          <span className="px-3 py-1 bg-blue-500 text-white text-xs font-semibold rounded-full">
+                          <span className="px-4 py-2 bg-blue-500 text-white text-xs font-semibold rounded-full">
                             Active
                           </span>
                         )}
@@ -473,8 +473,8 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               
               {/* Instructions for switching blogs */}
               {allBlogs.length > 1 && (
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-700">
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-700 leading-relaxed">
                     💡 <strong>Tip:</strong> Click on any blog above to switch to it. The active blog determines which content and products you're managing.
                   </p>
                 </div>
@@ -482,28 +482,28 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
             </div>
 
             {/* Create New Blog Section */}
-            <div className="border-t border-border pt-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Create New Blog</h3>
+            <div className="border-t border-border pt-8">
+              <h3 className="text-lg font-semibold text-foreground mb-6">Create New Blog</h3>
               
               {(canManageMultipleBlogs || (currentUser?.maxBlogs && currentUser.maxBlogs > 1)) ? (
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {allBlogs.length < (currentUser?.maxBlogs || 1) ? (
                     <>
-                      <p className="text-base text-muted-foreground">
+                      <p className="text-base text-muted-foreground leading-relaxed">
                         You can create up to {currentUser?.maxBlogs || 1} blogs. Currently have {allBlogs.length}.
                       </p>
                       <button
                         onClick={() => setCreateModalOpen(true)}
-                        className="btn-primary w-full h-12"
+                        className="btn-primary w-full"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Create New Blog ({allBlogs.length}/{currentUser?.maxBlogs || 1})
                       </button>
                     </>
                   ) : (
-                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                      <h4 className="text-sm font-medium text-amber-800 mb-2">Blog Limit Reached</h4>
-                      <p className="text-sm text-amber-700 mb-3">
+                    <div className="p-6 bg-amber-50 border border-amber-200 rounded-lg">
+                      <h4 className="text-sm font-medium text-amber-800 mb-3">Blog Limit Reached</h4>
+                      <p className="text-sm text-amber-700 mb-4 leading-relaxed">
                         You have reached your maximum of {currentUser?.maxBlogs || 1} blog{(currentUser?.maxBlogs || 1) > 1 ? 's' : ''}. 
                         To create more blogs, contact an administrator to increase your limit.
                       </p>
@@ -511,9 +511,9 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                   )}
                 </div>
               ) : (
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                  <h4 className="text-sm font-medium text-amber-800 mb-2">Multi-Blog Access Required</h4>
-                  <p className="text-sm text-amber-700 mb-3">
+                <div className="p-6 bg-amber-50 border border-amber-200 rounded-lg">
+                  <h4 className="text-sm font-medium text-amber-800 mb-3">Multi-Blog Access Required</h4>
+                  <p className="text-sm text-amber-700 mb-4 leading-relaxed">
                     You currently have access to one blog. To create additional blogs, you need multi-blog access permissions.
                   </p>
                   <p className="text-xs text-amber-600">
@@ -524,15 +524,15 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
             </div>
 
             {/* Blog Statistics */}
-            <div className="border-t border-border pt-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Statistics</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-blue-900">{allBlogs.length}</div>
+            <div className="border-t border-border pt-8">
+              <h3 className="text-lg font-semibold text-foreground mb-6">Statistics</h3>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                  <div className="text-3xl font-bold text-blue-900 leading-none">{allBlogs.length}</div>
                   <div className="text-sm text-blue-600">Total Blogs</div>
                 </div>
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-green-900">
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+                  <div className="text-3xl font-bold text-green-900 leading-none">
                     {currentUser?.maxBlogs || 1}
                   </div>
                   <div className="text-sm text-green-600">Max Allowed</div>
@@ -540,10 +540,10 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               </div>
               
               {/* Storage Information */}
-              <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+              <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-lg font-bold text-purple-900">{currentUser?.totalStorageMB || 100} MB</div>
+                    <div className="text-xl font-bold text-purple-900 leading-none">{currentUser?.totalStorageMB || 100} MB</div>
                     <div className="text-sm text-purple-600">Storage Limit</div>
                   </div>
                   <div className="text-right">
@@ -557,10 +557,10 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
       </div>
 
       {/* API Endpoints Section */}
-      <div className="card mt-8">
+      <div className="card mt-12">
         <div className="card-header">
-          <div className="flex items-center space-x-4 mb-4">
-            <div className="p-3 bg-indigo-100 rounded-lg">
+          <div className="flex items-center space-x-4">
+            <div className="p-4 bg-indigo-100 rounded-lg">
               <Globe className="h-8 w-8 text-indigo-600" />
             </div>
             <h2 className="card-title">API Endpoints</h2>
@@ -570,10 +570,10 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
           </p>
         </div>
         <div className="card-content">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="p-2 bg-blue-500 rounded-lg">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="p-6 bg-blue-50 border border-blue-200 rounded-xl">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="p-3 bg-blue-500 rounded-lg">
                   <BookOpen className="h-5 w-5 text-white" />
                 </div>
                 <div>
@@ -581,12 +581,12 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                   <p className="text-sm text-blue-600">Access all published blog content</p>
                 </div>
               </div>
-              <div className="bg-white border border-blue-200 rounded-lg p-3 mb-3">
+              <div className="bg-white border border-blue-200 rounded-lg p-4 mb-4">
                 <code className="text-xs text-blue-800 break-all font-mono">
                   {getContentApiUrl()}
                 </code>
               </div>
-              <div className="flex space-x-2">
+              <div className="flex space-x-3">
                 <button
                   onClick={() => copyToClipboard(getContentApiUrl(), 'Content API URL')}
                   className="btn-secondary btn-sm flex-1"
@@ -606,9 +606,9 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               </div>
             </div>
 
-            <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
-              <div className="flex items-center space-x-3 mb-3">
-                <div className="p-2 bg-green-500 rounded-lg">
+            <div className="p-6 bg-green-50 border border-green-200 rounded-xl">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="p-3 bg-green-500 rounded-lg">
                   <Plus className="h-5 w-5 text-white" />
                 </div>
                 <div>
@@ -616,12 +616,12 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                   <p className="text-sm text-green-600">Access all published products</p>
                 </div>
               </div>
-              <div className="bg-white border border-green-200 rounded-lg p-3 mb-3">
+              <div className="bg-white border border-green-200 rounded-lg p-4 mb-4">
                 <code className="text-xs text-green-800 break-all font-mono">
                   {getProductsApiUrl()}
                 </code>
               </div>
-              <div className="flex space-x-2">
+              <div className="flex space-x-3">
                 <button
                   onClick={() => copyToClipboard(getProductsApiUrl(), 'Products API URL')}
                   className="btn-secondary btn-sm flex-1"
@@ -646,10 +646,10 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
 
       {/* Blog Information Section */}
       {currentBlog && (
-        <div className="card mt-8">
+        <div className="card mt-12">
           <div className="card-header">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="p-3 bg-gray-100 rounded-lg">
+            <div className="flex items-center space-x-4">
+              <div className="p-4 bg-gray-100 rounded-lg">
                 <Database className="h-8 w-8 text-gray-600" />
               </div>
               <h2 className="card-title">Blog Information</h2>
@@ -659,16 +659,16 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
             </p>
           </div>
           <div className="card-content">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Blog ID</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Blog ID</h4>
                 <div className="flex items-center justify-between">
-                  <code className="text-xs font-mono text-gray-800 bg-white px-2 py-1 rounded border">
+                  <code className="text-xs font-mono text-gray-800 bg-white px-3 py-2 rounded border">
                     {currentBlog.id}
                   </code>
                   <button
                     onClick={() => copyToClipboard(currentBlog.id, 'Blog ID')}
-                    className="p-1 text-gray-600 hover:text-gray-800 transition-colors"
+                    className="p-2 text-gray-600 hover:text-gray-800 transition-colors"
                     title="Copy Blog ID"
                   >
                     <Copy className="h-3 w-3" />
@@ -676,8 +676,8 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                 </div>
               </div>
               
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Created Date</h4>
+              <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Created Date</h4>
                 <div className="text-sm text-gray-800">
                   {currentBlog.createdAt?.toDate().toLocaleDateString('en-US', {
                     year: 'numeric',
@@ -687,8 +687,8 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                 </div>
               </div>
               
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Last Updated</h4>
+              <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Last Updated</h4>
                 <div className="text-sm text-gray-800">
                   {currentBlog.updatedAt?.toDate().toLocaleDateString('en-US', {
                     year: 'numeric',

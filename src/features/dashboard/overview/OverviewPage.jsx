@@ -93,7 +93,7 @@ export default function OverviewPage({ activeBlogId }) {
 
   return (
     <DynamicTransition loading={loading && productLoading} error={error || productError} className="section-spacing">
-      <div className="page-header">
+      <div className="page-header mb-16">
         <h1 className="page-title">Dashboard Overview</h1>
         <p className="page-description">
           Welcome to your dashboard overview
@@ -101,8 +101,8 @@ export default function OverviewPage({ activeBlogId }) {
       </div>
 
       {/* Content Statistics */}
-      <div>
-        <h2 className="text-2xl font-bold text-foreground mb-6">Blog Content</h2>
+      <div className="mb-16">
+        <h2 className="text-2xl font-bold text-foreground mb-8">Blog Content</h2>
         <DynamicTransition transitionType="slide-up">
           <div className="grid-responsive-4">
           {loading ? (
@@ -112,13 +112,13 @@ export default function OverviewPage({ activeBlogId }) {
           ) : (
             statCards.map((stat, index) => (
               <div key={index} className={`card border ${stat.borderColor} ${stat.bgColor}`}>
-                <div className="card-content p-6 sm:p-8">
+                <div className="card-content p-8 sm:p-10">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm sm:text-base font-medium text-muted-foreground mb-2 sm:mb-3">{stat.title}</p>
-                      <p className="text-3xl sm:text-4xl font-bold text-foreground">{stat.value}</p>
+                      <p className="text-sm sm:text-base font-medium text-muted-foreground mb-3 sm:mb-4">{stat.title}</p>
+                      <p className="text-3xl sm:text-4xl font-bold text-foreground leading-none">{stat.value}</p>
                     </div>
-                    <div className={`p-3 sm:p-4 rounded-full ${stat.bgColor} border ${stat.borderColor}`}>
+                    <div className={`p-4 sm:p-5 rounded-full ${stat.bgColor} border ${stat.borderColor}`}>
                       <stat.icon className={`h-6 w-6 sm:h-8 sm:w-8 ${stat.color}`} />
                     </div>
                   </div>
@@ -131,8 +131,8 @@ export default function OverviewPage({ activeBlogId }) {
        </div>
 
       {/* Product Statistics */}
-      <div>
-        <h2 className="text-2xl font-bold text-foreground mb-6">Products</h2>
+      <div className="mb-16">
+        <h2 className="text-2xl font-bold text-foreground mb-8">Products</h2>
         <DynamicTransition transitionType="slide-up" delay={100}>
           <div className="grid-responsive-4">
           {productLoading ? (
@@ -142,13 +142,13 @@ export default function OverviewPage({ activeBlogId }) {
           ) : (
             productStatCards.map((stat, index) => (
               <div key={index} className={`card border ${stat.borderColor} ${stat.bgColor}`}>
-                <div className="card-content p-6 sm:p-8">
+                <div className="card-content p-8 sm:p-10">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm sm:text-base font-medium text-muted-foreground mb-2 sm:mb-3">{stat.title}</p>
-                      <p className="text-3xl sm:text-4xl font-bold text-foreground">{stat.value}</p>
+                      <p className="text-sm sm:text-base font-medium text-muted-foreground mb-3 sm:mb-4">{stat.title}</p>
+                      <p className="text-3xl sm:text-4xl font-bold text-foreground leading-none">{stat.value}</p>
                     </div>
-                    <div className={`p-3 sm:p-4 rounded-full ${stat.bgColor} border ${stat.borderColor}`}>
+                    <div className={`p-4 sm:p-5 rounded-full ${stat.bgColor} border ${stat.borderColor}`}>
                       <stat.icon className={`h-6 w-6 sm:h-8 sm:w-8 ${stat.color}`} />
                     </div>
                   </div>
@@ -167,72 +167,72 @@ export default function OverviewPage({ activeBlogId }) {
           <p className="card-description">Get started with these common tasks</p>
         </div>
         <div className="card-content">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <Link
               to="/dashboard/create"
-              className="group p-6 sm:p-8 border border-border rounded-lg hover:border-primary/50 transition-all duration-200 hover:shadow-md"
+              className="group p-8 sm:p-10 border border-border rounded-xl hover:border-primary/50 transition-all duration-200 hover:shadow-md"
             >
-              <Plus className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-3">Create Blog Post</h3>
-              <p className="text-base text-muted-foreground">Start writing a new article</p>
+              <Plus className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-6" />
+              <h3 className="text-lg font-semibold text-foreground mb-4">Create Blog Post</h3>
+              <p className="text-base text-muted-foreground leading-relaxed">Start writing a new article</p>
             </Link>
             
             <Link
               to="/dashboard/create-product"
-              className="group p-6 sm:p-8 border border-border rounded-lg hover:border-primary/50 transition-all duration-200 hover:shadow-md"
+              className="group p-8 sm:p-10 border border-border rounded-xl hover:border-primary/50 transition-all duration-200 hover:shadow-md"
             >
-              <Package className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-3">Add Product</h3>
-              <p className="text-base text-muted-foreground">Add a new product to your catalog</p>
+              <Package className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-6" />
+              <h3 className="text-lg font-semibold text-foreground mb-4">Add Product</h3>
+              <p className="text-base text-muted-foreground leading-relaxed">Add a new product to your catalog</p>
             </Link>
             
             <Link
               to="/dashboard/manage"
-              className="group p-6 sm:p-8 border border-border rounded-lg hover:border-primary/50 transition-all duration-200 hover:shadow-md"
+              className="group p-8 sm:p-10 border border-border rounded-xl hover:border-primary/50 transition-all duration-200 hover:shadow-md"
             >
-              <FileText className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-3">Manage Content</h3>
-              <p className="text-base text-muted-foreground">Edit or delete existing content</p>
+              <FileText className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-6" />
+              <h3 className="text-lg font-semibold text-foreground mb-4">Manage Content</h3>
+              <p className="text-base text-muted-foreground leading-relaxed">Edit or delete existing content</p>
             </Link>
             
             <Link
               to="/dashboard/manage-products"
-              className="group p-6 sm:p-8 border border-border rounded-lg hover:border-primary/50 transition-all duration-200 hover:shadow-md"
+              className="group p-8 sm:p-10 border border-border rounded-xl hover:border-primary/50 transition-all duration-200 hover:shadow-md"
             >
-              <ShoppingBag className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-3">Manage Products</h3>
-              <p className="text-base text-muted-foreground">Edit or delete existing products</p>
+              <ShoppingBag className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-6" />
+              <h3 className="text-lg font-semibold text-foreground mb-4">Manage Products</h3>
+              <p className="text-base text-muted-foreground leading-relaxed">Edit or delete existing products</p>
             </Link>
             
             <Link
               to="/dashboard/analytics"
-              className="group p-6 sm:p-8 border border-border rounded-lg hover:border-primary/50 transition-all duration-200 hover:shadow-md"
+              className="group p-8 sm:p-10 border border-border rounded-xl hover:border-primary/50 transition-all duration-200 hover:shadow-md"
             >
-              <BarChart3 className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-3">View Analytics</h3>
-              <p className="text-base text-muted-foreground">Track performance and usage</p>
+              <BarChart3 className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-6" />
+              <h3 className="text-lg font-semibold text-foreground mb-4">View Analytics</h3>
+              <p className="text-base text-muted-foreground leading-relaxed">Track performance and usage</p>
             </Link>
             
             <a
               href={`/users/${currentUser?.uid}/blogs/${activeBlogId}/api/content.json`}
               target="_blank"
               rel="noopener noreferrer"
-              className="group p-6 sm:p-8 border border-border rounded-lg hover:border-primary/50 transition-all duration-200 hover:shadow-md"
+              className="group p-8 sm:p-10 border border-border rounded-xl hover:border-primary/50 transition-all duration-200 hover:shadow-md"
             >
-              <Eye className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-3">Content API</h3>
-              <p className="text-base text-muted-foreground">Check your blog content API</p>
+              <Eye className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-6" />
+              <h3 className="text-lg font-semibold text-foreground mb-4">Content API</h3>
+              <p className="text-base text-muted-foreground leading-relaxed">Check your blog content API</p>
             </a>
             
             <a
               href={`/users/${currentUser?.uid}/blogs/${activeBlogId}/api/products.json`}
               target="_blank"
               rel="noopener noreferrer"
-              className="group p-6 sm:p-8 border border-border rounded-lg hover:border-primary/50 transition-all duration-200 hover:shadow-md"
+              className="group p-8 sm:p-10 border border-border rounded-xl hover:border-primary/50 transition-all duration-200 hover:shadow-md"
             >
-              <Package className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-3">Products API</h3>
-              <p className="text-base text-muted-foreground">Check your products API endpoint</p>
+              <Package className="h-8 w-8 sm:h-10 sm:w-10 text-primary mb-6" />
+              <h3 className="text-lg font-semibold text-foreground mb-4">Products API</h3>
+              <p className="text-base text-muted-foreground leading-relaxed">Check your products API endpoint</p>
             </a>
           </div>
         </div>

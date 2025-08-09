@@ -68,7 +68,7 @@ export default function AnalyticsPage({ activeBlogId }) {
 
   return (
     <DynamicTransition loading={loading} error={error} className="section-spacing">
-      <div className="page-header">
+      <div className="page-header mb-16">
         <h1 className="page-title">Analytics Dashboard</h1>
         <p className="page-description">
           Track your content performance and system usage
@@ -76,13 +76,13 @@ export default function AnalyticsPage({ activeBlogId }) {
       </div>
 
       {/* Site Analytics Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
         <div className="card border-blue-200 bg-blue-50">
-          <div className="card-content p-6">
+          <div className="card-content p-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-600 mb-2">Total Views</p>
-                <p className="text-3xl font-bold text-blue-900">
+                <p className="text-sm font-medium text-blue-600 mb-3">Total Views</p>
+                <p className="text-3xl font-bold text-blue-900 leading-none">
                   {siteAnalytics?.totalViews || 0}
                 </p>
               </div>
@@ -92,11 +92,11 @@ export default function AnalyticsPage({ activeBlogId }) {
         </div>
 
         <div className="card border-green-200 bg-green-50">
-          <div className="card-content p-6">
+          <div className="card-content p-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-600 mb-2">Interactions</p>
-                <p className="text-3xl font-bold text-green-900">
+                <p className="text-sm font-medium text-green-600 mb-3">Interactions</p>
+                <p className="text-3xl font-bold text-green-900 leading-none">
                   {siteAnalytics?.totalInteractions || 0}
                 </p>
               </div>
@@ -106,11 +106,11 @@ export default function AnalyticsPage({ activeBlogId }) {
         </div>
 
         <div className="card border-purple-200 bg-purple-50">
-          <div className="card-content p-6">
+          <div className="card-content p-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-600 mb-2">Unique Sessions</p>
-                <p className="text-3xl font-bold text-purple-900">
+                <p className="text-sm font-medium text-purple-600 mb-3">Unique Sessions</p>
+                <p className="text-3xl font-bold text-purple-900 leading-none">
                   {siteAnalytics?.uniqueSessions || 0}
                 </p>
               </div>
@@ -120,11 +120,11 @@ export default function AnalyticsPage({ activeBlogId }) {
         </div>
 
         <div className="card border-orange-200 bg-orange-50">
-          <div className="card-content p-6">
+          <div className="card-content p-8">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-orange-600 mb-2">Top Content</p>
-                <p className="text-3xl font-bold text-orange-900">
+                <p className="text-sm font-medium text-orange-600 mb-3">Top Content</p>
+                <p className="text-3xl font-bold text-orange-900 leading-none">
                   {siteAnalytics?.topContent?.length || 0}
                 </p>
               </div>
@@ -134,7 +134,7 @@ export default function AnalyticsPage({ activeBlogId }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {/* Top Content */}
         <div className="card">
           <div className="card-header">
@@ -145,11 +145,11 @@ export default function AnalyticsPage({ activeBlogId }) {
           </div>
           <div className="card-content">
             {siteAnalytics?.topContent && siteAnalytics.topContent.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {siteAnalytics.topContent.slice(0, 5).map((content, index) => (
-                  <div key={content.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                  <div key={content.id} className="flex items-center justify-between p-6 bg-muted/30 rounded-lg">
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-foreground truncate">
+                      <div className="text-base font-medium text-foreground truncate mb-1">
                         {content.title}
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -157,7 +157,7 @@ export default function AnalyticsPage({ activeBlogId }) {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-bold text-primary">
+                      <div className="text-xl font-bold text-primary">
                         {content.viewCount || 0}
                       </div>
                       <div className="text-xs text-muted-foreground">views</div>
@@ -166,7 +166,7 @@ export default function AnalyticsPage({ activeBlogId }) {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-12 text-muted-foreground">
                 <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No content analytics available</p>
                 <p className="text-sm mt-2">Publish some content to see analytics data</p>
@@ -185,25 +185,25 @@ export default function AnalyticsPage({ activeBlogId }) {
           </div>
           <div className="card-content">
             {backendUsage ? (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {/* Document Counts */}
                 <div>
-                  <h4 className="text-base font-medium text-foreground mb-3">Document Counts</h4>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="text-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="text-lg font-bold text-blue-900">
+                  <h4 className="text-base font-medium text-foreground mb-4">Document Counts</h4>
+                  <div className="grid grid-cols-3 gap-6">
+                    <div className="text-center p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="text-xl font-bold text-blue-900">
                         {backendUsage.documentCounts?.content || 0}
                       </div>
                       <div className="text-xs text-blue-600">Content</div>
                     </div>
-                    <div className="text-center p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="text-lg font-bold text-green-900">
+                    <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="text-xl font-bold text-green-900">
                         {backendUsage.documentCounts?.pageViews || 0}
                       </div>
                       <div className="text-xs text-green-600">Page Views</div>
                     </div>
-                    <div className="text-center p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                      <div className="text-lg font-bold text-purple-900">
+                    <div className="text-center p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                      <div className="text-xl font-bold text-purple-900">
                         {backendUsage.documentCounts?.interactions || 0}
                       </div>
                       <div className="text-xs text-purple-600">Interactions</div>
@@ -214,11 +214,11 @@ export default function AnalyticsPage({ activeBlogId }) {
                 {/* Storage Usage */}
                 {backendUsage.storageUsage && !backendUsage.storageUsage.error && (
                   <div>
-                    <h4 className="text-base font-medium text-foreground mb-3">Storage Usage</h4>
-                    <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                    <h4 className="text-base font-medium text-foreground mb-4">Storage Usage</h4>
+                    <div className="p-6 bg-orange-50 border border-orange-200 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="text-lg font-bold text-orange-900">
+                          <div className="text-xl font-bold text-orange-900">
                             {backendUsage.storageUsage.estimated ? 'Estimated' : 'Actual'}
                           </div>
                           <div className="text-sm text-orange-600">
@@ -231,7 +231,7 @@ export default function AnalyticsPage({ activeBlogId }) {
                         <HardDrive className="h-8 w-8 text-orange-600" />
                       </div>
                       {backendUsage.storageUsage.note && (
-                        <p className="text-xs text-orange-600 mt-2">
+                        <p className="text-xs text-orange-600 mt-3">
                           {backendUsage.storageUsage.note}
                         </p>
                       )}
@@ -241,12 +241,12 @@ export default function AnalyticsPage({ activeBlogId }) {
 
                 {/* Error Messages */}
                 {(backendUsage.error || backendUsage.note) && (
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="p-6 bg-amber-50 border border-amber-200 rounded-lg">
                     <div className="flex items-start space-x-3">
                       <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm text-amber-800 font-medium">Note</p>
-                        <p className="text-sm text-amber-700">
+                        <p className="text-sm text-amber-800 font-medium mb-2">Note</p>
+                        <p className="text-sm text-amber-700 leading-relaxed">
                           {backendUsage.error || backendUsage.note}
                         </p>
                       </div>
@@ -255,7 +255,7 @@ export default function AnalyticsPage({ activeBlogId }) {
                 )}
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-12 text-muted-foreground">
                 <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No backend usage data available</p>
               </div>
@@ -274,11 +274,11 @@ export default function AnalyticsPage({ activeBlogId }) {
             </p>
           </div>
           <div className="card-content">
-            <div className="h-64 bg-muted/30 rounded-lg flex items-center justify-center">
+            <div className="h-80 bg-muted/30 rounded-lg flex items-center justify-center">
               <div className="text-center">
                 <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <p className="text-muted-foreground">Chart visualization would go here</p>
-                <p className="text-sm text-muted-foreground mt-2">
+                <p className="text-muted-foreground mb-3">Chart visualization would go here</p>
+                <p className="text-sm text-muted-foreground">
                   Consider integrating a charting library like Recharts for visual analytics
                 </p>
               </div>
@@ -297,19 +297,19 @@ export default function AnalyticsPage({ activeBlogId }) {
             </p>
           </div>
           <div className="card-content">
-            <div className="space-y-3">
+            <div className="space-y-4">
               {Object.entries(siteAnalytics.referrerStats)
                 .sort(([,a], [,b]) => b - a)
                 .slice(0, 10)
                 .map(([referrer, count]) => (
-                  <div key={referrer} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <div key={referrer} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <Wifi className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium text-foreground">
+                      <span className="text-base font-medium text-foreground">
                         {referrer === 'Direct' ? 'Direct Traffic' : referrer}
                       </span>
                     </div>
-                    <div className="text-sm font-bold text-primary">{count}</div>
+                    <div className="text-base font-bold text-primary">{count}</div>
                   </div>
                 ))}
             </div>

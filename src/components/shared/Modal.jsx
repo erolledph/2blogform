@@ -46,17 +46,17 @@ export default function Modal({
         />
         
         {/* Modal */}
-        <div className={`relative bg-white rounded-lg shadow-xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto`}>
+        <div className={`relative bg-white rounded-xl shadow-xl w-full ${sizeClasses[size]} max-h-[90vh] overflow-y-auto`}>
           {/* Header */}
           {(title || showCloseButton) && (
-            <div className="flex items-center justify-between p-6 border-b border-border">
+            <div className="flex items-center justify-between p-8 border-b border-border">
               {title && (
-                <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+                <h2 className="text-xl font-semibold text-foreground leading-tight">{title}</h2>
               )}
               {showCloseButton && (
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-muted rounded-md transition-colors"
+                  className="p-3 hover:bg-muted rounded-md transition-colors"
                   aria-label="Close modal"
                 >
                   <X className="h-5 w-5" />
@@ -66,7 +66,7 @@ export default function Modal({
           )}
           
           {/* Content */}
-          <div className="p-6">
+          <div className="p-8">
             {children}
           </div>
         </div>

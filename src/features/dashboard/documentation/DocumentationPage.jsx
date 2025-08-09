@@ -209,24 +209,24 @@ if products:
   };
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-12">
       <div>
-        <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">API Documentation</h1>
-        <p className="text-lg text-muted-foreground">
+        <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">API Documentation</h1>
+        <p className="text-xl text-muted-foreground leading-relaxed">
           Learn how to integrate your CMS content and products into external applications using our public REST API
         </p>
       </div>
 
       {/* Introduction Section */}
       <div className="card border-green-200 bg-green-50">
-        <div className="card-content p-6">
+        <div className="card-content p-8">
           <div className="flex items-start space-x-4">
             <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
               <ExternalLink className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-green-800 mb-2">Public API Overview</h3>
-              <div className="text-base text-green-700 space-y-2">
+              <h3 className="text-lg font-semibold text-green-800 mb-4">Public API Overview</h3>
+              <div className="text-base text-green-700 space-y-3">
                 <p>
                   This CMS provides public REST API endpoints that allow you to fetch your published content and products 
                   for use in external websites, mobile apps, or any application that can make HTTP requests.
@@ -234,7 +234,7 @@ if products:
                 <p>
                   <strong>Key Features:</strong>
                 </p>
-                <ul className="list-disc list-inside space-y-1 ml-4">
+                <ul className="list-disc list-inside space-y-2 ml-6">
                   <li>Read-only access to published content and products</li>
                   <li>JSON format responses for easy integration</li>
                   <li>CORS enabled for browser-based applications</li>
@@ -249,29 +249,29 @@ if products:
 
       {/* User-Specific API Notice */}
       <div className="card border-blue-200 bg-blue-50">
-        <div className="card-content p-6">
+        <div className="card-content p-8">
           <div className="flex items-start space-x-4">
             <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
               <ExternalLink className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-blue-800 mb-2">Multi-Tenant API Structure</h3>
-              <div className="text-base text-blue-700 space-y-2">
+              <h3 className="text-lg font-semibold text-blue-800 mb-4">Multi-Tenant API Structure</h3>
+              <div className="text-base text-blue-700 space-y-3">
                 <p>
                   This CMS uses a multi-tenant architecture where each user has their own isolated data space. 
                   API endpoints include both a User ID and Blog ID to ensure proper data isolation.
                 </p>
                 <p>
-                  <strong>Your User ID:</strong> <code className="bg-blue-100 px-2 py-1 rounded text-sm">{uid}</code>
+                  <strong>Your User ID:</strong> <code className="bg-blue-100 px-3 py-1 rounded text-sm">{uid}</code>
                 </p>
                 <p>
-                  <strong>Current Blog ID:</strong> <code className="bg-blue-100 px-2 py-1 rounded text-sm">{blogId}</code>
+                  <strong>Current Blog ID:</strong> <code className="bg-blue-100 px-3 py-1 rounded text-sm">{blogId}</code>
                 </p>
                 <p>
                   <strong>How to find your IDs:</strong>
                 </p>
                 <p>
-                  <ul className="list-disc list-inside space-y-1 ml-4">
+                  <ul className="list-disc list-inside space-y-2 ml-6">
                     <li>Your User ID is visible in the dashboard URL and account settings</li>
                     <li>Your Blog ID can be found in the "Manage Blog" page under blog information</li>
                     <li>Both IDs are included in the API endpoint URLs shown below</li>
@@ -292,9 +292,9 @@ if products:
           </p>
         </div>
         <div className="card-content">
-          <div className="bg-muted rounded-lg p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="bg-muted rounded-lg p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
             <code className="text-base font-mono text-foreground break-all">{apiEndpoint}</code>
-            <div className="flex space-x-3 flex-shrink-0">
+            <div className="flex space-x-4 flex-shrink-0">
               <button
                 onClick={() => copyToClipboard(apiEndpoint)}
                 className="btn-ghost btn-sm"
@@ -325,9 +325,9 @@ if products:
           </p>
         </div>
         <div className="card-content">
-          <div className="bg-muted rounded-lg p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="bg-muted rounded-lg p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
             <code className="text-base font-mono text-foreground break-all">{productsApiEndpoint}</code>
-            <div className="flex space-x-3 flex-shrink-0">
+            <div className="flex space-x-4 flex-shrink-0">
               <button
                 onClick={() => copyToClipboard(productsApiEndpoint)}
                 className="btn-ghost btn-sm"
@@ -358,7 +358,7 @@ if products:
           </p>
         </div>
         <div className="card-content">
-          <div className="bg-muted rounded-lg p-6 overflow-x-auto">
+          <div className="bg-muted rounded-lg p-8 overflow-x-auto">
             <pre className="text-sm text-foreground whitespace-pre-wrap">
 {`[
   "data": [
@@ -410,7 +410,7 @@ if products:
           </p>
         </div>
         <div className="card-content">
-          <div className="bg-muted rounded-lg p-6 overflow-x-auto">
+          <div className="bg-muted rounded-lg p-8 overflow-x-auto">
             <pre className="text-sm text-foreground whitespace-pre-wrap">
 {`[
   "data": [
@@ -465,7 +465,7 @@ if products:
 
       {/* Code Examples */}
       <div className="space-y-6">
-        <h2 className="text-3xl font-bold text-foreground mb-8">Code Examples</h2>
+        <h2 className="text-3xl font-bold text-foreground mb-10">Code Examples</h2>
 
         {/* API Query Parameters */}
         <div className="card">
@@ -476,10 +476,10 @@ if products:
             </p>
           </div>
           <div className="card-content">
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div>
-                <h4 className="text-lg font-semibold text-foreground mb-3">Content API Parameters</h4>
-                <div className="bg-muted rounded-lg p-4 overflow-x-auto">
+                <h4 className="text-lg font-semibold text-foreground mb-4">Content API Parameters</h4>
+                <div className="bg-muted rounded-lg p-6 overflow-x-auto">
                   <pre className="text-sm text-foreground whitespace-pre-wrap">
 {`# Filter by category
 ${apiEndpoint}?category=Technology
@@ -500,8 +500,8 @@ ${apiEndpoint}?category=Technology&tag=javascript&limit=5&sortBy=createdAt&sortO
               </div>
               
               <div>
-                <h4 className="text-lg font-semibold text-foreground mb-3">Products API Parameters</h4>
-                <div className="bg-muted rounded-lg p-4 overflow-x-auto">
+                <h4 className="text-lg font-semibold text-foreground mb-4">Products API Parameters</h4>
+                <div className="bg-muted rounded-lg p-6 overflow-x-auto">
                   <pre className="text-sm text-foreground whitespace-pre-wrap">
 {`# Filter by category
 ${productsApiEndpoint}?category=Electronics
@@ -525,11 +525,11 @@ ${productsApiEndpoint}?category=Electronics&minPrice=100&maxPrice=500&limit=10&s
         </div>
 
         {/* Content API Examples */}
-        <h3 className="text-2xl font-bold text-foreground mb-6">Content API Examples</h3>
+        <h3 className="text-2xl font-bold text-foreground mb-8">Content API Examples</h3>
         
         <div className="card">
           <div className="card-header">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
               <h4 className="card-title">JavaScript (Browser)</h4>
               <button
                 onClick={() => copyToClipboard(codeExamples.javascript)}
@@ -541,7 +541,7 @@ ${productsApiEndpoint}?category=Electronics&minPrice=100&maxPrice=500&limit=10&s
             </div>
           </div>
           <div className="card-content">
-            <div className="bg-muted rounded-lg p-6 overflow-x-auto">
+            <div className="bg-muted rounded-lg p-8 overflow-x-auto">
               <pre className="text-sm text-foreground whitespace-pre-wrap">
                 <code>{codeExamples.javascript}</code>
               </pre>

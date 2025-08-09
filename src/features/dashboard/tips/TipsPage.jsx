@@ -158,33 +158,33 @@ export default function TipsPage() {
   ];
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-12">
       <div>
-        <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">SEO Blogging Tips</h1>
-        <p className="text-lg text-muted-foreground">
+        <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">SEO Blogging Tips</h1>
+        <p className="text-xl text-muted-foreground leading-relaxed">
           Master SEO blogging with proven strategies to rank higher, drive organic traffic, and grow your audience
         </p>
       </div>
 
       {/* Main SEO Tips */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         {seoTips.map((tip, index) => (
           <div key={index} className="card">
             <div className="card-header">
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="p-3 bg-primary/10 rounded-lg">
+              <div className="flex items-center space-x-4">
+                <div className="p-4 bg-primary/10 rounded-lg">
                   <tip.icon className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="card-title text-xl">{tip.title}</h3>
               </div>
-              <p className="card-description text-base">{tip.description}</p>
+              <p className="card-description text-base leading-relaxed">{tip.description}</p>
             </div>
             <div className="card-content">
-              <ul className="space-y-3">
+              <ul className="space-y-4">
                 {tip.points.map((point, pointIndex) => (
                   <li key={pointIndex} className="flex items-start">
-                    <div className="w-2 h-2 bg-primary rounded-full mt-3 mr-4 flex-shrink-0"></div>
-                    <span className="text-base text-foreground">{point}</span>
+                    <div className="w-2 h-2 bg-primary rounded-full mt-3 mr-5 flex-shrink-0"></div>
+                    <span className="text-base text-foreground leading-relaxed">{point}</span>
                   </li>
                 ))}
               </ul>
@@ -196,19 +196,19 @@ export default function TipsPage() {
       {/* Quick SEO Tips */}
       <div className="card">
         <div className="card-header">
-          <div className="flex items-center space-x-4 mb-4">
-            <div className="p-3 bg-primary/10 rounded-lg">
+          <div className="flex items-center space-x-4">
+            <div className="p-4 bg-primary/10 rounded-lg">
               <Zap className="h-8 w-8 text-primary" />
             </div>
             <h2 className="card-title">Quick SEO Wins</h2>
           </div>
         </div>
         <div className="card-content">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {quickSeoTips.map((tip, index) => (
-              <div key={index} className="flex items-start space-x-3 p-4 bg-muted/30 rounded-lg">
+              <div key={index} className="flex items-start space-x-4 p-6 bg-muted/30 rounded-lg">
                 <div className="w-2 h-2 bg-primary rounded-full mt-3 flex-shrink-0"></div>
-                <span className="text-base text-foreground">{tip}</span>
+                <span className="text-base text-foreground leading-relaxed">{tip}</span>
               </div>
             ))}
           </div>
@@ -221,18 +221,18 @@ export default function TipsPage() {
           <h2 className="card-title">High-Performing Content Types</h2>
         </div>
         <div className="card-content">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {contentTypes.map((content, index) => (
-              <div key={index} className="p-6 border border-border rounded-lg">
-                <h3 className="text-lg font-semibold text-foreground mb-3">{content.type}</h3>
-                <p className="text-base text-muted-foreground mb-4">{content.description}</p>
-                <div className="space-y-2">
+              <div key={index} className="p-8 border border-border rounded-lg">
+                <h3 className="text-lg font-semibold text-foreground mb-4">{content.type}</h3>
+                <p className="text-base text-muted-foreground mb-6 leading-relaxed">{content.description}</p>
+                <div className="space-y-3">
                   <h4 className="text-sm font-medium text-foreground">SEO Tips:</h4>
-                  <ul className="space-y-1">
+                  <ul className="space-y-2">
                     {content.seoTips.map((tip, tipIndex) => (
                       <li key={tipIndex} className="flex items-start">
-                        <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                        <span className="text-sm text-muted-foreground">{tip}</span>
+                        <div className="w-1.5 h-1.5 bg-primary rounded-full mt-2 mr-4 flex-shrink-0"></div>
+                        <span className="text-sm text-muted-foreground leading-relaxed">{tip}</span>
                       </li>
                     ))}
                   </ul>
@@ -249,54 +249,54 @@ export default function TipsPage() {
           <h2 className="card-title">Pre-Publish SEO Checklist</h2>
         </div>
         <div className="card-content">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
             <div>
-              <h3 className="text-lg font-semibold text-foreground mb-4">Content Optimization</h3>
-              <ul className="space-y-3">
-                <li className="flex items-center space-x-3">
+              <h3 className="text-lg font-semibold text-foreground mb-6">Content Optimization</h3>
+              <ul className="space-y-4">
+                <li className="flex items-center space-x-4">
                   <input type="checkbox" className="w-4 h-4 text-primary" />
-                  <span className="text-base">Primary keyword in title and first paragraph</span>
+                  <span className="text-base leading-relaxed">Primary keyword in title and first paragraph</span>
                 </li>
-                <li className="flex items-center space-x-3">
+                <li className="flex items-center space-x-4">
                   <input type="checkbox" className="w-4 h-4 text-primary" />
-                  <span className="text-base">Meta description under 160 characters</span>
+                  <span className="text-base leading-relaxed">Meta description under 160 characters</span>
                 </li>
-                <li className="flex items-center space-x-3">
+                <li className="flex items-center space-x-4">
                   <input type="checkbox" className="w-4 h-4 text-primary" />
-                  <span className="text-base">Proper heading structure (H1, H2, H3)</span>
+                  <span className="text-base leading-relaxed">Proper heading structure (H1, H2, H3)</span>
                 </li>
-                <li className="flex items-center space-x-3">
+                <li className="flex items-center space-x-4">
                   <input type="checkbox" className="w-4 h-4 text-primary" />
-                  <span className="text-base">Internal links to related content</span>
+                  <span className="text-base leading-relaxed">Internal links to related content</span>
                 </li>
-                <li className="flex items-center space-x-3">
+                <li className="flex items-center space-x-4">
                   <input type="checkbox" className="w-4 h-4 text-primary" />
-                  <span className="text-base">External links to authoritative sources</span>
+                  <span className="text-base leading-relaxed">External links to authoritative sources</span>
                 </li>
               </ul>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-foreground mb-4">Technical SEO</h3>
-              <ul className="space-y-3">
-                <li className="flex items-center space-x-3">
+              <h3 className="text-lg font-semibold text-foreground mb-6">Technical SEO</h3>
+              <ul className="space-y-4">
+                <li className="flex items-center space-x-4">
                   <input type="checkbox" className="w-4 h-4 text-primary" />
-                  <span className="text-base">SEO-friendly URL slug</span>
+                  <span className="text-base leading-relaxed">SEO-friendly URL slug</span>
                 </li>
-                <li className="flex items-center space-x-3">
+                <li className="flex items-center space-x-4">
                   <input type="checkbox" className="w-4 h-4 text-primary" />
-                  <span className="text-base">Alt text for all images</span>
+                  <span className="text-base leading-relaxed">Alt text for all images</span>
                 </li>
-                <li className="flex items-center space-x-3">
+                <li className="flex items-center space-x-4">
                   <input type="checkbox" className="w-4 h-4 text-primary" />
-                  <span className="text-base">Optimized featured image</span>
+                  <span className="text-base leading-relaxed">Optimized featured image</span>
                 </li>
-                <li className="flex items-center space-x-3">
+                <li className="flex items-center space-x-4">
                   <input type="checkbox" className="w-4 h-4 text-primary" />
-                  <span className="text-base">Categories and tags assigned</span>
+                  <span className="text-base leading-relaxed">Categories and tags assigned</span>
                 </li>
-                <li className="flex items-center space-x-3">
+                <li className="flex items-center space-x-4">
                   <input type="checkbox" className="w-4 h-4 text-primary" />
-                  <span className="text-base">Content is mobile-friendly</span>
+                  <span className="text-base leading-relaxed">Content is mobile-friendly</span>
                 </li>
               </ul>
             </div>
@@ -310,35 +310,35 @@ export default function TipsPage() {
           <h2 className="card-title">Essential SEO Tools</h2>
         </div>
         <div className="card-content">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="p-6 border border-border rounded-lg">
-              <h3 className="text-lg font-semibold text-foreground mb-3">Free Tools</h3>
-              <ul className="space-y-2">
-                <li className="text-base text-muted-foreground">• Google Search Console</li>
-                <li className="text-base text-muted-foreground">• Google Analytics</li>
-                <li className="text-base text-muted-foreground">• Google Keyword Planner</li>
-                <li className="text-base text-muted-foreground">• Ubersuggest (limited free)</li>
-                <li className="text-base text-muted-foreground">• Answer The Public</li>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="p-8 border border-border rounded-lg">
+              <h3 className="text-lg font-semibold text-foreground mb-6">Free Tools</h3>
+              <ul className="space-y-3">
+                <li className="text-base text-muted-foreground leading-relaxed">• Google Search Console</li>
+                <li className="text-base text-muted-foreground leading-relaxed">• Google Analytics</li>
+                <li className="text-base text-muted-foreground leading-relaxed">• Google Keyword Planner</li>
+                <li className="text-base text-muted-foreground leading-relaxed">• Ubersuggest (limited free)</li>
+                <li className="text-base text-muted-foreground leading-relaxed">• Answer The Public</li>
               </ul>
             </div>
-            <div className="p-6 border border-border rounded-lg">
-              <h3 className="text-lg font-semibold text-foreground mb-3">Premium Tools</h3>
-              <ul className="space-y-2">
-                <li className="text-base text-muted-foreground">• Ahrefs</li>
-                <li className="text-base text-muted-foreground">• SEMrush</li>
-                <li className="text-base text-muted-foreground">• Moz Pro</li>
-                <li className="text-base text-muted-foreground">• Screaming Frog</li>
-                <li className="text-base text-muted-foreground">• Surfer SEO</li>
+            <div className="p-8 border border-border rounded-lg">
+              <h3 className="text-lg font-semibold text-foreground mb-6">Premium Tools</h3>
+              <ul className="space-y-3">
+                <li className="text-base text-muted-foreground leading-relaxed">• Ahrefs</li>
+                <li className="text-base text-muted-foreground leading-relaxed">• SEMrush</li>
+                <li className="text-base text-muted-foreground leading-relaxed">• Moz Pro</li>
+                <li className="text-base text-muted-foreground leading-relaxed">• Screaming Frog</li>
+                <li className="text-base text-muted-foreground leading-relaxed">• Surfer SEO</li>
               </ul>
             </div>
-            <div className="p-6 border border-border rounded-lg">
-              <h3 className="text-lg font-semibold text-foreground mb-3">WordPress Plugins</h3>
-              <ul className="space-y-2">
-                <li className="text-base text-muted-foreground">• Yoast SEO</li>
-                <li className="text-base text-muted-foreground">• RankMath</li>
-                <li className="text-base text-muted-foreground">• All in One SEO</li>
-                <li className="text-base text-muted-foreground">• Schema Pro</li>
-                <li className="text-base text-muted-foreground">• WP Rocket (speed)</li>
+            <div className="p-8 border border-border rounded-lg">
+              <h3 className="text-lg font-semibold text-foreground mb-6">WordPress Plugins</h3>
+              <ul className="space-y-3">
+                <li className="text-base text-muted-foreground leading-relaxed">• Yoast SEO</li>
+                <li className="text-base text-muted-foreground leading-relaxed">• RankMath</li>
+                <li className="text-base text-muted-foreground leading-relaxed">• All in One SEO</li>
+                <li className="text-base text-muted-foreground leading-relaxed">• Schema Pro</li>
+                <li className="text-base text-muted-foreground leading-relaxed">• WP Rocket (speed)</li>
               </ul>
             </div>
           </div>

@@ -398,15 +398,15 @@ export default function CreateContentPage({ activeBlogId }) {
   return (
     <DynamicTransition loading={contentLoading && isEditing} className="section-spacing">
       {/* Header with Action Buttons */}
-      <div className="page-header">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+      <div className="page-header mb-16">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
           <div>
             <h1 className="page-title">
               {isEditing ? 'Edit Content' : 'Create New Content'}
             </h1>
             {/* Auto-save indicator for editing */}
             {isEditing && (
-              <div className="mt-4">
+              <div className="mt-6">
                 <AutoSaveIndicator 
                   status={autoSaveStatus}
                   lastSaved={lastSaved}
@@ -421,7 +421,7 @@ export default function CreateContentPage({ activeBlogId }) {
         </div>
         
         {/* Action Buttons at Top */}
-        <div className="flex flex-col sm:flex-row justify-end space-y-4 sm:space-y-0 sm:space-x-4 pt-6 border-t border-border">
+        <div className="flex flex-col sm:flex-row justify-end space-y-4 sm:space-y-0 sm:space-x-6 pt-8 border-t border-border">
           <button
             type="button"
             onClick={() => navigate('/dashboard/manage')}
@@ -443,16 +443,16 @@ export default function CreateContentPage({ activeBlogId }) {
 
       <form id="content-form" onSubmit={handleSubmit}>
         {/* Two Column Layout for Wide Screens */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 lg:gap-10">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-10 lg:gap-12">
           
           {/* Left Column - Main Content (2/3 width on xl screens) */}
-          <div className="xl:col-span-2 space-y-8">
+          <div className="xl:col-span-2 space-y-10">
             {/* Content Details */}
             <div className="card">
               <div className="card-header">
                 <h2 className="card-title">Content Details</h2>
               </div>
-              <div className="card-content space-y-6">
+              <div className="card-content space-y-8">
                 <div className="grid-responsive-2">
                   <InputField
                     label="Title"
@@ -476,7 +476,7 @@ export default function CreateContentPage({ activeBlogId }) {
                 </div>
 
                 <div>
-                  <label className="block text-base font-medium text-foreground mb-4">
+                  <label className="block text-base font-medium text-foreground mb-3">
                     Content <span className="text-destructive">*</span>
                   </label>
                   <SimpleMDE
@@ -490,7 +490,7 @@ export default function CreateContentPage({ activeBlogId }) {
                     options={simpleMDEOptions}
                   />
                   {errors.content && (
-                    <p className="mt-2 text-sm text-destructive">{errors.content}</p>
+                    <p className="mt-3 text-sm text-destructive">{errors.content}</p>
                   )}
                 </div>
               </div>
@@ -501,11 +501,11 @@ export default function CreateContentPage({ activeBlogId }) {
               <div className="card-header">
                 <h3 className="card-title">Featured Image</h3>
               </div>
-              <div className="card-content space-y-6">
+              <div className="card-content space-y-8">
                 {/* Image Preview */}
                 {formData.featuredImageUrl ? (
-                  <div className="relative border border-border rounded-lg overflow-hidden bg-muted">
-                    <div className="flex justify-center items-center h-48 w-full">
+                  <div className="relative border border-border rounded-xl overflow-hidden bg-muted">
+                    <div className="flex justify-center items-center h-64 w-full">
                       <img
                         src={formData.featuredImageUrl}
                         alt="Featured Preview"
@@ -515,21 +515,21 @@ export default function CreateContentPage({ activeBlogId }) {
                     <button
                       type="button"
                       onClick={handleRemoveImage}
-                      className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
+                      className="absolute top-3 right-3 p-3 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors z-10"
                       title="Remove image"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border rounded-lg text-center bg-muted/20">
+                  <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed border-border rounded-xl text-center bg-muted/20">
                     <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
                     <p className="text-muted-foreground text-base">No featured image selected</p>
                   </div>
                 )}
 
                 {/* Gallery Selection Button */}
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <div className="flex flex-col sm:flex-row gap-6 justify-center">
                   <button
                     type="button"
                     onClick={() => setGalleryModal({ isOpen: true })}
@@ -549,8 +549,8 @@ export default function CreateContentPage({ activeBlogId }) {
                 </div>
                 
                 {/* Alternative URL Input */}
-                <div className="border-t border-border pt-6">
-                  <h4 className="text-base font-medium text-foreground mb-4">Or enter image URL</h4>
+                <div className="border-t border-border pt-8">
+                  <h4 className="text-base font-medium text-foreground mb-3">Or enter image URL</h4>
                   <InputField
                     label=""
                     name="featuredImageUrl"
@@ -565,15 +565,15 @@ export default function CreateContentPage({ activeBlogId }) {
           </div>
 
           {/* Right Column - Settings (1/3 width on xl screens) */}
-          <div className="space-y-8">
+          <div className="space-y-10">
             {/* Publish Settings */}
             <div className="card">
               <div className="card-header">
                 <h3 className="card-title">Publish Settings</h3>
               </div>
-              <div className="card-content space-y-6">
+              <div className="card-content space-y-8">
                 <div>
-                  <label className="block text-base font-medium text-foreground mb-4">
+                  <label className="block text-base font-medium text-foreground mb-3">
                     Status
                   </label>
                   <select
@@ -602,7 +602,7 @@ export default function CreateContentPage({ activeBlogId }) {
               <div className="card-header">
                 <h3 className="card-title">SEO Settings</h3>
               </div>
-              <div className="card-content space-y-6">
+              <div className="card-content space-y-8">
                 <InputField
                   label="SEO Title"
                   name="seoTitle"
@@ -612,7 +612,7 @@ export default function CreateContentPage({ activeBlogId }) {
                 />
 
                 <div>
-                  <label className="block text-base font-medium text-foreground mb-4">
+                  <label className="block text-base font-medium text-foreground mb-3">
                     Keywords (comma separated)
                   </label>
                   <input
@@ -626,12 +626,12 @@ export default function CreateContentPage({ activeBlogId }) {
                 </div>
 
                 <div>
-                  <label className="block text-base font-medium text-foreground mb-4">
+                  <label className="block text-base font-medium text-foreground mb-3">
                     Meta Description
                   </label>
                   <textarea
                     name="metaDescription"
-                    rows={4}
+                    rows={5}
                     className="input-field resize-none"
                     value={formData.metaDescription}
                     onChange={handleInputChange}
@@ -646,9 +646,9 @@ export default function CreateContentPage({ activeBlogId }) {
               <div className="card-header">
                 <h3 className="card-title">Organization</h3>
               </div>
-              <div className="card-content space-y-6">
+              <div className="card-content space-y-8">
                 <div>
-                  <label className="block text-base font-medium text-foreground mb-4">
+                  <label className="block text-base font-medium text-foreground mb-3">
                     Categories (comma separated)
                   </label>
                   <input
@@ -662,7 +662,7 @@ export default function CreateContentPage({ activeBlogId }) {
                 </div>
 
                 <div>
-                  <label className="block text-base font-medium text-foreground mb-4">
+                  <label className="block text-base font-medium text-foreground mb-3">
                     Tags (comma separated)
                   </label>
                   <input

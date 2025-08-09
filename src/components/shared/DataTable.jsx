@@ -92,10 +92,10 @@ export default function DataTable({
   }
 
   return (
-    <div className={`bg-card rounded-lg border border-border ${className}`}>
+    <div className={`bg-card rounded-xl border border-border shadow-sm ${className}`}>
       {/* Search */}
       {searchable && (
-        <div className="p-4 border-b border-border">
+        <div className="p-6 border-b border-border">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
@@ -103,7 +103,7 @@ export default function DataTable({
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full pl-10 pr-4 py-3 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
         </div>
@@ -117,7 +117,7 @@ export default function DataTable({
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`px-4 py-3 text-left text-sm font-medium text-muted-foreground ${
+                  className={`px-6 py-4 text-left text-sm font-medium text-muted-foreground ${
                     sortable ? 'cursor-pointer hover:text-foreground' : ''
                   }`}
                   onClick={() => handleSort(column.key)}
@@ -133,7 +133,7 @@ export default function DataTable({
           <tbody>
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={columns.length} className="px-6 py-12 text-center text-muted-foreground">
                   No data available
                 </td>
               </tr>
@@ -141,13 +141,13 @@ export default function DataTable({
               paginatedData.map((item, index) => (
                 <tr
                   key={item.id || index}
-                  className={`border-b border-border hover:bg-muted/50 ${
+                  className={`border-b border-border hover:bg-muted/50 min-h-[60px] ${
                     onRowClick ? 'cursor-pointer' : ''
                   }`}
                   onClick={() => onRowClick && onRowClick(item)}
                 >
                   {columns.map((column) => (
-                    <td key={column.key} className="px-4 py-3 text-sm text-foreground">
+                    <td key={column.key} className="px-6 py-4 text-sm text-foreground">
                       {column.render ? column.render(item[column.key], item) : item[column.key]}
                     </td>
                   ))}
@@ -160,7 +160,7 @@ export default function DataTable({
 
       {/* Pagination */}
       {paginated && totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-border">
           <div className="text-sm text-muted-foreground">
             Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, sortedData.length)} of {sortedData.length} results
           </div>
@@ -168,7 +168,7 @@ export default function DataTable({
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="p-2 rounded-md border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-3 rounded-md border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -178,7 +178,7 @@ export default function DataTable({
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="p-2 rounded-md border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-3 rounded-md border border-border hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronRight className="h-4 w-4" />
             </button>

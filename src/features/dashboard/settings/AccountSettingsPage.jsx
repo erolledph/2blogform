@@ -177,7 +177,7 @@ export default function AccountSettingsPage() {
 
   return (
     <div className="section-spacing">
-      <div className="page-header">
+      <div className="page-header mb-16">
         <h1 className="page-title">Account Settings</h1>
         <p className="page-description">
           Manage your account information and preferences
@@ -187,12 +187,12 @@ export default function AccountSettingsPage() {
       {initialLoading ? (
         <AccountSettingsSkeleton />
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
           {/* Profile Information */}
           <div className="card">
             <div className="card-header">
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="p-3 bg-blue-100 rounded-lg">
+              <div className="flex items-center space-x-4">
+                <div className="p-4 bg-blue-100 rounded-lg">
                   <User className="h-8 w-8 text-blue-600" />
                 </div>
                 <h2 className="card-title">Profile Information</h2>
@@ -202,7 +202,7 @@ export default function AccountSettingsPage() {
               </p>
             </div>
             <div className="card-content">
-              <form onSubmit={handleProfileSave} className="space-y-6">
+              <form onSubmit={handleProfileSave} className="space-y-8">
                 <InputField
                   label="Display Name"
                   name="displayName"
@@ -213,12 +213,12 @@ export default function AccountSettingsPage() {
                 />
                 
                 <div>
-                  <label className="block text-base font-medium text-foreground mb-4">
+                  <label className="block text-base font-medium text-foreground mb-3">
                     Bio
                   </label>
                   <textarea
                     name="bio"
-                    rows={3}
+                    rows={4}
                     className="input-field resize-none"
                     value={profileData.bio}
                     onChange={handleProfileInputChange}
@@ -263,8 +263,8 @@ export default function AccountSettingsPage() {
           {/* User Information */}
           <div className="card">
             <div className="card-header">
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="p-3 bg-primary/10 rounded-lg">
+              <div className="flex items-center space-x-4">
+                <div className="p-4 bg-primary/10 rounded-lg">
                   <User className="h-8 w-8 text-primary" />
                 </div>
                 <h2 className="card-title">User Information</h2>
@@ -273,14 +273,14 @@ export default function AccountSettingsPage() {
                 Your account details and system information
               </p>
             </div>
-            <div className="card-content space-y-6">
+            <div className="card-content space-y-8">
               <InputField
                 label="Email Address"
                 value={currentUser?.email || 'Not available'}
                 disabled
                 className="opacity-75 cursor-not-allowed"
               />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 Your email address cannot be changed from this interface
               </p>
               
@@ -290,7 +290,7 @@ export default function AccountSettingsPage() {
                 disabled
                 className="opacity-75 cursor-not-allowed"
               />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 Your unique user identifier used in API endpoints
               </p>
               
@@ -300,7 +300,7 @@ export default function AccountSettingsPage() {
                 disabled
                 className="opacity-75 cursor-not-allowed"
               />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground leading-relaxed">
                 Your current role in the system
               </p>
             </div>
@@ -309,8 +309,8 @@ export default function AccountSettingsPage() {
           {/* Currency Settings */}
           <div className="card">
             <div className="card-header">
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="p-3 bg-green-100 rounded-lg">
+              <div className="flex items-center space-x-4">
+                <div className="p-4 bg-green-100 rounded-lg">
                   <DollarSign className="h-8 w-8 text-green-600" />
                 </div>
                 <h2 className="card-title">Currency Settings</h2>
@@ -320,9 +320,9 @@ export default function AccountSettingsPage() {
               </p>
             </div>
             <div className="card-content">
-              <form onSubmit={handleSave} className="space-y-6">
+              <form onSubmit={handleSave} className="space-y-8">
                 <div>
-                  <label htmlFor="currency" className="block text-sm font-medium text-foreground mb-2">
+                  <label htmlFor="currency" className="block text-base font-medium text-foreground mb-3">
                     Currency Symbol
                   </label>
                   <select
@@ -339,9 +339,9 @@ export default function AccountSettingsPage() {
                   </select>
                 </div>
                 
-                <div className="p-4 bg-muted/30 rounded-lg border border-border">
-                  <h4 className="text-sm font-medium text-foreground mb-2">Preview</h4>
-                  <p className="text-base text-muted-foreground">
+                <div className="p-6 bg-muted/30 rounded-lg border border-border">
+                  <h4 className="text-sm font-medium text-foreground mb-3">Preview</h4>
+                  <p className="text-lg text-muted-foreground">
                     Sample price: <span className="font-semibold text-foreground">{currency}99.99</span>
                   </p>
                 </div>
@@ -368,18 +368,18 @@ export default function AccountSettingsPage() {
               </p>
             </div>
             <div className="card-content">
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {/* Account Limits */}
                 <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h3 className="text-base font-semibold text-blue-800 mb-4">Account Limits</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <h3 className="text-base font-semibold text-blue-800 mb-6">Account Limits</h3>
+                  <div className="grid grid-cols-2 gap-6 text-sm">
                     <div>
                       <span className="font-medium text-blue-700">Max Blogs:</span>
-                      <div className="text-blue-600">{currentUser?.maxBlogs || 1}</div>
+                      <div className="text-blue-600 text-lg font-semibold">{currentUser?.maxBlogs || 1}</div>
                     </div>
                     <div>
                       <span className="font-medium text-blue-700">Storage Limit:</span>
-                      <div className="text-blue-600">{currentUser?.totalStorageMB || 100} MB</div>
+                      <div className="text-blue-600 text-lg font-semibold">{currentUser?.totalStorageMB || 100} MB</div>
                     </div>
                   </div>
                 </div>
@@ -388,11 +388,11 @@ export default function AccountSettingsPage() {
                 <div className="p-6 bg-muted/30 rounded-lg border border-border">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-base font-semibold text-foreground mb-2">System Information</h3>
-                      <p className="text-sm text-muted-foreground">Current application version and build details</p>
+                      <h3 className="text-base font-semibold text-foreground mb-3">System Information</h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">Current application version and build details</p>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-bold text-primary">v2.0.0</div>
+                      <div className="text-xl font-bold text-primary">v2.0.0</div>
                       <div className="text-sm text-muted-foreground">User-Isolated CMS</div>
                     </div>
                   </div>
@@ -400,11 +400,11 @@ export default function AccountSettingsPage() {
                 
                 {/* Account Statistics */}
                 <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
-                  <h3 className="text-base font-semibold text-green-800 mb-4">Account Statistics</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <h3 className="text-base font-semibold text-green-800 mb-6">Account Statistics</h3>
+                  <div className="grid grid-cols-2 gap-6 text-sm">
                     <div>
                       <span className="font-medium text-green-700">Member Since:</span>
-                      <div className="text-green-600">
+                      <div className="text-green-600 font-medium">
                         {currentUser?.metadata?.creationTime 
                           ? new Date(currentUser.metadata.creationTime).toLocaleDateString()
                           : 'N/A'
@@ -413,7 +413,7 @@ export default function AccountSettingsPage() {
                     </div>
                     <div>
                       <span className="font-medium text-green-700">Last Sign In:</span>
-                      <div className="text-green-600">
+                      <div className="text-green-600 font-medium">
                         {currentUser?.metadata?.lastSignInTime 
                           ? new Date(currentUser.metadata.lastSignInTime).toLocaleDateString()
                           : 'N/A'

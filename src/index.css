@@ -331,8 +331,13 @@
     }
 
     .content-section {
-      @apply pt-0; /* padding-top: 0 */
+      @apply pt-4; /* Added top padding for mobile */
       min-height: calc(100vh - 64px); /* 4rem = 64px */
+    }
+    
+    /* Mobile-specific page container adjustments */
+    .page-container {
+      @apply px-4 py-8; /* Reduced padding on mobile for better space usage */
     }
   }
 
@@ -342,7 +347,7 @@
     }
 
     .main-content {
-      @apply ml-16 pt-0; /* ml-16 = 64px, padding-top: 0 */
+      @apply ml-16 pt-6; /* Added top padding for desktop */
       min-height: 100vh;
     }
     .nav-menu {
@@ -389,41 +394,41 @@
 
   /* Enhanced Button Styles */
   .btn {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 transition-all duration-200 h-10 px-4 py-2; /* h-10 = 40px, px-4 py-2 = 16px 8px */
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 transition-all duration-200 h-12 px-6 py-3; /* Increased height and padding */
     line-height: 1.4;
     white-space: nowrap;
   }
 
   .btn-primary {
-    @apply btn shadow-sm hover:opacity-90 h-12 px-6 py-3 text-base font-semibold; /* h-12 = 48px, px-6 py-3 = 24px 12px */
+    @apply btn shadow-sm hover:opacity-90 h-14 px-8 py-4 text-base font-semibold; /* Increased size */
     background-color: hsl(var(--primary)); /* Primary green background */
     color: hsl(var(--primary-foreground)); /* White text */
   }
 
   .btn-secondary {
-    @apply btn border border-input shadow-sm hover:bg-secondary/80 h-12 px-6 py-3 text-base; /* h-12 = 48px, px-6 py-3 = 24px 12px */
+    @apply btn border border-input shadow-sm hover:bg-secondary/80 h-14 px-8 py-4 text-base; /* Increased size */
     background-color: hsl(var(--secondary)); /* Light secondary background */
     color: hsl(var(--foreground)); /* Dark text */
   }
 
   .btn-ghost {
-    @apply btn hover:bg-accent;
+    @apply btn hover:bg-accent h-12 px-6 py-3; /* Consistent sizing */
     color: hsl(var(--foreground)); /* Ghost text color */
     background-color: transparent;
   }
 
   .btn-danger {
-    @apply btn shadow-sm hover:opacity-90 h-12 px-6 py-3 text-base font-semibold; /* h-12 = 48px, px-6 py-3 = 24px 12px */
+    @apply btn shadow-sm hover:opacity-90 h-14 px-8 py-4 text-base font-semibold; /* Increased size */
     background-color: hsl(var(--destructive));
     color: hsl(var(--destructive-foreground));
   }
 
   .btn-sm {
-    @apply h-8 rounded-md px-3 py-1 text-sm; /* h-8 = 32px, px-3 py-1 = 12px 4px */
+    @apply h-10 rounded-md px-4 py-2 text-sm; /* Increased size for better touch targets */
   }
 
   .btn-lg {
-    @apply h-14 rounded-md px-8 py-4 text-lg; /* h-14 = 56px, px-8 py-4 = 32px 16px */
+    @apply h-16 rounded-md px-10 py-5 text-lg; /* Increased size */
   }
 
   /* Minimum width utilities for consistent button sizing */
@@ -441,7 +446,7 @@
 
   /* Enhanced Input Styles */
   .input-field {
-    @apply flex h-12 w-full rounded-md border bg-background px-4 py-3 text-base ring-offset-background file:border-0 file:bg-transparent file:text-base file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200; /* h-12 = 48px, px-4 py-3 = 16px 12px */
+    @apply flex h-14 w-full rounded-md border bg-background px-6 py-4 text-base ring-offset-background file:border-0 file:bg-transparent file:text-base file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200; /* Increased height and padding */
     border-color: hsl(var(--border)); /* Light border color */
     color: hsl(var(--foreground)); /* Input text color */
     background-color: hsl(var(--background));
@@ -458,26 +463,26 @@
   }
 
   .card-header {
-    @apply flex flex-col space-y-2 p-6; /* space-y-2 = 8px, p-6 = 24px */
+    @apply flex flex-col space-y-3 p-8; /* Increased padding and spacing */
   }
 
   .card-title {
-    @apply text-xl font-semibold tracking-tight mb-3; /* mb-3 = 12px */
+    @apply text-xl font-semibold tracking-tight mb-4; /* Increased bottom margin */
     line-height: 1.3;
   }
 
   .card-description {
-    @apply text-base text-muted-foreground;
+    @apply text-base text-muted-foreground leading-relaxed; /* Improved line height */
     line-height: 1.6;
   }
 
   .card-content {
-    @apply p-6; /* p-6 = 24px */
+    @apply p-8; /* Increased padding */
     line-height: 1.6;
   }
 
   .card-footer {
-    @apply flex items-center p-6 pt-0 mt-4; /* p-6 = 24px, pt-0 = 0, mt-4 = 16px */
+    @apply flex items-center p-8 pt-0 mt-6; /* Increased padding and margin */
   }
 
   /* Enhanced Badge Styles */
@@ -522,44 +527,44 @@
 
   /* Page Layout Utilities */
   .page-container {
-    @apply container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl; /* px-4 sm:px-6 lg:px-8 = 16px sm:24px lg:32px, py-8 = 32px */
+    @apply container mx-auto px-6 sm:px-8 lg:px-12 py-12 max-w-7xl; /* Increased padding and margins */
   }
 
   .page-header {
-    @apply mb-8; /* mb-8 = 32px */
+    @apply mb-12; /* Increased bottom margin for better separation */
   }
 
   .page-title {
-    @apply text-3xl sm:text-4xl font-bold text-foreground mb-4; /* mb-4 = 16px */
+    @apply text-3xl sm:text-4xl font-bold text-foreground mb-6; /* Increased bottom margin */
     line-height: 1.2;
     word-wrap: break-word;
     hyphens: auto;
   }
 
   .page-description {
-    @apply text-base text-muted-foreground;
+    @apply text-lg text-muted-foreground leading-relaxed; /* Increased font size and line height */
     line-height: 1.7;
     word-wrap: break-word;
   }
 
   .section-spacing {
-    @apply space-y-8; /* space-y-8 = 32px */
+    @apply space-y-12; /* Increased section spacing */
   }
 
   .grid-responsive {
-    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6; /* gap-6 = 24px */
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8; /* Increased gap */
   }
 
   .grid-responsive-2 {
-    @apply grid grid-cols-1 lg:grid-cols-2 gap-6; /* gap-6 = 24px */
+    @apply grid grid-cols-1 lg:grid-cols-2 gap-8; /* Increased gap */
   }
 
   .grid-responsive-3 {
-    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6; /* gap-6 = 24px */
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8; /* Increased gap */
   }
 
   .grid-responsive-4 {
-    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6; /* gap-6 = 24px */
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8; /* Increased gap */
   }
 
   /* Updated Markdown Content Styling */
@@ -657,6 +662,132 @@
 
   .markdown-content img {
     border-color: hsl(var(--border));
+  }
+
+  /* Data table improvements */
+  .data-table-container {
+    @apply bg-card rounded-lg border border-border shadow-sm;
+  }
+  
+  .data-table-header {
+    @apply p-6 border-b border-border; /* Increased padding */
+  }
+  
+  .data-table-content {
+    @apply overflow-x-auto;
+  }
+  
+  .data-table-row {
+    @apply border-b border-border hover:bg-muted/50 transition-colors duration-200 min-h-[60px]; /* Increased row height */
+  }
+  
+  .data-table-cell {
+    @apply px-6 py-4 text-sm text-foreground; /* Increased cell padding */
+  }
+  
+  .data-table-header-cell {
+    @apply px-6 py-4 text-left text-sm font-medium text-muted-foreground; /* Increased header padding */
+  }
+  
+  /* Modal improvements */
+  .modal-content {
+    @apply bg-white rounded-xl shadow-xl border border-border; /* Increased border radius */
+  }
+  
+  .modal-header {
+    @apply flex items-center justify-between p-8 border-b border-border; /* Increased padding */
+  }
+  
+  .modal-body {
+    @apply p-8; /* Increased padding */
+  }
+  
+  .modal-footer {
+    @apply flex items-center justify-end space-x-6 p-8 pt-6 border-t border-border; /* Increased spacing and padding */
+  }
+  
+  /* Form improvements */
+  .form-section {
+    @apply space-y-8; /* Increased form field spacing */
+  }
+  
+  .form-group {
+    @apply space-y-3; /* Increased spacing within form groups */
+  }
+  
+  .form-label {
+    @apply block text-base font-medium text-foreground mb-3; /* Consistent label spacing */
+  }
+  
+  /* Table container improvements */
+  .table-container {
+    @apply overflow-x-auto rounded-xl border border-border shadow-sm; /* Improved styling */
+  }
+  
+  .table-wrapper {
+    @apply min-w-full;
+  }
+  
+  .table-header {
+    @apply bg-muted/50 border-b border-border sticky top-0 z-10; /* Made header sticky */
+  }
+  
+  .table-body {
+    @apply bg-background divide-y divide-border;
+  }
+  
+  /* Content area improvements */
+  .content-area {
+    @apply space-y-10; /* Increased content area spacing */
+  }
+  
+  .content-block {
+    @apply mb-10; /* Increased block spacing */
+  }
+  
+  /* Dashboard specific improvements */
+  .dashboard-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8; /* Increased gap */
+  }
+  
+  .dashboard-stat-card {
+    @apply p-8 bg-card border border-border rounded-xl shadow-sm; /* Increased padding and border radius */
+  }
+  
+  /* Navigation improvements */
+  .nav-section {
+    @apply space-y-3; /* Increased navigation spacing */
+  }
+  
+  /* Responsive improvements */
+  @media (max-width: 640px) {
+    .mobile-spacing {
+      @apply space-y-6; /* Increased mobile spacing */
+    }
+    
+    .mobile-padding {
+      @apply p-6; /* Increased mobile padding */
+    }
+  }
+  
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .tablet-spacing {
+      @apply space-y-8; /* Increased tablet spacing */
+    }
+    
+    .tablet-padding {
+      @apply p-8; /* Increased tablet padding */
+    }
+  }
+  
+  @media (min-width: 1025px) {
+    .desktop-spacing {
+      @apply space-y-12; /* Increased desktop spacing */
+    }
+    
+    .desktop-padding {
+      @apply p-12; /* Increased desktop padding */
+    }
   }
 }
 
