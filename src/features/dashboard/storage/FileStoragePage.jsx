@@ -10,6 +10,7 @@ import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import InputField from '@/components/shared/InputField';
+import { firebaseErrorHandler } from '@/utils/firebaseErrorHandler';
 import { 
   Folder, 
   FileImage, 
@@ -221,14 +222,37 @@ export default function FileStoragePage() {
       return;
     }
 
-    if (!/^[a-zA-Z0-9_-]+$/.test(newFolderName)) {
+    // Enhanced validation for folder names
+    const trimmedName = newFolderName.trim();
+    
+    if (trimmedName.length === 0) {
+      toast.error('Folder name cannot be empty');
+      return;
+    }
+    
+    if (trimmedName.length > 50) {
+      toast.error('Folder name must be less than 50 characters');
+      return;
+    }
+    
+    if (!/^[a-zA-Z0-9_-]+$/.test(trimmedName)) {
       toast.error('Folder name can only contain letters, numbers, underscores, and hyphens');
+      return;
+    }
+    
+    if (trimmedName.includes('/') || trimmedName.includes('\\')) {
+      toast.error('Folder name cannot contain slashes');
+      return;
+    }
+    
+    if (trimmedName.startsWith('.') || trimmedName.endsWith('.')) {
+      toast.error('Folder name cannot start or end with a period');
       return;
     }
 
     try {
       setOperationLoading(true);
-      const folderPath = `${currentPath}/${newFolderName.trim()}`;
+      const folderPath = `${currentPath}/${trimmedName}`;
       
       const token = await getAuthToken();
       await storageService.createFolder(folderPath, token);
@@ -248,7 +272,10 @@ export default function FileStoragePage() {
       await fetchItems(); // Refresh the items list
     } catch (error) {
       console.error('Error creating folder:', error);
-      toast.error('Failed to create folder');
+      
+      // Use enhanced error handling
+      const errorInfo = firebaseErrorHandler.handleStorageError(error);
+      toast.error(errorInfo.userMessage || 'Failed to create folder');
     } finally {
       setOperationLoading(false);
     }
@@ -260,8 +287,38 @@ export default function FileStoragePage() {
       return;
     }
 
-    if (!/^[a-zA-Z0-9_.-]+$/.test(newItemName)) {
-      toast.error('Name can only contain letters, numbers, underscores, hyphens, and dots');
+    // Enhanced validation for item names
+    const trimmedName = newItemName.trim();
+    
+    if (trimmedName.length === 0) {
+      toast.error('Name cannot be empty');
+      return;
+    }
+    
+    if (trimmedName.length > 100) {
+      toast.error('Name must be less than 100 characters');
+      return;
+    }
+    
+    if (renameModal.item.type === 'folder') {
+      if (!/^[a-zA-Z0-9_-]+$/.test(trimmedName)) {
+        toast.error('Folder name can only contain letters, numbers, underscores, and hyphens');
+        return;
+      }
+    } else {
+      if (!/^[a-zA-Z0-9_.-]+$/.test(trimmedName)) {
+        toast.error('File name can only contain letters, numbers, underscores, hyphens, and dots');
+        return;
+      }
+    }
+    
+    if (trimmedName.includes('/') || trimmedName.includes('\\')) {
+      toast.error('Name cannot contain slashes');
+      return;
+    }
+    
+    if (trimmedName.startsWith('.') && renameModal.item.type === 'folder') {
+      toast.error('Folder name cannot start with a period');
       return;
     }
 
@@ -272,9 +329,9 @@ export default function FileStoragePage() {
       const token = await getAuthToken();
 
       if (item.type === 'file') {
-        await storageService.renameFile(item.fullPath, newItemName.trim(), token);
+        await storageService.renameFile(item.fullPath, trimmedName, token);
       } else {
-        await storageService.renameFolder(item.fullPath, newItemName.trim(), token);
+        await storageService.renameFolder(item.fullPath, trimmedName, token);
       }
       
       toast.success('Item renamed successfully');
@@ -284,7 +341,10 @@ export default function FileStoragePage() {
       await fetchItems(); // Refresh the items list
     } catch (error) {
       console.error('Error renaming item:', error);
-      toast.error('Failed to rename item');
+      
+      // Use enhanced error handling
+      const errorInfo = firebaseErrorHandler.handleStorageError(error);
+      toast.error(errorInfo.userMessage || 'Failed to rename item');
     } finally {
       setOperationLoading(false);
     }
@@ -356,7 +416,10 @@ export default function FileStoragePage() {
       await fetchItems(); // Refresh the items list
     } catch (error) {
       console.error('Error moving item:', error);
-      toast.error('Failed to move item');
+      
+      // Use enhanced error handling
+      const errorInfo = firebaseErrorHandler.handleStorageError(error);
+      toast.error(errorInfo.userMessage || 'Failed to move item');
     } finally {
       setOperationLoading(false);
     }
@@ -406,6 +469,7 @@ export default function FileStoragePage() {
 
   const handleDelete = async (item) => {
     try {
+      setDeletingItemId(item.id);
       const token = await getAuthToken();
       await storageService.deleteFile(item.fullPath, token, item.type === 'folder');
       
@@ -415,7 +479,12 @@ export default function FileStoragePage() {
       await fetchItems(); // Refresh the items list
     } catch (error) {
       console.error('Error deleting item:', error);
-      toast.error('Failed to delete item');
+      
+      // Use enhanced error handling
+      const errorInfo = firebaseErrorHandler.handleStorageError(error);
+      toast.error(errorInfo.userMessage || 'Failed to delete item');
+    } finally {
+      setDeletingItemId(null);
     }
   };
 
@@ -483,6 +552,7 @@ export default function FileStoragePage() {
               onError={(e) => {
                 e.target.style.display = 'none';
                 e.target.nextSibling.style.display = 'flex';
+              maxLength={50}
               }}
             />
           ) : null}
@@ -796,16 +866,30 @@ export default function FileStoragePage() {
 
 
       {error ? (
-        <div className="card border-red-200 bg-red-50">
-          <div className="card-content p-6 text-center">
-            <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-            <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Items</h3>
-            <p className="text-red-700 mb-4">{error}</p>
-            <button onClick={fetchItems} className="btn-secondary">
-              Try Again
-            </button>
+        <DynamicTransition transitionType="fade">
+          <div className="card border-red-200 bg-red-50">
+            <div className="card-content p-8 text-center">
+              <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
+              <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Storage Items</h3>
+              <p className="text-lg text-red-700 mb-6">{error}</p>
+              <div className="space-y-4">
+                <button onClick={fetchItems} className="btn-secondary">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </button>
+                <div className="text-sm text-red-600">
+                  <p>If this error persists, try:</p>
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>Refreshing the page</li>
+                    <li>Checking your internet connection</li>
+                    <li>Logging out and back in</li>
+                    <li>Contacting support if the issue continues</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        </DynamicTransition>
       ) : items.length === 0 ? (
         <div className="card">
           <div className="card-content text-center py-16">
@@ -871,9 +955,20 @@ export default function FileStoragePage() {
             </button>
             <button
               onClick={() => handleDelete(deleteModal.item)}
+              disabled={deletingItemId === deleteModal.item?.id}
               className="btn-danger"
             >
-              Delete
+              {deletingItemId === deleteModal.item?.id ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive-foreground mr-2"></div>
+                  Deleting...
+                </div>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -975,11 +1070,22 @@ export default function FileStoragePage() {
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
             placeholder="Enter folder name"
+            maxLength={50}
             autoFocus
           />
-          <p className="text-sm text-muted-foreground">
-            Folder names can only contain letters, numbers, underscores, and hyphens.
-          </p>
+          <div className="space-y-2">
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Folder names can only contain letters, numbers, underscores, and hyphens.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Maximum 50 characters. Cannot contain slashes or start/end with periods.
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Maximum 50 characters. Cannot contain slashes or start/end with periods.
+            </p>
+          </div>
           <div className="flex justify-end space-x-4 pt-4">
             <button
               onClick={() => {
@@ -1044,12 +1150,21 @@ export default function FileStoragePage() {
             value={newItemName}
             onChange={(e) => setNewItemName(e.target.value)}
             placeholder="Enter new name"
+            maxLength={100}
             disabled={loading}
             autoFocus
           />
-          <p className="text-sm text-muted-foreground">
-            Names can only contain letters, numbers, underscores, hyphens, and dots.
-          </p>
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              {renameModal.item?.type === 'folder' 
+                ? 'Folder names can only contain letters, numbers, underscores, and hyphens.'
+                : 'File names can only contain letters, numbers, underscores, hyphens, and dots.'
+              }
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Maximum 100 characters. Cannot contain slashes.
+            </p>
+          </div>
           <div className="flex justify-end space-x-4 pt-4">
             <button
               onClick={() => {

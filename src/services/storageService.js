@@ -218,11 +218,34 @@ export const storageService = {
         limitMB,
         error: error.message
       });
-      // Allow upload on error to avoid blocking users
+      
+      // Enhanced error handling - be more strict about quota enforcement
+      // Only allow upload if it's a non-critical error (like network timeout)
+      const isNetworkError = error.message.includes('network') || 
+                            error.message.includes('timeout') || 
+                            error.message.includes('fetch');
+      
+      if (isNetworkError) {
+        console.warn('Network error during quota check, allowing upload with warning');
+        return {
+          canUpload: true,
+          reason: null,
+          warning: 'Could not verify storage quota due to network error',
+          currentUsage: 0,
+          limit: limitMB * 1024 * 1024,
+          fileSize: fileSizeBytes
+        };
+      }
+      
+      // For other errors, be conservative and deny upload
+      console.error('Critical error during quota check, denying upload');
       return {
-        canUpload: true,
-        reason: null,
-        error: error.message
+        canUpload: false,
+        reason: 'Unable to verify storage quota - upload denied for safety',
+        error: error.message,
+        currentUsage: 0,
+        limit: limitMB * 1024 * 1024,
+        fileSize: fileSizeBytes
       };
     }
 

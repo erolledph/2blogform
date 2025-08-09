@@ -112,11 +112,27 @@ export const firebaseErrorHandler = {
           action: 'RETRY'
         };
         
+      case 'storage/unknown':
+        return {
+          userMessage: 'An unknown storage error occurred. Please try again.',
+          technical: 'Unknown storage error',
+          action: 'RETRY'
+        };
+        
+      case 'storage/network-error':
+        return {
+          userMessage: 'Network error during upload. Please check your connection and try again.',
+          technical: 'Network connectivity issue',
+          action: 'RETRY'
+        };
+        
       default:
         return {
-          userMessage: `Upload failed: ${error.message}`,
+          userMessage: error.message.includes('Permission denied') 
+            ? 'Permission denied. Please check your authentication and try logging out and back in.'
+            : `Upload failed: ${error.message}`,
           technical: error.message,
-          action: 'RETRY'
+          action: error.message.includes('Permission denied') ? 'CHECK_AUTH' : 'RETRY'
         };
     }
   },
