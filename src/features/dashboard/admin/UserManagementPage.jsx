@@ -160,11 +160,6 @@ export default function UserManagementPage() {
   };
 
   const handleDeleteUser = async (user) => {
-    const originalUsers = [...users];
-    
-    // Don't do optimistic update for deletion - wait for confirmation
-    // This prevents UI inconsistency if deletion fails
-    
     try {
       setDeletingUserId(user.uid);
       
@@ -217,6 +212,26 @@ export default function UserManagementPage() {
           errorDetails = errorData;
           
           console.error('Server returned error:', errorData);
+          
+          // Handle partial success (207 Multi-Status)
+          if (response.status === 207 && errorData.partialSuccess && errorData.deletionSummary) {
+            console.log('Partial deletion success detected');
+            
+            // Show partial success message
+            const summary = errorData.deletionSummary;
+            toast.warning(
+              `User partially deleted: ${summary.successfulOperations}/${summary.totalOperations} operations completed. ${errorData.error}`,
+              { duration: 10000 }
+            );
+            
+            // Remove user from UI since account was likely deleted
+            setUsers(prevUsers => prevUsers.filter(u => u.uid !== user.uid));
+            
+            // Show deletion progress modal
+            setDeletionProgressModal({ isOpen: true, result: errorData });
+            
+            return; // Exit early for partial success
+          }
         } catch (parseError) {
           console.error('Failed to parse error response:', parseError);
           console.error('Raw response text:', await response.text().catch(() => 'Could not read response text'));
@@ -289,9 +304,81 @@ export default function UserManagementPage() {
         console.error('Detailed error information:', error.details);
       }
       
-      // Don't rollback UI since we didn't do optimistic update
     } finally {
+      // Always clean up state in finally block to ensure UI consistency
       setDeletingUserId(null);
+      setDeleteModal({ isOpen: false, user: null });
+      setDeletionValidation(null);
+    }
+  };
+
+  const handleDeleteUserClick = async (user) => {
+    try {
+      setValidatingDeletion(true);
+      
+      // Basic client-side validation
+      if (user.uid === currentUser?.uid) {
+        toast.error('Cannot delete your own account');
+        return;
+      }
+      
+      if (!user.uid || typeof user.uid !== 'string') {
+        toast.error('Invalid user ID');
+        return;
+      }
+      
+      // Perform basic validation
+      try {
+        const validation = await userDeletionValidator.validateUserDeletion(user.uid, currentUser?.uid);
+        setDeletionValidation(validation);
+        
+        if (!validation.canDelete) {
+          toast.error(`Cannot delete user: ${validation.blockers.join(', ')}`);
+          return;
+        }
+        
+        // Show warnings if any
+        if (validation.warnings.length > 0) {
+          validation.warnings.forEach(warning => {
+            toast.warning(warning, { duration: 6000 });
+          });
+        }
+      } catch (validationError) {
+        console.warn('Validation failed, proceeding with basic checks:', validationError);
+        // Set basic validation data if detailed validation fails
+        setDeletionValidation({
+          canDelete: true,
+          warnings: ['Could not perform complete validation - proceeding with caution'],
+          blockers: [],
+          dataEstimate: {
+            blogs: 'Unknown',
+            content: 'Unknown',
+            products: 'Unknown',
+            estimatedTime: '1-5 minutes'
+          }
+        });
+      }
+      
+      setDeleteModal({ isOpen: true, user });
+    } catch (error) {
+      console.error('Error validating user deletion:', error);
+      toast.error('Validation failed, but you can still proceed with deletion if needed.');
+      
+      // Allow deletion to proceed with minimal validation
+      setDeletionValidation({
+        canDelete: true,
+        warnings: ['Validation failed - proceeding with basic safety checks'],
+        blockers: [],
+        dataEstimate: {
+          blogs: 'Unknown',
+          content: 'Unknown', 
+          products: 'Unknown',
+          estimatedTime: 'Unknown'
+        }
+      });
+      setDeleteModal({ isOpen: true, user });
+    } finally {
+      setValidatingDeletion(false);
     }
   };
 
@@ -497,11 +584,13 @@ export default function UserManagementPage() {
           {row.uid !== currentUser?.uid && (
             <button
               onClick={() => handleDeleteUserClick(row)}
-              disabled={deletingUserId === row.uid || validatingDeletion}
+              disabled={validatingDeletion}
               className="text-red-600 p-2 rounded-md hover:bg-red-50 transition-colors duration-200"
               title="Delete user"
             >
-              {(validatingDeletion && deletingUserId === row.uid) || deletingUserId === row.uid ? (
+              {deletingUserId === row.uid ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+              ) : validatingDeletion ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
               ) : (
                 <Trash2 className="h-4 w-4" />
@@ -661,7 +750,13 @@ export default function UserManagementPage() {
       {/* Delete User Modal */}
       <Modal
         isOpen={deleteModal.isOpen}
-        onClose={() => setDeleteModal({ isOpen: false, user: null })}
+        onClose={() => {
+          // Only allow closing if not currently deleting
+          if (!deletingUserId) {
+            setDeleteModal({ isOpen: false, user: null });
+            setDeletionValidation(null);
+          }
+        }}
         title={`Delete User: ${deleteModal.user?.email}`}
         size="md"
       >
@@ -755,7 +850,12 @@ export default function UserManagementPage() {
 
             <div className="flex justify-end space-x-4 pt-4 border-t border-border">
               <button
-                onClick={() => setDeleteModal({ isOpen: false, user: null })}
+                onClick={() => {
+                  if (!deletingUserId) {
+                    setDeleteModal({ isOpen: false, user: null });
+                    setDeletionValidation(null);
+                  }
+                }}
                 disabled={deletingUserId === deleteModal.user?.uid}
                 className="btn-secondary"
               >
