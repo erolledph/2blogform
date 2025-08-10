@@ -774,15 +774,27 @@ exports.handler = async (event, context) => {
             errorMessage = 'Network error during deletion. Some data may have been deleted. Please retry.';
           }
 
+          // Calculate partial success for better error reporting
+          const totalFailed = Object.values(deletionProgress).reduce((sum, cat) => sum + cat.failed, 0);
+          const totalAttempted = Object.values(deletionProgress).reduce((sum, cat) => sum + cat.attempted, 0);
+          const partialSuccess = totalAttempted > 0 && totalFailed < totalAttempted;
+
           return {
-            statusCode: 500,
+            statusCode: partialSuccess ? 207 : 500, // 207 Multi-Status for partial success
             headers,
             body: JSON.stringify({ 
               error: errorMessage,
               details: process.env.NODE_ENV === 'development' ? error.message : undefined,
               code: errorCode,
               userId: userId,
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              partialSuccess,
+              deletionSummary: partialSuccess ? {
+                totalOperations: totalAttempted,
+                successfulOperations: totalAttempted - totalFailed,
+                failedOperations: totalFailed,
+                details: deletionProgress
+              } : undefined
             })
           };
         }
