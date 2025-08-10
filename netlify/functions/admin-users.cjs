@@ -60,7 +60,8 @@ if (!admin.apps.length) {
     
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      projectId: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph"
+      projectId: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph",
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "admin-cms-ph.firebasestorage.app"
     });
     
     console.log('Admin Users Function: Firebase Admin SDK initialized successfully');
@@ -79,6 +80,7 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 const auth = admin.auth();
+const bucket = admin.storage().bucket();
 
 // Helper function to delete all documents in a collection
 async function deleteCollection(collectionRef, batchSize = 100) {
@@ -633,7 +635,6 @@ exports.handler = async (event, context) => {
 
           // Step 6: Delete user's Firebase Storage files
           logOperation('userDeletion.step6', { step: 'deleting_storage_files' });
-          const bucket = admin.storage().bucket();
           deletionProgress.storage.attempted = 2; // public_images and private folders
           
           try {
