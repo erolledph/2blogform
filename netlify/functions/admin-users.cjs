@@ -1,5 +1,21 @@
 const admin = require('firebase-admin');
 
+// Enhanced logging utility
+function logOperation(operation, details) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${operation}:`, JSON.stringify(details, null, 2));
+}
+
+function logError(operation, error, context = {}) {
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] ERROR in ${operation}:`, {
+    message: error.message,
+    code: error.code,
+    stack: error.stack,
+    context
+  });
+}
+
 console.log('Admin Users Function: Starting initialization...');
 console.log('Environment check:', {
   hasProjectId: !!process.env.FIREBASE_PROJECT_ID,
@@ -66,6 +82,7 @@ const auth = admin.auth();
 
 // Helper function to delete all documents in a collection
 async function deleteCollection(collectionRef, batchSize = 100) {
+  logOperation('deleteCollection', { path: collectionRef.path, batchSize });
   const query = collectionRef.limit(batchSize);
   
   return new Promise((resolve, reject) => {
@@ -76,8 +93,10 @@ async function deleteCollection(collectionRef, batchSize = 100) {
 async function deleteQueryBatch(query, resolve, reject) {
   try {
     const snapshot = await query.get();
+    logOperation('deleteQueryBatch', { documentsFound: snapshot.size });
     
     if (snapshot.size === 0) {
+      logOperation('deleteQueryBatch', { status: 'completed', reason: 'no_more_documents' });
       resolve();
       return;
     }
@@ -89,6 +108,7 @@ async function deleteQueryBatch(query, resolve, reject) {
     });
     
     await batch.commit();
+    logOperation('deleteQueryBatch', { deletedDocuments: snapshot.size, status: 'batch_committed' });
     
     // Recurse on the next process tick to avoid blocking
     process.nextTick(() => {
@@ -405,6 +425,7 @@ exports.handler = async (event, context) => {
         console.log('Admin Users Function: DELETE request data:', { userId: data.userId });
         const { userId } = data;
         
+        // Enhanced input validation
         if (!userId) {
           return {
             statusCode: 400,
@@ -422,6 +443,15 @@ exports.handler = async (event, context) => {
           };
         }
 
+        // Additional validation for userId format
+        if (userId.length < 10 || userId.length > 128) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Invalid User ID format' })
+          };
+        }
+
         // Prevent self-deletion
         if (userId === requestingUserId) {
           return {
@@ -436,101 +466,247 @@ exports.handler = async (event, context) => {
 
         try {
           console.log('Admin Users Function: Verifying target user for deletion:', userId);
+          logOperation('userDeletion.start', { targetUserId: userId, requestingUserId });
+          
           // Verify the target user exists
           const userRecord = await auth.getUser(userId);
+          logOperation('userDeletion.userVerified', { 
+            targetUserId: userId, 
+            email: userRecord.email,
+            disabled: userRecord.disabled,
+            emailVerified: userRecord.emailVerified
+          });
           
           console.log(`Admin ${requestingUserId} is deleting user ${userId} (${userRecord.email})`);
 
+          // Track deletion progress
+          const deletionProgress = {
+            blogs: { attempted: 0, successful: 0, failed: 0 },
+            content: { attempted: 0, successful: 0, failed: 0 },
+            products: { attempted: 0, successful: 0, failed: 0 },
+            settings: { attempted: 0, successful: 0, failed: 0 },
+            analytics: { attempted: 0, successful: 0, failed: 0 },
+            storage: { attempted: 0, successful: 0, failed: 0 },
+            auth: { attempted: 0, successful: 0, failed: 0 }
+          };
+
           // Step 1: Delete all user's blogs and their content/products
+          logOperation('userDeletion.step1', { step: 'deleting_blogs_and_content' });
           const blogsRef = db.collection('users').doc(userId).collection('blogs');
           const blogsSnapshot = await blogsRef.get();
+          deletionProgress.blogs.attempted = blogsSnapshot.size;
           
           for (const blogDoc of blogsSnapshot.docs) {
             const blogId = blogDoc.id;
-            console.log(`Deleting blog ${blogId} for user ${userId}`);
+            logOperation('userDeletion.deletingBlog', { blogId, userId });
             
-            // Delete all content in this blog
-            const contentRef = blogsRef.doc(blogId).collection('content');
-            await deleteCollection(contentRef);
+            try {
+              // Delete all content in this blog
+              const contentRef = blogsRef.doc(blogId).collection('content');
+              const contentSnapshot = await contentRef.get();
+              deletionProgress.content.attempted += contentSnapshot.size;
+              
+              await deleteCollection(contentRef);
+              deletionProgress.content.successful += contentSnapshot.size;
+              logOperation('userDeletion.contentDeleted', { blogId, contentCount: contentSnapshot.size });
+            } catch (error) {
+              deletionProgress.content.failed++;
+              logError('userDeletion.contentDeletion', error, { blogId, userId });
+              // Continue with deletion even if content deletion fails
+            }
             
-            // Delete all products in this blog
-            const productsRef = blogsRef.doc(blogId).collection('products');
-            await deleteCollection(productsRef);
+            try {
+              // Delete all products in this blog
+              const productsRef = blogsRef.doc(blogId).collection('products');
+              const productsSnapshot = await productsRef.get();
+              deletionProgress.products.attempted += productsSnapshot.size;
+              
+              await deleteCollection(productsRef);
+              deletionProgress.products.successful += productsSnapshot.size;
+              logOperation('userDeletion.productsDeleted', { blogId, productsCount: productsSnapshot.size });
+            } catch (error) {
+              deletionProgress.products.failed++;
+              logError('userDeletion.productsDeletion', error, { blogId, userId });
+              // Continue with deletion even if products deletion fails
+            }
             
-            // Delete the blog document itself
-            await blogDoc.ref.delete();
+            try {
+              // Delete the blog document itself
+              await blogDoc.ref.delete();
+              deletionProgress.blogs.successful++;
+              logOperation('userDeletion.blogDeleted', { blogId });
+            } catch (error) {
+              deletionProgress.blogs.failed++;
+              logError('userDeletion.blogDeletion', error, { blogId, userId });
+              // Continue with deletion even if blog deletion fails
+            }
           }
 
           // Step 2: Delete user settings
+          logOperation('userDeletion.step2', { step: 'deleting_user_settings' });
+          deletionProgress.settings.attempted++;
+          try {
           const userSettingsRef = db.collection('users').doc(userId).collection('userSettings').doc('preferences');
           const userSettingsDoc = await userSettingsRef.get();
           if (userSettingsDoc.exists) {
             await userSettingsRef.delete();
+              deletionProgress.settings.successful++;
+              logOperation('userDeletion.userSettingsDeleted', { userId });
+            } else {
+              logOperation('userDeletion.userSettingsNotFound', { userId });
+          }
+          } catch (error) {
+            deletionProgress.settings.failed++;
+            logError('userDeletion.userSettingsDeletion', error, { userId });
+            // Continue with deletion even if settings deletion fails
           }
 
           // Step 3: Delete user's app settings
+          logOperation('userDeletion.step3', { step: 'deleting_app_settings' });
+          try {
           const appSettingsRef = db.collection('users').doc(userId).collection('appSettings').doc('public');
           const appSettingsDoc = await appSettingsRef.get();
           if (appSettingsDoc.exists) {
             await appSettingsRef.delete();
+              logOperation('userDeletion.appSettingsDeleted', { userId });
+            } else {
+              logOperation('userDeletion.appSettingsNotFound', { userId });
+          }
+          } catch (error) {
+            logError('userDeletion.appSettingsDeletion', error, { userId });
+            // Continue with deletion even if app settings deletion fails
           }
 
           // Step 4: Delete user's analytics data (pageViews and interactions)
+          logOperation('userDeletion.step4', { step: 'deleting_analytics_data' });
           // Note: These are global collections, so we filter by userId
-          const pageViewsRef = db.collection('pageViews').where('userId', '==', userId);
-          const pageViewsSnapshot = await pageViewsRef.get();
-          if (!pageViewsSnapshot.empty) {
-            const pageViewsBatch = db.batch();
-            pageViewsSnapshot.docs.forEach(doc => {
-              pageViewsBatch.delete(doc.ref);
-            });
-            await pageViewsBatch.commit();
+          try {
+            const pageViewsRef = db.collection('pageViews').where('userId', '==', userId);
+            const pageViewsSnapshot = await pageViewsRef.get();
+            deletionProgress.analytics.attempted += pageViewsSnapshot.size;
+            
+            if (!pageViewsSnapshot.empty) {
+              const pageViewsBatch = db.batch();
+              pageViewsSnapshot.docs.forEach(doc => {
+                pageViewsBatch.delete(doc.ref);
+              });
+              await pageViewsBatch.commit();
+              deletionProgress.analytics.successful += pageViewsSnapshot.size;
+              logOperation('userDeletion.pageViewsDeleted', { userId, count: pageViewsSnapshot.size });
+            } else {
+              logOperation('userDeletion.noPageViewsFound', { userId });
+            }
+          } catch (error) {
+            deletionProgress.analytics.failed++;
+            logError('userDeletion.pageViewsDeletion', error, { userId });
+            // Continue with deletion even if pageViews deletion fails
           }
 
-          const interactionsRef = db.collection('interactions').where('userId', '==', userId);
-          const interactionsSnapshot = await interactionsRef.get();
-          if (!interactionsSnapshot.empty) {
-            const interactionsBatch = db.batch();
-            interactionsSnapshot.docs.forEach(doc => {
-              interactionsBatch.delete(doc.ref);
-            });
-            await interactionsBatch.commit();
+          try {
+            const interactionsRef = db.collection('interactions').where('userId', '==', userId);
+            const interactionsSnapshot = await interactionsRef.get();
+            
+            if (!interactionsSnapshot.empty) {
+              const interactionsBatch = db.batch();
+              interactionsSnapshot.docs.forEach(doc => {
+                interactionsBatch.delete(doc.ref);
+              });
+              await interactionsBatch.commit();
+              logOperation('userDeletion.interactionsDeleted', { userId, count: interactionsSnapshot.size });
+            } else {
+              logOperation('userDeletion.noInteractionsFound', { userId });
+            }
+          } catch (error) {
+            logError('userDeletion.interactionsDeletion', error, { userId });
+            // Continue with deletion even if interactions deletion fails
           }
 
           // Step 5: Delete the main user document
-          await db.collection('users').doc(userId).delete();
+          logOperation('userDeletion.step5', { step: 'deleting_main_user_document' });
+          try {
+            await db.collection('users').doc(userId).delete();
+            logOperation('userDeletion.userDocumentDeleted', { userId });
+          } catch (error) {
+            logError('userDeletion.userDocumentDeletion', error, { userId });
+            // Continue with deletion even if user document deletion fails
+          }
 
           // Step 6: Delete user's Firebase Storage files
+          logOperation('userDeletion.step6', { step: 'deleting_storage_files' });
           const bucket = admin.storage().bucket();
+          deletionProgress.storage.attempted = 2; // public_images and private folders
           
           try {
             // Delete public images
-            await bucket.deleteFiles({
+            const publicImagesResult = await bucket.deleteFiles({
               prefix: `users/${userId}/public_images/`,
               force: true
             });
-            console.log(`Deleted public images for user ${userId}`);
+            deletionProgress.storage.successful++;
+            logOperation('userDeletion.publicImagesDeleted', { 
+              userId, 
+              deletedFiles: publicImagesResult[0]?.length || 0 
+            });
           } catch (storageError) {
-            console.warn(`Error deleting public images for user ${userId}:`, storageError.message);
+            deletionProgress.storage.failed++;
+            logError('userDeletion.publicImagesDeletion', storageError, { userId });
             // Continue with deletion even if storage cleanup fails
           }
 
           try {
             // Delete private files
-            await bucket.deleteFiles({
+            const privateFilesResult = await bucket.deleteFiles({
               prefix: `users/${userId}/private/`,
               force: true
             });
-            console.log(`Deleted private files for user ${userId}`);
+            logOperation('userDeletion.privateFilesDeleted', { 
+              userId, 
+              deletedFiles: privateFilesResult[0]?.length || 0 
+            });
           } catch (storageError) {
-            console.warn(`Error deleting private files for user ${userId}:`, storageError.message);
+            logError('userDeletion.privateFilesDeletion', storageError, { userId });
             // Continue with deletion even if storage cleanup fails
           }
 
           // Step 7: Delete user from Firebase Authentication (do this last)
+          logOperation('userDeletion.step7', { step: 'deleting_firebase_auth_user' });
+          deletionProgress.auth.attempted++;
+          try {
           await auth.deleteUser(userId);
+            deletionProgress.auth.successful++;
+            logOperation('userDeletion.authUserDeleted', { userId });
+          } catch (authError) {
+            deletionProgress.auth.failed++;
+            logError('userDeletion.authUserDeletion', authError, { userId });
+            
+            // Auth deletion failure is critical - we should report this
+            if (authError.code === 'auth/user-not-found') {
+              logOperation('userDeletion.authUserNotFound', { 
+                userId, 
+                note: 'User may have been already deleted from Auth but data remained' 
+              });
+            } else {
+              // Re-throw auth errors as they're critical
+              throw authError;
+            }
+          }
           
-          console.log(`Successfully deleted user ${userId} and all associated data`);
+          // Log final deletion summary
+          logOperation('userDeletion.completed', {
+            targetUserId: userId,
+            targetUserEmail: userRecord.email,
+            requestingUserId,
+            progress: deletionProgress,
+            totalAttempted: Object.values(deletionProgress).reduce((sum, cat) => sum + cat.attempted, 0),
+            totalSuccessful: Object.values(deletionProgress).reduce((sum, cat) => sum + cat.successful, 0),
+            totalFailed: Object.values(deletionProgress).reduce((sum, cat) => sum + cat.failed, 0)
+          });
+          
+          const totalFailed = Object.values(deletionProgress).reduce((sum, cat) => sum + cat.failed, 0);
+          const totalAttempted = Object.values(deletionProgress).reduce((sum, cat) => sum + cat.attempted, 0);
+          
+          console.log(`User deletion completed: ${userId} (${userRecord.email})`);
+          console.log(`Deletion summary: ${totalAttempted - totalFailed}/${totalAttempted} operations successful`);
           
           return {
             statusCode: 200,
@@ -539,27 +715,73 @@ exports.handler = async (event, context) => {
               success: true,
               message: 'User and all associated data deleted successfully',
               deletedUserId: userId,
-              deletedUserEmail: userRecord.email
+              deletedUserEmail: userRecord.email,
+              deletionSummary: {
+                totalOperations: totalAttempted,
+                successfulOperations: totalAttempted - totalFailed,
+                failedOperations: totalFailed,
+                details: deletionProgress
+              }
             })
           };
         } catch (error) {
-          console.error('Error during user deletion:', error);
+          logError('userDeletion.criticalError', error, { 
+            targetUserId: userId, 
+            requestingUserId,
+            step: 'unknown'
+          });
+          
+          // Provide more specific error messages based on error type
+          let errorMessage = 'Failed to delete user completely';
+          let errorCode = error.code;
           
           if (error.code === 'auth/user-not-found') {
+            errorMessage = 'User not found in Firebase Authentication';
+            // Check if user data exists in Firestore despite auth deletion
+            try {
+              const userDocRef = db.collection('users').doc(userId);
+              const userDocSnapshot = await userDocRef.get();
+              if (userDocSnapshot.exists) {
+                logOperation('userDeletion.orphanedDataFound', { 
+                  userId, 
+                  note: 'User not in Auth but data exists in Firestore' 
+                });
+                errorMessage = 'User not found in Authentication but data exists. Manual cleanup may be required.';
+              }
+            } catch (checkError) {
+              logError('userDeletion.orphanedDataCheck', checkError, { userId });
+            }
+            
             return {
               statusCode: 404,
               headers,
-              body: JSON.stringify({ error: 'User not found' })
+              body: JSON.stringify({ 
+                error: errorMessage,
+                code: errorCode,
+                userId: userId
+              })
             };
+          }
+          
+          // For permission errors
+          if (error.code === 'permission-denied' || error.message.includes('permission')) {
+            errorMessage = 'Insufficient permissions to delete user data. Check Firebase Admin SDK configuration.';
+          }
+          
+          // For network/timeout errors
+          if (error.code === 'unavailable' || error.message.includes('timeout') || error.message.includes('network')) {
+            errorMessage = 'Network error during deletion. Some data may have been deleted. Please retry.';
           }
 
           return {
             statusCode: 500,
             headers,
             body: JSON.stringify({ 
-              error: 'Failed to delete user completely',
+              error: errorMessage,
               details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-              code: error.code
+              code: errorCode,
+              userId: userId,
+              timestamp: new Date().toISOString()
             })
           };
         }
@@ -574,11 +796,9 @@ exports.handler = async (event, context) => {
     }
 
   } catch (error) {
-    console.error('Admin Users Function: Unhandled error:', error);
-    console.error('Admin Users Function: Error details:', {
-      code: error.code,
-      message: error.message,
-      stack: error.stack,
+    logError('adminUsers.unhandledError', error, {
+      httpMethod: event.httpMethod,
+      requestingUserId: 'unknown',
       timestamp: new Date().toISOString()
     });
     
@@ -604,7 +824,8 @@ exports.handler = async (event, context) => {
         error: errorMessage,
         code: error.code,
         details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        timestamp: new Date().toISOString()
       })
     };
   }

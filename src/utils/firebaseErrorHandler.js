@@ -161,6 +161,69 @@ export const firebaseErrorHandler = {
     }
   },
   
+  // Handle Firebase Admin SDK errors (for server-side operations)
+  handleAdminError(error) {
+    console.error('Firebase Admin Error:', error);
+    
+    switch (error.code) {
+      case 'auth/user-not-found':
+        return {
+          userMessage: 'User account not found. It may have already been deleted.',
+          technical: 'User does not exist in Firebase Authentication',
+          action: 'VERIFY_USER_EXISTS'
+        };
+        
+      case 'auth/insufficient-permission':
+        return {
+          userMessage: 'Insufficient permissions to perform this operation. Check admin configuration.',
+          technical: 'Firebase Admin SDK lacks required permissions',
+          action: 'CHECK_ADMIN_CONFIG'
+        };
+        
+      case 'auth/project-not-found':
+        return {
+          userMessage: 'Project configuration error. Contact system administrator.',
+          technical: 'Firebase project not found or misconfigured',
+          action: 'CHECK_PROJECT_CONFIG'
+        };
+        
+      case 'permission-denied':
+        return {
+          userMessage: 'Permission denied. Check your admin privileges and try again.',
+          technical: 'Firestore security rules denied the operation',
+          action: 'CHECK_PERMISSIONS'
+        };
+        
+      case 'unavailable':
+        return {
+          userMessage: 'Service temporarily unavailable. Please try again in a few moments.',
+          technical: 'Firebase service is temporarily unavailable',
+          action: 'RETRY_LATER'
+        };
+        
+      case 'deadline-exceeded':
+        return {
+          userMessage: 'Operation timed out. Large datasets may require multiple attempts.',
+          technical: 'Operation exceeded time limit',
+          action: 'RETRY_WITH_SMALLER_BATCHES'
+        };
+        
+      case 'resource-exhausted':
+        return {
+          userMessage: 'Rate limit exceeded. Please wait a moment and try again.',
+          technical: 'Firebase quota or rate limit exceeded',
+          action: 'WAIT_AND_RETRY'
+        };
+        
+      default:
+        return {
+          userMessage: error.message || 'An unexpected error occurred during the operation.',
+          technical: error.message,
+          action: 'CHECK_LOGS'
+        };
+    }
+  },
+  
   // Handle Firestore errors
   handleFirestoreError(error) {
     console.error('Firestore Error:', error);
