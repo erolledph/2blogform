@@ -1,5 +1,4 @@
 import React from 'react';
-import LoadingSpinner from './LoadingSpinner';
 
 export default function LoadingButton({
   loading = false,
@@ -36,10 +35,7 @@ export default function LoadingButton({
       {...props}
     >
       {loading ? (
-        <>
-          <LoadingSpinner size="sm" className="mr-2" />
-          {loadingText}
-        </>
+        loadingText
       ) : (
         <>
           {Icon && <Icon className="h-4 w-4 mr-2" />}

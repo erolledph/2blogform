@@ -575,7 +575,7 @@ function EnhancedProductImage({ src, alt, className = '', debug = false }) {
   
   if (loading) {
     return (
-      <div className={`bg-muted animate-pulse rounded-2xl ${className}`}>
+      <div className={`bg-muted rounded-2xl ${className}`}>
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
@@ -617,7 +617,7 @@ function EnhancedProductThumbnail({ src, alt, className = '', debug = false }) {
   
   if (loading) {
     return (
-      <div className={`bg-muted animate-pulse rounded-xl ${className}`}>
+      <div className={`bg-muted rounded-xl ${className}`}>
         <div className="flex items-center justify-center h-full">
           <Package className="h-6 w-6 text-muted-foreground" />
         </div>

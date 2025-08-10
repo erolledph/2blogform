@@ -3,7 +3,6 @@ import { useRealTimeCollaboration } from '@/hooks/useRealTimeCollaboration';
 import { ConflictResolutionModal, CollaborativeCursors } from './CollaborationIndicators';
 import SimpleMDE from 'react-simplemde-editor';
 import { Edit, Users, Lock, AlertTriangle } from 'lucide-react';
-import DynamicTransition from './DynamicTransition';
 
 // Enhanced editor with real-time collaboration
 export default function CollaborativeEditor({

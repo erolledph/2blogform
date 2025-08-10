@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
 import ProgressBar from './ProgressBar';
-import DynamicTransition from './DynamicTransition';
 
 export default function BatchOperationProgress({
   operations = [],

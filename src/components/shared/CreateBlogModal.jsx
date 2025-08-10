@@ -3,7 +3,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { blogService } from '@/services/blogService';
 import Modal from './Modal';
 import InputField from './InputField';
-import LoadingSpinner from './LoadingSpinner';
 import { Plus, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -141,20 +140,11 @@ export default function CreateBlogModal({ isOpen, onClose, onBlogCreated }) {
             className="btn-primary"
           >
             {checkingLimits ? (
-              <>
-                <LoadingSpinner size="sm" className="mr-2" />
-                Checking limits...
-              </>
+              'Checking limits...'
             ) : creating ? (
-              <>
-                <LoadingSpinner size="sm" className="mr-2" />
-                Creating...
-              </>
+              'Creating...'
             ) : (
-              <>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Blog
-              </>
+              'Create Blog'
             )}
           </button>
         </div>

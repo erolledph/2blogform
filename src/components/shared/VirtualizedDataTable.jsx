@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import { Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
-import DynamicTransition from './DynamicTransition';
 import { debounce } from '@/utils/helpers';
+import DynamicTransition from './DynamicTransition';
 
 // Enhanced DataTable with virtual scrolling for large datasets
 export default function VirtualizedDataTable({

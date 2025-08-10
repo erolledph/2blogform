@@ -4,8 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { FileText, Eye, Calendar, TrendingUp, Plus, BarChart3, Package, ShoppingBag } from 'lucide-react';
 import { useContentStats } from '@/hooks/useContent';
 import { useProductStats } from '@/hooks/useProducts';
-import DynamicTransition from '@/components/shared/DynamicTransition';
-import { StatCardSkeleton } from '@/components/shared/SkeletonLoader';
+import { StatCardSkeleton, DashboardOverviewSkeleton } from '@/components/shared/SkeletonLoader';
 
 export default function OverviewPage({ activeBlogId }) {
   const { stats, loading, error } = useContentStats(activeBlogId);
@@ -83,16 +82,9 @@ export default function OverviewPage({ activeBlogId }) {
   ];
 
 
-  if (error || productError) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-destructive">Error loading dashboard: {error || productError}</p>
-      </div>
-    );
-  }
 
   return (
-    <DynamicTransition loading={loading && productLoading} error={error || productError} className="section-spacing">
+    <div className="section-spacing">
       <div className="page-header mb-16">
         <h1 className="page-title">Dashboard Overview</h1>
         <p className="page-description">
@@ -103,14 +95,11 @@ export default function OverviewPage({ activeBlogId }) {
       {/* Content Statistics */}
       <div className="mb-16">
         <h2 className="text-2xl font-bold text-foreground mb-8">Blog Content</h2>
-        <DynamicTransition transitionType="slide-up">
+        {loading ? (
+          <DashboardOverviewSkeleton />
+        ) : (
           <div className="grid-responsive-4">
-          {loading ? (
-            Array.from({ length: 4 }).map((_, index) => (
-              <StatCardSkeleton key={index} />
-            ))
-          ) : (
-            statCards.map((stat, index) => (
+            {statCards.map((stat, index) => (
               <div key={index} className={`card border ${stat.borderColor} ${stat.bgColor}`}>
                 <div className="card-content p-8 sm:p-10">
                   <div className="flex items-center justify-between">
@@ -124,23 +113,23 @@ export default function OverviewPage({ activeBlogId }) {
                   </div>
                 </div>
               </div>
-            ))
-          )}
-        </div>
-         </DynamicTransition>
+            ))}
+          </div>
+        )}
        </div>
 
       {/* Product Statistics */}
       <div className="mb-16">
         <h2 className="text-2xl font-bold text-foreground mb-8">Products</h2>
-        <DynamicTransition transitionType="slide-up" delay={100}>
+        {productLoading ? (
           <div className="grid-responsive-4">
-          {productLoading ? (
-            Array.from({ length: 4 }).map((_, index) => (
+            {Array.from({ length: 4 }).map((_, index) => (
               <StatCardSkeleton key={index} />
-            ))
-          ) : (
-            productStatCards.map((stat, index) => (
+            ))}
+          </div>
+        ) : (
+          <div className="grid-responsive-4">
+            {productStatCards.map((stat, index) => (
               <div key={index} className={`card border ${stat.borderColor} ${stat.bgColor}`}>
                 <div className="card-content p-8 sm:p-10">
                   <div className="flex items-center justify-between">
@@ -154,14 +143,13 @@ export default function OverviewPage({ activeBlogId }) {
                   </div>
                 </div>
               </div>
-            ))
-          )}
-        </div>
-         </DynamicTransition>
+            ))}
+          </div>
+        )}
        </div>
 
-      <DynamicTransition transitionType="scale" delay={200}>
-        <div className="card">
+      {/* Quick Actions - Always visible */}
+      <div className="card">
         <div className="card-header">
           <h2 className="card-title">Quick Actions</h2>
           <p className="card-description">Get started with these common tasks</p>
@@ -238,7 +226,6 @@ export default function OverviewPage({ activeBlogId }) {
         </div>
       </div>
 
-       </DynamicTransition>
-    </DynamicTransition>
+    </div>
   );
 }

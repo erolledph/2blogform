@@ -7,75 +7,28 @@ export default function DynamicTransition({
   error = null,
   skeleton = null,
   className = '',
-  transitionType = 'fade',
-  duration = 300,
-  delay = 0
 }) {
-  const [showSkeleton, setShowSkeleton] = useState(loading);
-  const [showError, setShowError] = useState(false);
-  const [showContent, setShowContent] = useState(false);
+  if (error) {
+    return (
+      <div className={className}>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-800">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    if (error) {
-      setShowError(true);
-      setShowSkeleton(false);
-      setShowContent(false);
-    } else if (loading) {
-      setShowSkeleton(true);
-      setShowError(false);
-      setShowContent(false);
-    } else {
-      // Smooth transition from loading to content
-      setTimeout(() => {
-        setShowSkeleton(false);
-        setShowError(false);
-        setTimeout(() => setShowContent(true), 50);
-      }, delay);
-    }
-  }, [loading, error, delay]);
-
-  const getTransitionClasses = (visible, type = transitionType) => {
-    const baseClasses = `transition-all ease-in-out`;
-    const durationClass = `duration-${duration}`;
-    
-    switch (type) {
-      case 'fade':
-        return `${baseClasses} ${durationClass} ${visible ? 'opacity-100' : 'opacity-0'}`;
-      case 'slide-up':
-        return `${baseClasses} ${durationClass} ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`;
-      case 'slide-down':
-        return `${baseClasses} ${durationClass} ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`;
-      case 'scale':
-        return `${baseClasses} ${durationClass} ${visible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`;
-      case 'slide-right':
-        return `${baseClasses} ${durationClass} ${visible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`;
-      default:
-        return `${baseClasses} ${durationClass} ${visible ? 'opacity-100' : 'opacity-0'}`;
-    }
-  };
+  if (loading) {
+    return (
+      <div className={className}>
+        {skeleton || <DefaultSkeleton />}
+      </div>
+    );
+  }
 
   return (
-    <div className={`relative ${className}`}>
-      {/* Skeleton/Loading State */}
-      {showSkeleton && (
-        <div className={getTransitionClasses(loading)}>
-          {skeleton || <DefaultSkeleton />}
-        </div>
-      )}
-
-      {/* Error State */}
-      {showError && (
-        <div className={getTransitionClasses(!!error, 'slide-up')}>
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-800">{error}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div className={getTransitionClasses(showContent && !loading && !error, 'slide-up')}>
-        {children}
-      </div>
+    <div className={className}>
+      {children}
     </div>
   );
 }

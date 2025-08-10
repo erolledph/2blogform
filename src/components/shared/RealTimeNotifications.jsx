@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { webSocketService } from '@/services/webSocketService';
 import { realTimeAnalyticsService } from '@/services/realTimeAnalytics';
 import { Bell, X, CheckCircle, AlertTriangle, Info, Users, Activity, TrendingUp } from 'lucide-react';
-import DynamicTransition from './DynamicTransition';
 
 // Real-time notification system
 export default function RealTimeNotifications({ className = '' }) {

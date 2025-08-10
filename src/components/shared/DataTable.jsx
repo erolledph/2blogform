@@ -78,7 +78,7 @@ export default function DataTable({
     return (
       <div className={`bg-card rounded-lg border border-border ${className}`}>
         <div className="p-6">
-          <div className="animate-pulse space-y-4">
+          <div className="space-y-4">
             <div className="h-4 bg-muted rounded w-1/4"></div>
             <div className="space-y-2">
               {[...Array(5)].map((_, i) => (
@@ -141,7 +141,7 @@ export default function DataTable({
               paginatedData.map((item, index) => (
                 <tr
                   key={item.id || index}
-                  className={`border-b border-border hover:bg-muted/50 min-h-[60px] ${
+                  className={`border-b border-border min-h-[60px] ${
                     onRowClick ? 'cursor-pointer' : ''
                   }`}
                   onClick={() => onRowClick && onRowClick(item)}

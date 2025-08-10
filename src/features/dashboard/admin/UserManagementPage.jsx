@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
-import { TableSkeleton, StatCardSkeleton } from '@/components/shared/SkeletonLoader';
+import { TableSkeleton, StatCardSkeleton, UserManagementSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import InputField from '@/components/shared/InputField';
 import { 
@@ -189,6 +189,9 @@ export default function UserManagementPage() {
 
       toast.success('User deleted successfully');
       setDeleteModal({ isOpen: false, user: null });
+      
+      // Refresh the users list to ensure consistency
+      await fetchUsers();
     } catch (error) {
       console.error('Error deleting user:', error);
       toast.error(error.message || 'Failed to delete user');
@@ -338,16 +341,6 @@ export default function UserManagementPage() {
             </button>
           )}
           
-          {/* Delete user button */}
-          {row.uid !== currentUser?.uid && (
-            <button
-              onClick={() => setDeleteModal({ isOpen: true, user: row })}
-              className="text-red-600 p-2 rounded-md hover:bg-red-50 transition-colors duration-200"
-              title="Delete user"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          )}
         </div>
       )
     }
@@ -372,53 +365,10 @@ export default function UserManagementPage() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="section-spacing">
-        <div className="page-header">
-          <h1 className="page-title">User Management</h1>
-          <p className="page-description">Loading user data...</p>
-        </div>
-        
-        {/* Stats Overview Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <StatCardSkeleton key={index} />
-          ))}
-        </div>
-        
-        {/* Table Skeleton */}
-        <div className="card">
-          <div className="card-content p-0">
-            <TableSkeleton rows={10} columns={7} />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="section-spacing">
-        <div className="page-header">
-          <h1 className="page-title">User Management</h1>
-        </div>
-        <div className="card border-red-200 bg-red-50">
-          <div className="card-content p-8 text-center">
-            <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
-            <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Users</h3>
-            <p className="text-red-700 mb-6">{error}</p>
-            <button onClick={fetchUsers} className="btn-secondary">
-              Try Again
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="section-spacing">
+      {/* Page Header - Always visible */}
       <div className="page-header mb-16">
         <h1 className="page-title">User Management</h1>
         <p className="page-description">
@@ -427,75 +377,100 @@ export default function UserManagementPage() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-16">
-        <div className="card border-blue-200 bg-blue-50">
-          <div className="card-content p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-600 mb-3">Total Users</p>
-                <p className="text-3xl font-bold text-blue-900 leading-none">{users.length}</p>
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-16">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <StatCardSkeleton key={index} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-16">
+          <div className="card border-blue-200 bg-blue-50">
+            <div className="card-content p-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-600 mb-3">Total Users</p>
+                  <p className="text-3xl font-bold text-blue-900 leading-none">{users.length}</p>
+                </div>
+                <Users className="h-8 w-8 text-blue-600" />
               </div>
-              <Users className="h-8 w-8 text-blue-600" />
             </div>
           </div>
-        </div>
 
-        <div className="card border-amber-200 bg-amber-50">
-          <div className="card-content p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-amber-600 mb-3">Administrators</p>
-                <p className="text-3xl font-bold text-amber-900 leading-none">
-                  {users.filter(u => u.role === 'admin').length}
-                </p>
+          <div className="card border-amber-200 bg-amber-50">
+            <div className="card-content p-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-amber-600 mb-3">Administrators</p>
+                  <p className="text-3xl font-bold text-amber-900 leading-none">
+                    {users.filter(u => u.role === 'admin').length}
+                  </p>
+                </div>
+                <Crown className="h-8 w-8 text-amber-600" />
               </div>
-              <Crown className="h-8 w-8 text-amber-600" />
             </div>
           </div>
-        </div>
 
-        <div className="card border-green-200 bg-green-50">
-          <div className="card-content p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-600 mb-3">Multi-Blog Users</p>
-                <p className="text-3xl font-bold text-green-900 leading-none">
-                  {users.filter(u => (u.maxBlogs && u.maxBlogs > 1)).length}
-                </p>
+          <div className="card border-green-200 bg-green-50">
+            <div className="card-content p-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-600 mb-3">Multi-Blog Users</p>
+                  <p className="text-3xl font-bold text-green-900 leading-none">
+                    {users.filter(u => (u.maxBlogs && u.maxBlogs > 1)).length}
+                  </p>
+                </div>
+                <Database className="h-8 w-8 text-green-600" />
               </div>
-              <Database className="h-8 w-8 text-green-600" />
             </div>
           </div>
-        </div>
 
-        <div className="card border-orange-200 bg-orange-50">
-          <div className="card-content p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-orange-600 mb-3">Total Storage</p>
-                <p className="text-3xl font-bold text-orange-900 leading-none">
-                  {(users.reduce((sum, u) => sum + (u.totalStorageMB || 100), 0) / 1024).toFixed(1)} GB
-                </p>
+          <div className="card border-orange-200 bg-orange-50">
+            <div className="card-content p-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-orange-600 mb-3">Total Storage</p>
+                  <p className="text-3xl font-bold text-orange-900 leading-none">
+                    {(users.reduce((sum, u) => sum + (u.totalStorageMB || 100), 0) / 1024).toFixed(1)} GB
+                  </p>
+                </div>
+                <HardDrive className="h-8 w-8 text-orange-600" />
               </div>
-              <HardDrive className="h-8 w-8 text-orange-600" />
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Users Table */}
-      <div className="card">
-        <div className="card-content p-0">
-          <DataTable
-            data={users}
-            columns={columns}
-            searchable={true}
-            sortable={true}
-            pagination={true}
-            pageSize={15}
-          />
-        </div>
-      </div>
+      {loading ? (
+        <UserManagementSkeleton />
+      ) : (
+        error ? (
+          <div className="card border-red-200 bg-red-50">
+            <div className="card-content p-8 text-center">
+              <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
+              <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Users</h3>
+              <p className="text-red-700 mb-6">{error}</p>
+              <button onClick={fetchUsers} className="btn-secondary">
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="card">
+            <div className="card-content p-0">
+              <DataTable
+                data={users}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                pagination={true}
+                pageSize={15}
+              />
+            </div>
+          </div>
+        )
+      )}
 
       {/* Edit User Modal */}
       <Modal
@@ -576,15 +551,9 @@ export default function UserManagementPage() {
                 className="btn-danger"
               >
                 {deleting ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive-foreground mr-2"></div>
-                    Deleting...
-                  </div>
+                  'Deleting...'
                 ) : (
-                  <>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete User
-                  </>
+                  'Delete User'
                 )}
               </button>
             </div>

@@ -82,7 +82,7 @@ export default function AutoSaveIndicator({
         </span>
         {lastSaved && status === 'saved' && (
           <span className="text-xs text-muted-foreground">
-            {lastSaved.toLocaleTimeString()}
+            Retry
           </span>
         )}
       </div>

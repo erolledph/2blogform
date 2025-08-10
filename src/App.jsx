@@ -8,7 +8,6 @@ import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
 import DashboardPage from '@/components/layout/DashboardPage';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
-import DynamicTransition from '@/components/shared/DynamicTransition';
 import ContentPreviewPage from '@/preview/ContentPreviewPage';
 import ProductPreviewPage from '@/preview/ProductPreviewPage';
 
@@ -28,7 +27,6 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <DynamicTransition transitionType="fade">
           <Router>
             <div className="min-h-screen bg-neutral-50">
               <Routes>
@@ -63,7 +61,6 @@ function App() {
               
             </div>
           </Router>
-        </DynamicTransition>
       </AuthProvider>
     </ErrorBoundary>
   );

@@ -61,7 +61,7 @@ export default function ProgressiveImage({
   if (imageError) {
     if (debug) console.log('ProgressiveImage showing error state for:', src);
     return (
-      <div className={`bg-muted rounded flex items-center justify-center ${className} ${placeholderClassName}`} title={`Failed to load: ${src}`}>
+      <div className={`bg-muted rounded ${className} ${placeholderClassName}`}>
         <ImageIcon className="h-8 w-8 text-muted-foreground" />
         {debug && (
           <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
@@ -76,7 +76,7 @@ export default function ProgressiveImage({
     <div className={`relative overflow-hidden ${className}`}>
       {/* Placeholder/Low quality image */}
       {!imageLoaded && (
-        <div className={`absolute inset-0 bg-muted animate-pulse flex items-center justify-center ${placeholderClassName}`}>
+        <div className={`absolute inset-0 bg-muted flex items-center justify-center ${placeholderClassName}`}>
           {currentSrc ? (
             <img
               src={currentSrc}
@@ -95,7 +95,7 @@ export default function ProgressiveImage({
         <img
           src={currentSrc}
           alt={alt}
-          className={`w-full h-full object-cover transition-opacity duration-500 ${
+          className={`w-full h-full object-cover ${
             imageLoaded ? 'opacity-100' : 'opacity-0'
           }`}
           onLoad={() => {
@@ -117,7 +117,7 @@ export default function ProgressiveImage({
 export function GalleryImage({ src, alt, className = '', onClick = null, debug = false }) {
   return (
     <div 
-      className={`cursor-pointer transition-transform duration-200 hover:scale-105 ${className}`}
+      className={`cursor-pointer ${className}`}
       onClick={onClick}
     >
       <ProgressiveImage

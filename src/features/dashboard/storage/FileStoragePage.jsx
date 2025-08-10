@@ -5,9 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { storageService } from '@/services/storageService';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
-import DynamicTransition from '@/components/shared/DynamicTransition';
-import { TableSkeleton } from '@/components/shared/SkeletonLoader';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import { TableSkeleton, StatCardSkeleton, FileStorageSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import InputField from '@/components/shared/InputField';
@@ -739,47 +737,11 @@ export default function FileStoragePage() {
     }
   ];
 
-  if (loading) {
-    return (
-      <DynamicTransition loading={true} className="space-y-10">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div>
-            <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-4">File Storage</h1>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="w-20 h-10 bg-muted animate-pulse rounded"></div>
-            <div className="w-24 h-10 bg-muted animate-pulse rounded"></div>
-            <div className="w-32 h-10 bg-muted animate-pulse rounded"></div>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="card">
-              <div className="card-content p-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-2">
-                    <div className="w-20 h-4 bg-muted animate-pulse rounded"></div>
-                    <div className="w-16 h-8 bg-muted animate-pulse rounded"></div>
-                  </div>
-                  <div className="w-8 h-8 bg-muted animate-pulse rounded"></div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        <div className="card">
-          <div className="card-content p-0">
-            <TableSkeleton rows={10} columns={6} />
-          </div>
-        </div>
-      </DynamicTransition>
-    );
-  }
 
   return (
-    <DynamicTransition loading={loading} error={error} className="space-y-12">
+    <>
+      <div className="space-y-12">
+      {/* Header and Action Buttons - Always visible */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-12">
         <div>
           <h1 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">File Storage</h1>
@@ -820,7 +782,7 @@ export default function FileStoragePage() {
         </div>
       </div>
 
-      {/* Breadcrumb Navigation */}
+      {/* Breadcrumb Navigation - Always visible */}
       <nav className="flex items-center space-x-3 text-sm text-muted-foreground mb-8 p-4 bg-muted/20 rounded-lg">
         <button
           onClick={navigateToUserRoot}
@@ -842,106 +804,116 @@ export default function FileStoragePage() {
         ))}
       </nav>
 
-      {/* Breadcrumb Navigation */}
 
       {/* Storage Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-        <div className="card border-blue-200 bg-blue-50">
-          <div className="card-content p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-600 mb-3">Total Files</p>
-                <p className="text-3xl font-bold text-blue-900 leading-none">{storageStats.totalFiles}</p>
-              </div>
-              <Folder className="h-8 w-8 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="card border-green-200 bg-green-50">
-          <div className="card-content p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-green-600 mb-3">Total Size</p>
-                <p className="text-3xl font-bold text-green-900 leading-none">{formatBytes(storageStats.totalSize)}</p>
-                <p className="text-sm text-green-600">of {currentUser?.totalStorageMB || 100} MB limit</p>
-              </div>
-              <HardDrive className="h-8 w-8 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="card border-purple-200 bg-purple-50">
-          <div className="card-content p-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-purple-600 mb-3">Storage Usage</p>
-                <p className="text-3xl font-bold text-purple-900 leading-none">
-                  {((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100) * 100).toFixed(1)}%
-                </p>
-                <p className="text-sm text-purple-600">used</p>
-              </div>
-              <FileImage className="h-8 w-8 text-purple-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-
-      {error ? (
-        <DynamicTransition transitionType="fade">
-          <div className="card border-red-200 bg-red-50">
-            <div className="card-content p-12 text-center">
-              <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
-              <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Storage Items</h3>
-              <p className="text-lg text-red-700 mb-6">{error}</p>
-              <div className="space-y-6">
-                <button onClick={fetchItems} className="btn-secondary">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Try Again
-                </button>
-                <div className="text-sm text-red-600">
-                  <p>If this error persists, try:</p>
-                  <ul className="list-disc list-inside mt-3 space-y-2">
-                    <li>Refreshing the page</li>
-                    <li>Checking your internet connection</li>
-                    <li>Logging out and back in</li>
-                    <li>Contacting support if the issue continues</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </DynamicTransition>
-      ) : items.length === 0 ? (
-        <div className="card">
-          <div className="card-content text-center py-20">
-            <Folder className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
-            <h3 className="text-2xl font-semibold text-foreground mb-4">
-              {currentPath && currentPath !== userBasePath ? 'Folder is empty' : 'No files in your storage'}
-            </h3>
-            <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
-              {currentPath && currentPath !== userBasePath
-                ? 'This folder contains no files or subfolders.'
-                : 'Upload some images through the content creation process or use the upload button to add files to your personal storage.'
-              }
-            </p>
-          </div>
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <StatCardSkeleton key={index} />
+          ))}
         </div>
       ) : (
-        <div className="card">
-          <div className="card-content p-0">
-            <DataTable
-              data={items}
-              columns={columns}
-              searchable={true}
-              sortable={true}
-              pagination={true}
-              pageSize={20}
-            />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          <div className="card border-blue-200 bg-blue-50">
+            <div className="card-content p-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-600 mb-3">Total Files</p>
+                  <p className="text-3xl font-bold text-blue-900 leading-none">{storageStats.totalFiles}</p>
+                </div>
+                <Folder className="h-8 w-8 text-blue-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="card border-green-200 bg-green-50">
+            <div className="card-content p-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-600 mb-3">Total Size</p>
+                  <p className="text-3xl font-bold text-green-900 leading-none">{formatBytes(storageStats.totalSize)}</p>
+                  <p className="text-sm text-green-600">of {currentUser?.totalStorageMB || 100} MB limit</p>
+                </div>
+                <HardDrive className="h-8 w-8 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="card border-purple-200 bg-purple-50">
+            <div className="card-content p-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-600 mb-3">Storage Usage</p>
+                  <p className="text-3xl font-bold text-purple-900 leading-none">
+                    {((storageStats.totalSize / 1024 / 1024) / (currentUser?.totalStorageMB || 100) * 100).toFixed(1)}%
+                  </p>
+                  <p className="text-sm text-purple-600">used</p>
+                </div>
+                <FileImage className="h-8 w-8 text-purple-600" />
+              </div>
+            </div>
           </div>
         </div>
       )}
+
+
+      {/* File Storage Content */}
+      {loading ? (
+        <FileStorageSkeleton />
+      ) : error ? (
+        <div className="card border-red-200 bg-red-50">
+          <div className="card-content p-12 text-center">
+            <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
+            <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Storage Items</h3>
+            <p className="text-lg text-red-700 mb-6">{error}</p>
+            <div className="space-y-6">
+              <button onClick={fetchItems} className="btn-secondary">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </button>
+              <div className="text-sm text-red-600">
+                <p>If this error persists, try:</p>
+                <ul className="list-disc list-inside mt-3 space-y-2">
+                  <li>Refreshing the page</li>
+                  <li>Checking your internet connection</li>
+                  <li>Logging out and back in</li>
+                  <li>Contacting support if the issue continues</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : items.length === 0 ? (
+          <div className="card">
+            <div className="card-content text-center py-20">
+              <Folder className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
+              <h3 className="text-2xl font-semibold text-foreground mb-4">
+                {currentPath && currentPath !== userBasePath ? 'Folder is empty' : 'No files in your storage'}
+              </h3>
+              <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
+                {currentPath && currentPath !== userBasePath
+                  ? 'This folder contains no files or subfolders.'
+                  : 'Upload some images through the content creation process or use the upload button to add files to your personal storage.'
+                }
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="card">
+            <div className="card-content p-0">
+              <DataTable
+                data={items}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                pagination={true}
+                pageSize={20}
+              />
+            </div>
+          </div>
+        )
+      }
+      </div>
 
       {/* Delete Confirmation Modal */}
       <Modal
@@ -983,15 +955,9 @@ export default function FileStoragePage() {
               className="btn-danger"
             >
               {deletingItemId === deleteModal.item?.id ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive-foreground mr-2"></div>
-                  Deleting...
-                </div>
+                'Deleting...'
               ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </>
+                'Delete'
               )}
             </button>
           </div>
@@ -1122,10 +1088,7 @@ export default function FileStoragePage() {
               className="btn-primary"
             >
               {operationLoading ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Creating...
-                </>
+                'Creating...'
               ) : (
                 'Create Folder'
               )}
@@ -1202,10 +1165,7 @@ export default function FileStoragePage() {
               className="btn-primary"
             >
               {operationLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
-                  {renameModal.item?.type === 'folder' ? 'Moving folder...' : 'Renaming...'}
-                </>
+                renameModal.item?.type === 'folder' ? 'Moving folder...' : 'Renaming...'
               ) : (
                 'Rename'
               )}
@@ -1307,10 +1267,7 @@ export default function FileStoragePage() {
               className="btn-primary"
             >
               {operationLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
-                  {moveModal.item?.type === 'folder' ? 'Moving folder...' : 'Moving file...'}
-                </>
+                moveModal.item?.type === 'folder' ? 'Moving folder...' : 'Moving file...'
               ) : (
                 `Move ${moveModal.item?.type === 'folder' ? 'Folder' : 'File'}`
               )}
@@ -1369,20 +1326,14 @@ export default function FileStoragePage() {
               className="btn-primary"
             >
               {operationLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
-                  Creating...
-                </>
+                'Creating...'
               ) : (
-                <>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Folder
-                </>
+                'Create Folder'
               )}
             </button>
           </div>
         </div>
       </Modal>
-    </DynamicTransition>
+    </>
   );
 }

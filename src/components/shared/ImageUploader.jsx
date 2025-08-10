@@ -5,9 +5,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { storageService } from '@/services/storageService';
 import { fromBlob } from 'image-resize-compress';
 import InputField from './InputField';
-import LoadingSpinner from './LoadingSpinner';
-import DynamicTransition from './DynamicTransition';
 import Modal from './Modal';
+import LoadingSpinner from './LoadingSpinner';
 import { Upload, Image as ImageIcon, FileImage, CheckCircle, AlertTriangle, Settings } from 'lucide-react';
 import { firebaseErrorHandler } from '@/utils/firebaseErrorHandler';
 import { formatBytes } from '@/utils/helpers';
@@ -489,7 +488,9 @@ export default function ImageUploader({
               {isProcessing && (
                 <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-md">
                   <div className="text-center">
-                    <LoadingSpinner size="sm" />
+                    <div className="text-sm text-muted-foreground">
+                      {uploading ? 'Uploading...' : compressing ? 'Processing...' : 'Loading...'}
+                    </div>
                     {uploading && uploadProgress > 0 && (
                       <div className="mt-2">
                         <div className="w-32 bg-gray-200 rounded-full h-2">
@@ -514,7 +515,6 @@ export default function ImageUploader({
 
           {/* Preview and Stats */}
           {selectedFile && (
-            <DynamicTransition transitionType="slide-up">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Image Preview */}
                 <div>
@@ -590,12 +590,10 @@ export default function ImageUploader({
                   </div>
                 </div>
               </div>
-            </DynamicTransition>
           )}
 
           {/* Filename Input */}
           {selectedFile && (
-            <DynamicTransition transitionType="fade">
               <InputField
                 label="New Filename (without extension)"
                 value={newFileName}
@@ -604,7 +602,6 @@ export default function ImageUploader({
                 disabled={isProcessing}
                 className="max-w-md"
               />
-            </DynamicTransition>
           )}
         </div>
       </div>
@@ -669,15 +666,9 @@ export default function ImageUploader({
                 className="btn-primary w-full sm:w-auto"
               >
                 {isProcessing ? (
-                  <>
-                    <LoadingSpinner size="sm" className="mr-3" />
-                    Uploading...
-                  </>
+                  'Uploading...'
                 ) : (
-                  <>
-                    <Upload className="h-5 w-5 mr-3" />
-                    Upload Optimized Image
-                  </>
+                  'Upload Optimized Image'
                 )}
               </button>
               

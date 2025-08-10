@@ -5,14 +5,13 @@ import { useContentById, useContent } from '@/hooks/useContent';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import SimpleMDE from 'react-simplemde-editor';
 import InputField from '@/components/shared/InputField';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import AutoSaveIndicator from '@/components/shared/AutoSaveIndicator';
-import DynamicTransition from '@/components/shared/DynamicTransition';
 import ImageGalleryModal from '@/components/shared/ImageGalleryModal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import Modal from '@/components/shared/Modal';
 import UploadDiagnostics from '@/components/shared/UploadDiagnostics';
 import ImageDisplayDiagnostics from '@/components/shared/ImageDisplayDiagnostics';
+import { FormSkeleton } from '@/components/shared/SkeletonLoader';
 import { Save, ArrowLeft, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 import { generateSlug, parseArrayInput } from '@/utils/helpers';
 import toast from 'react-hot-toast';
@@ -389,14 +388,12 @@ export default function CreateContentPage({ activeBlogId }) {
 
   if (contentLoading && isEditing) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" />
-      </div>
+      <FormSkeleton sections={2} fieldsPerSection={3} />
     );
   }
 
   return (
-    <DynamicTransition loading={contentLoading && isEditing} className="section-spacing">
+    <div className="section-spacing">
       {/* Header with Action Buttons */}
       <div className="page-header mb-16">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
@@ -704,6 +701,6 @@ export default function CreateContentPage({ activeBlogId }) {
           initialMaxHeight={1080}
         />
       </Modal>
-    </DynamicTransition>
+    </div>
   );
 }

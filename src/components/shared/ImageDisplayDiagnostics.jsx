@@ -6,6 +6,7 @@ import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
 import ProgressiveImage from './ProgressiveImage';
 import toast from 'react-hot-toast';
+import DynamicTransition from './DynamicTransition';
 
 export default function ImageDisplayDiagnostics({ activeBlogId, className = '' }) {
   const { currentUser } = useAuth();

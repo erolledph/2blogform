@@ -425,7 +425,7 @@ function EnhancedFeaturedImage({ src, alt, className = '', debug = false }) {
   
   if (loading) {
     return (
-      <div className={`bg-muted animate-pulse rounded-xl ${className}`} style={{ minHeight: '300px' }}>
+      <div className={`bg-muted rounded-xl ${className}`} style={{ minHeight: '300px' }}>
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
@@ -467,7 +467,7 @@ function EnhancedGalleryImage({ src, alt, className = '', debug = false }) {
   
   if (loading) {
     return (
-      <div className={`bg-muted animate-pulse rounded-lg ${className}`}>
+      <div className={`bg-muted rounded-lg ${className}`}>
         <div className="flex items-center justify-center h-full">
           <FileText className="h-8 w-8 text-muted-foreground" />
         </div>

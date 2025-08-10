@@ -5,7 +5,6 @@ import { useProducts } from '@/hooks/useProducts';
 import { settingsService } from '@/services/settingsService';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
-import DynamicTransition from '@/components/shared/DynamicTransition';
 import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import { Edit, Trash2, Plus, ImageIcon, DollarSign, Package, ExternalLink, Eye, Upload, Download, CheckCircle } from 'lucide-react';
@@ -569,32 +568,10 @@ export default function ManageProductsPage({ activeBlogId }) {
     }
   ];
 
-  if (loading) {
-    return (
-      <DynamicTransition loading={true} className="section-spacing">
-        <div className="page-header">
-          <h1 className="page-title">Manage Products</h1>
-          <p className="page-description">Loading your products...</p>
-        </div>
-        <div className="card">
-          <div className="card-content p-0">
-            <TableSkeleton rows={8} columns={6} />
-          </div>
-        </div>
-      </DynamicTransition>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-destructive">Error loading products: {error}</p>
-      </div>
-    );
-  }
 
   return (
-    <DynamicTransition loading={loading} error={error} className="section-spacing">
+    <div className="section-spacing">
+      {/* Header and Action Buttons - Always visible */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-12">
         <div className="page-header mb-0 flex-1">
           <h1 className="page-title mb-2">Manage Products</h1>
@@ -666,57 +643,77 @@ export default function ManageProductsPage({ activeBlogId }) {
         </div>
       </div>
 
-      {products.length === 0 ? (
+      {/* Products Table */}
+      {loading ? (
         <div className="card">
-          <div className="card-content text-center py-20">
-            <Package className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
-            <h3 className="text-2xl font-semibold text-foreground mb-4">No products found</h3>
-            <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
-              Get started by adding your first product to the catalog. Once you have products, you can export them to get a genuine JSON template that matches your data structure.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-6 justify-center">
-              <Link to="/dashboard/create-product" className="btn-primary">
-                <Plus className="h-5 w-5 mr-3" />
-                Add Your First Product
-              </Link>
-            </div>
-            <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-lg max-w-2xl mx-auto">
-              <h4 className="text-sm font-medium text-green-800 mb-2">💡 Pro Tip: Generate Your Own JSON Template</h4>
-              <p className="text-sm text-green-700 leading-relaxed">
-                Create at least one product, then use the "Export All" button to generate a JSON template that perfectly matches your data structure and image references.
-              </p>
-            </div>
+          <div className="card-content p-0">
+            <TableSkeleton rows={8} columns={6} hasSelection={true} hasActions={true} />
           </div>
         </div>
       ) : (
-        <div className="card">
-          <div className="card-content p-0">
-            <DataTable
-              data={products}
-              columns={columns}
-              searchable={true}
-              filterable={true}
-              filterOptions={{
-                statuses: ['draft', 'published'],
-                categories: true,
-                tags: true,
-                dateRange: true
-              }}
-              sortable={true}
-              pagination={true}
-              pageSize={10}
-              selectable={true}
-              selectedItems={selectedItems}
-              onSelectAll={handleSelectAll}
-              onSelectRow={handleSelectRow}
-              enableAnimations={true}
-              onFiltersChange={(filters) => {
-                // Filters are handled internally by DataTable
-                // This callback can be used for additional logic if needed
-              }}
-            />
+        error ? (
+          <div className="card border-red-200 bg-red-50">
+            <div className="card-content p-8 text-center">
+              <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
+              <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Products</h3>
+              <p className="text-red-700 mb-6">{error}</p>
+              <button onClick={refetch} className="btn-secondary">
+                Try Again
+              </button>
+            </div>
           </div>
-        </div>
+        ) : products.length === 0 ? (
+          <div className="card">
+            <div className="card-content text-center py-20">
+              <Package className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
+              <h3 className="text-2xl font-semibold text-foreground mb-4">No products found</h3>
+              <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
+                Get started by adding your first product to the catalog. Once you have products, you can export them to get a genuine JSON template that matches your data structure.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-6 justify-center">
+                <Link to="/dashboard/create-product" className="btn-primary">
+                  <Plus className="h-5 w-5 mr-3" />
+                  Add Your First Product
+                </Link>
+              </div>
+              <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-lg max-w-2xl mx-auto">
+                <h4 className="text-sm font-medium text-green-800 mb-2">💡 Pro Tip: Generate Your Own JSON Template</h4>
+                <p className="text-sm text-green-700 leading-relaxed">
+                  Create at least one product, then use the "Export All" button to generate a JSON template that perfectly matches your data structure and image references.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="card">
+            <div className="card-content p-0">
+              <DataTable
+                data={products}
+                columns={columns}
+                searchable={true}
+                filterable={true}
+                filterOptions={{
+                  statuses: ['draft', 'published'],
+                  categories: true,
+                  tags: true,
+                  dateRange: true
+                }}
+                sortable={true}
+                pagination={true}
+                pageSize={10}
+                selectable={true}
+                selectedItems={selectedItems}
+                onSelectAll={handleSelectAll}
+                onSelectRow={handleSelectRow}
+                enableAnimations={true}
+                onFiltersChange={(filters) => {
+                  // Filters are handled internally by DataTable
+                  // This callback can be used for additional logic if needed
+                }}
+              />
+            </div>
+          </div>
+        )
       )}
 
       {/* Clear Selection Button */}
@@ -759,21 +756,15 @@ export default function ManageProductsPage({ activeBlogId }) {
               className="btn-danger"
             >
               {deletingItemId === deleteModal.product?.id ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive-foreground mr-2"></div>
-                  Deleting...
-                </div>
+                'Deleting...'
               ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </>
+                'Delete'
               )}
             </button>
           </div>
         </div>
       </Modal>
-    </DynamicTransition>
+    </div>
   );
 }
 
@@ -788,7 +779,7 @@ function EnhancedProductThumbnail({ src, alt, className = '' }) {
         <img
           src={src}
           alt={alt}
-          className={`${className} ${imageLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+          className={`${className} ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => {
             setImageLoaded(true);
             console.log('Product thumbnail loaded:', src);

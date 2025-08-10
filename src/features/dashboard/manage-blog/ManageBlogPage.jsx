@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { blogService } from '@/services/blogService';
 import InputField from '@/components/shared/InputField';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
 import CreateBlogModal from '@/components/shared/CreateBlogModal';
 import Modal from '@/components/shared/Modal';
+import SkeletonLoader from '@/components/shared/SkeletonLoader';
 import { BookOpen, Save, Plus, Edit, Check, Copy, Trash2, AlertTriangle, ExternalLink, RefreshCw, Globe, Database } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -238,11 +238,12 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
   if (loading) {
     return (
       <div className="section-spacing">
-        <div className="page-header">
-          <h1 className="page-title">Manage Blog</h1>
-        </div>
-        <div className="flex items-center justify-center h-32">
-          <LoadingSpinner size="lg" />
+        <div className="space-y-8">
+          <SkeletonLoader lines={2} height="xl" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <SkeletonLoader type="card" />
+            <SkeletonLoader type="card" />
+          </div>
         </div>
       </div>
     );
@@ -764,15 +765,9 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               className="btn-danger"
             >
               {deletingBlog ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Deleting...
-                </>
+                'Deleting...'
               ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Blog
-                </>
+                'Delete Blog'
               )}
             </button>
           </div>

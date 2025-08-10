@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, AreaChart, Area, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { webSocketService } from '@/services/webSocketService';
 import { Activity, TrendingUp, Users, Eye, MousePointer, Zap } from 'lucide-react';
-import DynamicTransition from './DynamicTransition';
 
 // Live analytics dashboard with streaming updates
 export default function LiveAnalyticsDashboard({ blogId, className = '' }) {

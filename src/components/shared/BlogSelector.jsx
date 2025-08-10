@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { blogService } from '@/services/blogService';
-import LoadingSpinner from './LoadingSpinner';
 import { ChevronDown, BookOpen, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -59,8 +58,7 @@ export default function BlogSelector({ activeBlogId, setActiveBlogId }) {
   if (loading) {
     return (
       <div className="flex items-center space-x-2">
-        <LoadingSpinner size="sm" />
-        <span className="text-sm text-muted-foreground">Loading blogs...</span>
+        <span className="text-sm text-muted-foreground">Loading...</span>
       </div>
     );
   }

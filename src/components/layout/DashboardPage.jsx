@@ -5,8 +5,7 @@ import { blogService } from '@/services/blogService';
 import toast from 'react-hot-toast';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import DynamicTransition from '@/components/shared/DynamicTransition';
-import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 
 // Lazy load dashboard pages
 const OverviewPage = React.lazy(() => import('@/features/dashboard/overview/OverviewPage'));
@@ -129,15 +128,15 @@ export default function DashboardPage() {
         <div className="content-section">
           <div className="page-container">
             <Suspense fallback={
-              <DynamicTransition loading={true}>
-                <div className="flex items-center justify-center h-64">
-                  <LoadingSpinner size="lg" />
+              <div className="p-8">
+                <div className="space-y-8">
+                  <div className="h-10 bg-muted animate-pulse rounded w-64"></div>
+                  <TableSkeleton rows={5} columns={4} hasSelection={false} hasActions={true} />
                 </div>
-              </DynamicTransition>
+              </div>
             }>
               {/* Only render routes when blog is initialized */}
               {blogInitialized && activeBlogId ? (
-                <DynamicTransition loading={false} transitionType="fade">
                   <Routes>
                   <Route path="/" element={<Navigate to="/dashboard/overview" replace />} />
                   <Route path="/overview" element={<OverviewPage activeBlogId={activeBlogId} />} />
@@ -155,13 +154,13 @@ export default function DashboardPage() {
                   <Route path="/tips" element={<TipsPage />} />
                   <Route path="/documentation" element={<DocumentationPage activeBlogId={activeBlogId} />} />
                 </Routes>
-                </DynamicTransition>
               ) : (
-                <DynamicTransition loading={true}>
-                  <div className="flex items-center justify-center h-64">
-                    <LoadingSpinner size="lg" />
+                <div className="p-8">
+                  <div className="space-y-8">
+                    <div className="h-10 bg-muted animate-pulse rounded w-64"></div>
+                    <TableSkeleton rows={5} columns={4} hasSelection={false} hasActions={true} />
                   </div>
-                </DynamicTransition>
+                </div>
               )}
             </Suspense>
           </div>

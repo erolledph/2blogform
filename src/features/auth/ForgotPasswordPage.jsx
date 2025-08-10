@@ -173,10 +173,7 @@ export default function ForgotPasswordPage() {
                   className="btn-primary w-full h-14 sm:h-16 text-base sm:text-lg font-semibold shadow-lg"
                 >
                   {loading ? (
-                    <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-foreground mr-3"></div>
-                      Sending reset email...
-                    </div>
+                    'Sending reset email...'
                   ) : (
                     'Send Reset Email'
                   )}

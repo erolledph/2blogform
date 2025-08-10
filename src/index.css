@@ -187,17 +187,17 @@
   }
 
   .nav-link {
-    @apply flex items-center py-3 px-3 no-underline transition-all duration-300 ease-in-out cursor-pointer border-l-4 border-transparent relative h-12;
+    @apply flex items-center py-3 px-3 no-underline cursor-pointer border-l-4 border-transparent relative h-12;
     color: hsl(var(--foreground));
   }
 
   .nav-link-icon {
-    @apply flex-shrink-0 transition-all duration-300 ease-in-out w-5 h-5;
+    @apply flex-shrink-0 w-5 h-5;
     color: hsl(var(--muted-foreground));
   }
 
   .nav-link-text {
-    @apply transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden ml-4;
+    @apply whitespace-nowrap overflow-hidden ml-4;
     opacity: 0;
     width: 0;
     display: flex;
@@ -212,11 +212,10 @@
   }
 
   .nav-tooltip {
-    @apply absolute left-full ml-2 px-3 py-2 text-sm rounded-md whitespace-nowrap z-50 pointer-events-none transition-all duration-200;
+    @apply absolute left-full ml-2 px-3 py-2 text-sm rounded-md whitespace-nowrap z-50 pointer-events-none;
     background-color: hsl(var(--foreground));
     color: hsl(var(--background));
     opacity: 0;
-    transform: translateX(-8px);
   }
 
   .nav-tooltip::before {
@@ -228,7 +227,6 @@
 
   .sidebar:not(.expanded):not(.open) .nav-item:hover .nav-tooltip {
     opacity: 1;
-    transform: translateX(0);
   }
 
   .nav-link:hover {
@@ -366,17 +364,17 @@
   }
 
   .logout-button {
-    @apply flex items-center py-3 px-3 no-underline transition-all duration-300 ease-in-out cursor-pointer border-l-4 border-transparent w-full text-left relative h-12;
+    @apply flex items-center py-3 px-3 no-underline cursor-pointer border-l-4 border-transparent w-full text-left relative h-12;
     color: hsl(var(--foreground));
   }
 
   .logout-button-icon {
-    @apply flex-shrink-0 transition-all duration-300 ease-in-out w-5 h-5;
+    @apply flex-shrink-0 w-5 h-5;
     color: hsl(var(--muted-foreground));
   }
 
   .logout-button-text {
-    @apply transition-all duration-300 ease-in-out whitespace-nowrap overflow-hidden ml-4;
+    @apply whitespace-nowrap overflow-hidden ml-4;
     opacity: 0;
     width: 0;
   }
@@ -394,31 +392,31 @@
 
   /* Enhanced Button Styles */
   .btn {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 transition-all duration-200 h-12 px-6 py-3; /* Increased height and padding */
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-12 px-6 py-3; /* Increased height and padding */
     line-height: 1.4;
     white-space: nowrap;
   }
 
   .btn-primary {
-    @apply btn shadow-sm hover:opacity-90 h-14 px-8 py-4 text-base font-semibold; /* Increased size */
+    @apply btn shadow-sm h-14 px-8 py-4 text-base font-semibold; /* Increased size */
     background-color: hsl(var(--primary)); /* Primary green background */
     color: hsl(var(--primary-foreground)); /* White text */
   }
 
   .btn-secondary {
-    @apply btn border border-input shadow-sm hover:bg-secondary/80 h-14 px-8 py-4 text-base; /* Increased size */
+    @apply btn border border-input shadow-sm h-14 px-8 py-4 text-base; /* Increased size */
     background-color: hsl(var(--secondary)); /* Light secondary background */
     color: hsl(var(--foreground)); /* Dark text */
   }
 
   .btn-ghost {
-    @apply btn hover:bg-accent h-12 px-6 py-3; /* Consistent sizing */
+    @apply btn h-12 px-6 py-3; /* Consistent sizing */
     color: hsl(var(--foreground)); /* Ghost text color */
     background-color: transparent;
   }
 
   .btn-danger {
-    @apply btn shadow-sm hover:opacity-90 h-14 px-8 py-4 text-base font-semibold; /* Increased size */
+    @apply btn shadow-sm h-14 px-8 py-4 text-base font-semibold; /* Increased size */
     background-color: hsl(var(--destructive));
     color: hsl(var(--destructive-foreground));
   }
@@ -446,7 +444,7 @@
 
   /* Enhanced Input Styles */
   .input-field {
-    @apply flex h-14 w-full rounded-md border bg-background px-6 py-4 text-base ring-offset-background file:border-0 file:bg-transparent file:text-base file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200; /* Increased height and padding */
+    @apply flex h-14 w-full rounded-md border bg-background px-6 py-4 text-base ring-offset-background file:border-0 file:bg-transparent file:text-base file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50; /* Increased height and padding */
     border-color: hsl(var(--border)); /* Light border color */
     color: hsl(var(--foreground)); /* Input text color */
     background-color: hsl(var(--background));
@@ -487,7 +485,7 @@
 
   /* Enhanced Badge Styles */
   .badge {
-    @apply inline-flex items-center rounded-full border px-3 py-1 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-all duration-200; /* px-3 py-1 = 12px 4px */
+    @apply inline-flex items-center rounded-full border px-3 py-1 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2; /* px-3 py-1 = 12px 4px */
   }
 
   .badge-default {
@@ -1096,13 +1094,7 @@
   transition: all 0.2s ease-in-out;
 }
 
-/* Smooth Transitions for Interactive Elements */
-.nav-link,
-.btn,
-.input-field,
-.card {
-  transition: all 0.2s ease-in-out;
-}
+/* Removed excessive transitions */
 
 /* Enhanced Animation Classes */
 .slide-in-right {

@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, Wifi, WifiOff } from 'lucide-react';
-import DynamicTransition from '@/components/shared/DynamicTransition';
 
 export default function Header({ onMenuClick }) {
   const [notifications, setNotifications] = useState([]);
@@ -43,7 +42,6 @@ export default function Header({ onMenuClick }) {
             
             {/* Notifications Dropdown */}
             {showNotifications && (
-              <DynamicTransition show={showNotifications} transitionType="scale">
                 <div className="absolute right-0 top-full mt-2 w-80 bg-white border border-border rounded-lg shadow-lg z-50">
                   <div className="p-4 border-b border-border">
                     <h3 className="text-sm font-medium text-foreground">Notifications</h3>
@@ -64,7 +62,6 @@ export default function Header({ onMenuClick }) {
                     )}
                   </div>
                 </div>
-              </DynamicTransition>
             )}
           </div>
         </div>

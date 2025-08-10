@@ -4,7 +4,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { useContent } from '@/hooks/useContent';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
-import DynamicTransition from '@/components/shared/DynamicTransition';
 import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import { Edit, Trash2, Plus, ImageIcon, BarChart3, AlertTriangle, Eye, Upload, Download, FileText } from 'lucide-react';
@@ -529,32 +528,10 @@ export default function ManageContentPage({ activeBlogId }) {
     }
   ];
 
-  if (loading) {
-    return (
-      <DynamicTransition loading={true} className="section-spacing">
-        <div className="page-header">
-          <h1 className="page-title">Manage Content</h1>
-          <p className="page-description">Loading your content...</p>
-        </div>
-        <div className="card">
-          <div className="card-content p-0">
-            <TableSkeleton rows={8} columns={7} />
-          </div>
-        </div>
-      </DynamicTransition>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-destructive">Error loading content: {error}</p>
-      </div>
-    );
-  }
 
   return (
-    <DynamicTransition loading={loading} error={error} className="section-spacing">
+    <div className="section-spacing">
+      {/* Header and Action Buttons - Always visible */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-12">
         <div className="page-header mb-0 flex-1">
           <h1 className="page-title mb-2">Manage Content</h1>
@@ -626,59 +603,77 @@ export default function ManageContentPage({ activeBlogId }) {
         </div>
       </div>
 
-      {content.length === 0 ? (
-        <DynamicTransition transitionType="scale">
-          <div className="card">
-          <div className="card-content text-center py-20">
-            <FileText className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
-            <h3 className="text-2xl font-semibold text-foreground mb-4">No content found</h3>
-            <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
-              Get started by creating your first blog post. Once you have content, you can export it to get a genuine JSON template that matches your data structure.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-6 justify-center">
-              <Link to="/dashboard/create" className="btn-primary">
-                <Plus className="h-5 w-5 mr-3" />
-                Create First Post
-              </Link>
-            </div>
-            <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg max-w-2xl mx-auto">
-              <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Pro Tip: Generate Your Own JSON Template</h4>
-              <p className="text-sm text-blue-700 leading-relaxed">
-                Create at least one blog post, then use the "Export All" button to generate a JSON template that perfectly matches your data structure and image references.
-              </p>
-            </div>
-          </div>
-        </div>
-        </DynamicTransition>
-      ) : (
+      {/* Content Table */}
+      {loading ? (
         <div className="card">
           <div className="card-content p-0">
-            <DataTable
-              data={content}
-              columns={columns}
-              searchable={true}
-              filterable={true}
-              filterOptions={{
-                statuses: ['draft', 'published'],
-                categories: true,
-                tags: true,
-                dateRange: true
-              }}
-              sortable={true}
-              pagination={true}
-              pageSize={10}
-              selectable={true}
-              selectedItems={selectedItems}
-              onSelectAll={handleSelectAll}
-              onSelectRow={handleSelectRow}
-              enableAnimations={true}
-              onFiltersChange={(filters) => {
-                // Filters are handled internally by DataTable
-                // This callback can be used for additional logic if needed
-              }}
-            />
+            <TableSkeleton rows={8} columns={7} hasSelection={true} hasActions={true} />
           </div>
         </div>
+      ) : (
+        error ? (
+          <div className="card border-red-200 bg-red-50">
+            <div className="card-content p-8 text-center">
+              <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
+              <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Content</h3>
+              <p className="text-red-700 mb-6">{error}</p>
+              <button onClick={refetch} className="btn-secondary">
+                Try Again
+              </button>
+            </div>
+          </div>
+        ) : content.length === 0 ? (
+          <div className="card">
+            <div className="card-content text-center py-20">
+              <FileText className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
+              <h3 className="text-2xl font-semibold text-foreground mb-4">No content found</h3>
+              <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
+                Get started by creating your first blog post. Once you have content, you can export it to get a genuine JSON template that matches your data structure.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-6 justify-center">
+                <Link to="/dashboard/create" className="btn-primary">
+                  <Plus className="h-5 w-5 mr-3" />
+                  Create First Post
+                </Link>
+              </div>
+              <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg max-w-2xl mx-auto">
+                <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Pro Tip: Generate Your Own JSON Template</h4>
+                <p className="text-sm text-blue-700 leading-relaxed">
+                  Create at least one blog post, then use the "Export All" button to generate a JSON template that perfectly matches your data structure and image references.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="card">
+            <div className="card-content p-0">
+              <DataTable
+                data={content}
+                columns={columns}
+                searchable={true}
+                filterable={true}
+                filterOptions={{
+                  statuses: ['draft', 'published'],
+                  categories: true,
+                  tags: true,
+                  dateRange: true
+                }}
+                sortable={true}
+                pagination={true}
+                pageSize={10}
+                selectable={true}
+                selectedItems={selectedItems}
+                onSelectAll={handleSelectAll}
+                onSelectRow={handleSelectRow}
+                enableAnimations={true}
+                onFiltersChange={(filters) => {
+                  // Filters are handled internally by DataTable
+                  // This callback can be used for additional logic if needed
+                }}
+              />
+            </div>
+          </div>
+        )
       )}
 
       {/* Clear Selection Button */}
@@ -722,15 +717,9 @@ export default function ManageContentPage({ activeBlogId }) {
               className="btn-danger"
             >
               {deletingItemId === deleteModal.content.id ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-destructive-foreground mr-2"></div>
-                  Deleting...
-                </div>
+                'Deleting...'
               ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </>
+                'Delete'
               )}
             </button>
           </div>
@@ -753,7 +742,7 @@ export default function ManageContentPage({ activeBlogId }) {
           />
         )}
       </Modal>
-    </DynamicTransition>
+    </div>
   );
 }
 
@@ -882,7 +871,7 @@ function EnhancedContentThumbnail({ src, alt, className = '' }) {
       <img
         src={src}
         alt={alt}
-        className={`${className} ${imageLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+        className={`${className} ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
         onLoad={() => {
           setImageLoaded(true);
           console.log('Content thumbnail loaded:', src);

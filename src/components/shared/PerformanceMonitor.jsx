@@ -3,7 +3,6 @@ import { usePerformanceMonitoring } from '@/services/performanceService';
 import { useCache } from '@/hooks/useCache';
 import { Activity, Zap, AlertTriangle, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { CircularProgress } from './ProgressBar';
-import DynamicTransition from './DynamicTransition';
 
 // Performance monitoring dashboard component
 export default function PerformanceMonitor({ 
