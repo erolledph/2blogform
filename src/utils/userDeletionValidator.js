@@ -1,5 +1,6 @@
 // User deletion validation utilities
-import { auth, db } from '@/firebase';
+import { db } from '@/firebase';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 
 export const userDeletionValidator = {
   // Validate if user can be safely deleted
@@ -18,19 +19,6 @@ export const userDeletionValidator = {
     };
 
     try {
-      // Check if user exists in Firebase Auth
-      try {
-        const userRecord = await auth.getUser(userId);
-        validationResults.userExists = true;
-        validationResults.userEmail = userRecord.email;
-      } catch (error) {
-        if (error.code === 'auth/user-not-found') {
-          validationResults.warnings.push('User not found in Firebase Authentication but may have orphaned data');
-        } else {
-          validationResults.blockers.push(`Authentication check failed: ${error.message}`);
-        }
-      }
-
       // Prevent self-deletion
       if (userId === requestingUserId) {
         validationResults.canDelete = false;
@@ -38,14 +26,24 @@ export const userDeletionValidator = {
         return validationResults;
       }
 
+      // Validate userId format
+      if (!userId || typeof userId !== 'string' || userId.length < 10) {
+        validationResults.canDelete = false;
+        validationResults.blockers.push('Invalid user ID format');
+        return validationResults;
+      }
+
       // Estimate data to be deleted
       try {
-        const userDocRef = db.collection('users').doc(userId);
-        const userDoc = await userDocRef.get();
+        const userDocRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userDocRef);
         
-        if (userDoc.exists) {
+        if (userDoc.exists()) {
+          validationResults.userExists = true;
+          
           // Count blogs
-          const blogsSnapshot = await userDocRef.collection('blogs').get();
+          const blogsRef = collection(db, 'users', userId, 'blogs');
+          const blogsSnapshot = await getDocs(blogsRef);
           validationResults.dataEstimate.blogs = blogsSnapshot.size;
           
           // Count content and products across all blogs
@@ -53,10 +51,18 @@ export const userDeletionValidator = {
           let totalProducts = 0;
           
           for (const blogDoc of blogsSnapshot.docs) {
-            const contentSnapshot = await blogDoc.ref.collection('content').get();
-            const productsSnapshot = await blogDoc.ref.collection('products').get();
-            totalContent += contentSnapshot.size;
-            totalProducts += productsSnapshot.size;
+            try {
+              const contentRef = collection(db, 'users', userId, 'blogs', blogDoc.id, 'content');
+              const contentSnapshot = await getDocs(contentRef);
+              totalContent += contentSnapshot.size;
+              
+              const productsRef = collection(db, 'users', userId, 'blogs', blogDoc.id, 'products');
+              const productsSnapshot = await getDocs(productsRef);
+              totalProducts += productsSnapshot.size;
+            } catch (error) {
+              console.warn(`Error counting data for blog ${blogDoc.id}:`, error);
+              // Continue with other blogs even if one fails
+            }
           }
           
           validationResults.dataEstimate.content = totalContent;
@@ -70,24 +76,29 @@ export const userDeletionValidator = {
           } else if (totalItems > 50) {
             validationResults.dataEstimate.estimatedTime = '1-2 minutes';
           }
+        } else {
+          validationResults.warnings.push('User document not found in Firestore but may exist in Authentication');
         }
       } catch (error) {
+        console.warn('Could not estimate data size:', error);
         validationResults.warnings.push(`Could not estimate data size: ${error.message}`);
       }
 
       // Check for admin role
       try {
-        const userSettingsRef = db.collection('users').doc(userId).collection('userSettings').doc('preferences');
-        const userSettingsDoc = await userSettingsRef.get();
+        const userSettingsRef = doc(db, 'users', userId, 'userSettings', 'preferences');
+        const userSettingsDoc = await getDoc(userSettingsRef);
         
-        if (userSettingsDoc.exists && userSettingsDoc.data().role === 'admin') {
+        if (userSettingsDoc.exists() && userSettingsDoc.data().role === 'admin') {
           validationResults.warnings.push('This user has administrator privileges');
         }
       } catch (error) {
+        console.warn('Could not check user role:', error);
         validationResults.warnings.push('Could not check user role');
       }
 
     } catch (error) {
+      console.error('Validation error:', error);
       validationResults.canDelete = false;
       validationResults.blockers.push(`Validation failed: ${error.message}`);
     }
@@ -95,42 +106,31 @@ export const userDeletionValidator = {
     return validationResults;
   },
 
-  // Pre-deletion checks
+  // Pre-deletion checks using client-side Firestore
   async performPreDeletionChecks(userId) {
     const checks = {
-      authUserExists: false,
+      authUserExists: null, // Cannot check from client side
       firestoreDataExists: false,
-      storageDataExists: false,
+      storageDataExists: null, // Cannot easily check from client side
       analyticsDataExists: false,
       errors: []
     };
 
     try {
-      // Check Firebase Auth
-      try {
-        await auth.getUser(userId);
-        checks.authUserExists = true;
-      } catch (error) {
-        if (error.code !== 'auth/user-not-found') {
-          checks.errors.push(`Auth check failed: ${error.message}`);
-        }
-      }
-
       // Check Firestore data
       try {
-        const userDoc = await db.collection('users').doc(userId).get();
-        checks.firestoreDataExists = userDoc.exists;
+        const userDoc = await getDoc(doc(db, 'users', userId));
+        checks.firestoreDataExists = userDoc.exists();
       } catch (error) {
         checks.errors.push(`Firestore check failed: ${error.message}`);
       }
 
-      // Check for analytics data
+      // Check for analytics data (limited check)
       try {
-        const pageViewsSnapshot = await db.collection('pageViews')
-          .where('userId', '==', userId)
-          .limit(1)
-          .get();
-        checks.analyticsDataExists = !pageViewsSnapshot.empty;
+        const pageViewsRef = collection(db, 'pageViews');
+        // Note: We can't efficiently query by userId from client side due to security rules
+        // This is a limitation of client-side validation
+        checks.analyticsDataExists = null; // Cannot determine from client side
       } catch (error) {
         checks.errors.push(`Analytics check failed: ${error.message}`);
       }
