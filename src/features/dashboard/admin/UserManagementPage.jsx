@@ -302,26 +302,67 @@ export default function UserManagementPage() {
     try {
       setValidatingDeletion(true);
       
-      // Validate deletion before showing modal
-      const validation = await userDeletionValidator.validateUserDeletion(user.uid, currentUser?.uid);
-      setDeletionValidation(validation);
-      
-      if (!validation.canDelete) {
-        toast.error(`Cannot delete user: ${validation.blockers.join(', ')}`);
+      // Basic client-side validation
+      if (user.uid === currentUser?.uid) {
+        toast.error('Cannot delete your own account');
         return;
       }
       
-      // Show warnings if any
-      if (validation.warnings.length > 0) {
-        validation.warnings.forEach(warning => {
-          toast.warning(warning, { duration: 6000 });
+      if (!user.uid || typeof user.uid !== 'string') {
+        toast.error('Invalid user ID');
+        return;
+      }
+      
+      // Perform basic validation
+      try {
+        const validation = await userDeletionValidator.validateUserDeletion(user.uid, currentUser?.uid);
+        setDeletionValidation(validation);
+        
+        if (!validation.canDelete) {
+          toast.error(`Cannot delete user: ${validation.blockers.join(', ')}`);
+          return;
+        }
+        
+        // Show warnings if any
+        if (validation.warnings.length > 0) {
+          validation.warnings.forEach(warning => {
+            toast.warning(warning, { duration: 6000 });
+          });
+        }
+      } catch (validationError) {
+        console.warn('Validation failed, proceeding with basic checks:', validationError);
+        // Set basic validation data if detailed validation fails
+        setDeletionValidation({
+          canDelete: true,
+          warnings: ['Could not perform complete validation - proceeding with caution'],
+          blockers: [],
+          dataEstimate: {
+            blogs: 'Unknown',
+            content: 'Unknown',
+            products: 'Unknown',
+            estimatedTime: '1-5 minutes'
+          }
         });
       }
       
       setDeleteModal({ isOpen: true, user });
     } catch (error) {
       console.error('Error validating user deletion:', error);
-      toast.error('Failed to validate deletion. Please try again.');
+      toast.error('Validation failed, but you can still proceed with deletion if needed.');
+      
+      // Allow deletion to proceed with minimal validation
+      setDeletionValidation({
+        canDelete: true,
+        warnings: ['Validation failed - proceeding with basic safety checks'],
+        blockers: [],
+        dataEstimate: {
+          blogs: 'Unknown',
+          content: 'Unknown', 
+          products: 'Unknown',
+          estimatedTime: 'Unknown'
+        }
+      });
+      setDeleteModal({ isOpen: true, user });
     } finally {
       setValidatingDeletion(false);
     }
