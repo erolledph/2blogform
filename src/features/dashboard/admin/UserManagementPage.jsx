@@ -38,7 +38,7 @@ export default function UserManagementPage() {
   const [deletionValidation, setDeletionValidation] = useState(null);
   const [validatingDeletion, setValidatingDeletion] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState(null);
 
   // Check if current user is admin
   const isAdmin = currentUser?.role === 'admin';
@@ -166,7 +166,7 @@ export default function UserManagementPage() {
     // This prevents UI inconsistency if deletion fails
     
     try {
-      setDeleting(true);
+      setDeletingUserId(user.uid);
       
       // Enhanced logging for debugging
       console.log('Starting user deletion process:', {
@@ -256,9 +256,6 @@ export default function UserManagementPage() {
       
       setDeleteModal({ isOpen: false, user: null });
       
-      // Refresh the users list to ensure consistency
-      await fetchUsers();
-      
       // Show deletion progress modal if we have detailed results
       if (result.deletionSummary) {
         setDeletionProgressModal({ isOpen: true, result });
@@ -294,7 +291,7 @@ export default function UserManagementPage() {
       
       // Don't rollback UI since we didn't do optimistic update
     } finally {
-      setDeleting(false);
+      setDeletingUserId(null);
     }
   };
 
@@ -500,11 +497,11 @@ export default function UserManagementPage() {
           {row.uid !== currentUser?.uid && (
             <button
               onClick={() => handleDeleteUserClick(row)}
-              disabled={deleting || validatingDeletion}
+              disabled={deletingUserId === row.uid || validatingDeletion}
               className="text-red-600 p-2 rounded-md hover:bg-red-50 transition-colors duration-200"
               title="Delete user"
             >
-              {validatingDeletion ? (
+              {(validatingDeletion && deletingUserId === row.uid) || deletingUserId === row.uid ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
               ) : (
                 <Trash2 className="h-4 w-4" />
@@ -759,17 +756,17 @@ export default function UserManagementPage() {
             <div className="flex justify-end space-x-4 pt-4 border-t border-border">
               <button
                 onClick={() => setDeleteModal({ isOpen: false, user: null })}
-                disabled={deleting}
+                disabled={deletingUserId === deleteModal.user?.uid}
                 className="btn-secondary"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDeleteUser(deleteModal.user)}
-                disabled={deleting}
+                disabled={deletingUserId === deleteModal.user?.uid}
                 className="btn-danger"
               >
-                {deleting ? (
+                {deletingUserId === deleteModal.user?.uid ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     Deleting User...
