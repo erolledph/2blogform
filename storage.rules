@@ -1,0 +1,32 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // User-specific public images - publicly readable but only writable by owner
+    // This path is used for blog/product images that need to be publicly accessible
+    match /users/{userId}/public_images/{allPaths=**} {
+      // Allow public read access for displaying images on blogs/products
+      allow read: if true;
+      // Only allow the owner to write/delete their own files
+      allow write, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // User-specific private storage - only accessible by the owner
+    match /users/{userId}/private/{allPaths=**} {
+      // Only allow authenticated users to access their own private files
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Legacy images folder - maintain backward compatibility
+    // Allow public read for backward compatibility, authenticated write
+    match /images/{allPaths=**} {
+      allow read: if true;
+      allow write, delete: if request.auth != null;
+    }
+
+    // Deny access to all other paths by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

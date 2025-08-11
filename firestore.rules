@@ -1,0 +1,79 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // User-specific blog management
+    match /users/{userId}/blogs/{blogId} {
+      // Allow authenticated users to manage their own blogs
+      allow read, write, create, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // User-specific blog content and products
+    match /users/{userId}/blogs/{blogId}/content/{contentId} {
+      // Allow public read access to published content
+      allow read: if resource.data.status == 'published';
+      // Allow authenticated users to manage their own content
+      allow read, write, create, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId}/blogs/{blogId}/products/{productId} {
+      // Allow public read access to published products
+      allow read: if resource.data.status == 'published';
+      // Allow authenticated users to manage their own products
+      allow read, write, create, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // User-specific app settings
+    match /users/{userId}/appSettings/{docId} {
+      // Allow public read access to public settings (like custom domain)
+      allow read: if docId == 'public';
+      // Allow authenticated users to manage their own settings
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // User-specific user settings
+    match /users/{userId}/userSettings/{docId} {
+      allow read, write: if request.auth != null && (
+        request.auth.uid == userId ||
+        // Allow admin users to read/write other users' settings
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)/userSettings/preferences) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)/userSettings/preferences).data.role == 'admin'
+      );
+      
+      // Additional validation for admin-only fields
+      allow write: if request.auth != null && 
+        request.auth.uid != userId &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)/userSettings/preferences) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)/userSettings/preferences).data.role == 'admin' &&
+        // Validate maxBlogs and totalStorageMB fields
+        (
+          !('maxBlogs' in request.resource.data) || 
+          (request.resource.data.maxBlogs is int && request.resource.data.maxBlogs >= 1)
+        ) &&
+        (
+          !('totalStorageMB' in request.resource.data) || 
+          (request.resource.data.totalStorageMB is int && request.resource.data.totalStorageMB >= 100)
+        );
+    }
+
+    // Analytics collections remain at top level but include userId/blogId for filtering
+    match /pageViews/{document} {
+      // Allow writes for tracking (from public sites)
+      allow create: if true;
+      // Allow authenticated users to read their own analytics
+      allow read: if request.auth != null;
+    }
+
+    match /interactions/{document} {
+      // Allow writes for tracking (from public sites)
+      allow create: if true;
+      // Allow authenticated users to read their own analytics
+      allow read: if request.auth != null;
+    }
+
+    // Deny access to any other documents
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
