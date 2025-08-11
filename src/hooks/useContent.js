@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { contentService } from '@/services/contentService';
 import { useCachedData } from '@/hooks/useCache';
@@ -20,7 +20,7 @@ export function useContent(blogId) {
     `content-${currentUser?.uid}-${blogId}`,
     () => contentService.fetchAllContent(currentUser?.uid, blogId),
     [currentUser?.uid, blogId],
-    3 * 60 * 1000 // 3 minutes TTL
+    2 * 60 * 1000 // Reduced to 2 minutes TTL for more frequent updates
   );
 
   // Update local state when cached data changes
@@ -69,12 +69,20 @@ export function useContent(blogId) {
     }
   };
 
+  // Enhanced refetch with real-time notification
+  const enhancedRefetch = useCallback(async () => {
+    try {
+      await (refetchCached || fetchContent)();
+    } catch (error) {
+      console.error('Error refreshing content:', error);
+    }
+  }, [refetchCached, fetchContent, blogId]);
   return {
     content,
     setContent,
     loading,
     error,
-    refetch: refetchCached || fetchContent,
+    refetch: enhancedRefetch,
     invalidateCache: invalidate || (() => {})
   };
 }

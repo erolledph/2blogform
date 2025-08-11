@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/hooks/useAuth';
+import { performanceService } from '@/services/performanceService';
+import { realTimeAnalyticsService } from '@/services/realTimeAnalytics';
 import LoginPage from '@/features/auth/LoginPage';
 import RegisterPage from '@/features/auth/RegisterPage';
 import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
@@ -22,6 +24,18 @@ function App() {
         }
       };
     }
+    
+    // Initialize performance monitoring
+    if (performanceService && !performanceService.isMonitoring) {
+      performanceService.startMonitoring();
+    }
+    
+    // Make services available globally for debugging
+    window.performanceService = performanceService;
+    window.realTimeAnalyticsService = realTimeAnalyticsService;
+    
+    // Track initial page load
+    performanceService.recordMetric('APP_INITIALIZATION', performance.now());
   }, []);
   
   return (
@@ -55,6 +69,23 @@ function App() {
                     border: '1px solid hsl(214.3 31.8% 91.4%)',
                     borderRadius: '0.5rem',
                     fontSize: '0.875rem',
+                  },
+                  success: {
+                    duration: 3000,
+                    iconTheme: {
+                      primary: 'hsl(142 76% 36%)',
+                      secondary: 'hsl(0 0% 100%)',
+                    },
+                  },
+                  error: {
+                    duration: 6000,
+                    iconTheme: {
+                      primary: 'hsl(0 84.2% 60.2%)',
+                      secondary: 'hsl(0 0% 100%)',
+                    },
+                  },
+                  loading: {
+                    duration: Infinity,
                   },
                 }}
               />

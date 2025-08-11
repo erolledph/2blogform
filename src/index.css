@@ -1125,6 +1125,372 @@
   animation: bounceIn 0.5s ease-out;
 }
 
+/* Real-time operation indicators */
+.operation-pending {
+  position: relative;
+  overflow: hidden;
+}
+
+.operation-pending::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(59, 130, 246, 0.1),
+    transparent
+  );
+  animation: operationShimmer 1.5s infinite;
+}
+
+@keyframes operationShimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Enhanced loading states for real-time operations */
+.optimistic-update {
+  position: relative;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+
+.optimistic-update::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    45deg,
+    transparent 25%,
+    rgba(59, 130, 246, 0.05) 25%,
+    rgba(59, 130, 246, 0.05) 50%,
+    transparent 50%,
+    transparent 75%,
+    rgba(59, 130, 246, 0.05) 75%
+  );
+  background-size: 20px 20px;
+  animation: optimisticPattern 1s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes optimisticPattern {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 20px 20px;
+  }
+}
+
+/* Success state animation */
+.operation-success {
+  animation: successPulse 0.6s ease-out;
+}
+
+@keyframes successPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+/* Error state animation */
+.operation-error {
+  animation: errorShake 0.5s ease-in-out;
+}
+
+@keyframes errorShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+/* Performance optimization classes */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Enhanced micro-interactions */
+.interactive-element {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.interactive-element:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.interactive-element:active {
+  transform: translateY(0);
+  transition-duration: 0.1s;
+}
+
+/* Real-time status indicators */
+.status-live {
+  position: relative;
+}
+
+.status-live::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border: 2px solid white;
+  border-radius: 50%;
+  animation: livePulse 2s infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+/* Connection status indicators */
+.connection-online {
+  color: #10b981;
+}
+
+.connection-offline {
+  color: #ef4444;
+}
+
+.connection-reconnecting {
+  color: #f59e0b;
+  animation: pulse 1s infinite;
+}
+
+/* Performance monitoring styles */
+.performance-good {
+  color: #10b981;
+}
+
+.performance-warning {
+  color: #f59e0b;
+}
+
+.performance-critical {
+  color: #ef4444;
+  animation: criticalAlert 2s infinite;
+}
+
+@keyframes criticalAlert {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Enhanced table animations */
+.table-row-enter {
+  animation: tableRowEnter 0.3s ease-out;
+}
+
+.table-row-exit {
+  animation: tableRowExit 0.3s ease-out;
+}
+
+@keyframes tableRowEnter {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes tableRowExit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
+/* Bulk operation progress */
+.bulk-operation-progress {
+  background: linear-gradient(
+    90deg,
+    #10b981 var(--progress, 0%),
+    #e5e7eb var(--progress, 0%)
+  );
+  transition: background 0.3s ease;
+}
+
+/* Cache performance indicators */
+.cache-hit {
+  background: rgba(16, 185, 129, 0.1);
+  border-left: 3px solid #10b981;
+}
+
+.cache-miss {
+  background: rgba(245, 158, 11, 0.1);
+  border-left: 3px solid #f59e0b;
+}
+
+/* Real-time collaboration indicators */
+.collaborator-active {
+  position: relative;
+}
+
+.collaborator-active::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  background: #10b981;
+  border-radius: 50%;
+  animation: collaboratorPulse 1.5s infinite;
+}
+
+@keyframes collaboratorPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.3);
+  }
+}
+
+/* Enhanced form interactions */
+.form-field-focus {
+  transform: scale(1.02);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transition: all 0.2s ease;
+}
+
+/* Data synchronization states */
+.data-syncing {
+  background: linear-gradient(
+    90deg,
+    rgba(59, 130, 246, 0.1) 0%,
+    rgba(59, 130, 246, 0.2) 50%,
+    rgba(59, 130, 246, 0.1) 100%
+  );
+  background-size: 200% 100%;
+  animation: dataSyncAnimation 2s linear infinite;
+}
+
+@keyframes dataSyncAnimation {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.data-synced {
+  background: rgba(16, 185, 129, 0.1);
+  transition: background 0.3s ease;
+}
+
+.data-error {
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 3px solid #ef4444;
+}
+
+/* Mobile-specific performance optimizations */
+@media (max-width: 768px) {
+  .mobile-optimized {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: scroll-position;
+  }
+  
+  .mobile-smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .operation-pending::after,
+  .optimistic-update::before,
+  .status-live::after,
+  .collaborator-active::before,
+  .data-syncing {
+    animation: none;
+  }
+  
+  .interactive-element,
+  .micro-interaction,
+  .form-field-focus {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .status-live::after {
+    border-width: 3px;
+  }
+  
+  .connection-online,
+  .performance-good {
+    font-weight: bold;
+  }
+  
+  .connection-offline,
+  .performance-critical {
+    font-weight: bold;
+    text-decoration: underline;
+  }
+}
 /* Keyframe Animations */
 @keyframes slideInRight {
   from {

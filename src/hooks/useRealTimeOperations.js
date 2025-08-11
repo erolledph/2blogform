@@ -2,13 +2,12 @@ import { useState, useCallback } from 'react';
 import { realTimeManager } from '@/services/realTimeService';
 import { webSocketService } from '@/services/webSocketService';
 import { realTimeAnalyticsService } from '@/services/realTimeAnalytics';
-import { useSmartNotifications } from '@/components/shared/SmartNotification';
+import { performanceService } from '@/services/performanceService';
 import toast from 'react-hot-toast';
 
 // Hook for handling real-time operations with optimistic updates
 export function useRealTimeOperations() {
   const [pendingOperations, setPendingOperations] = useState(new Map());
-  const { showNotification, showContextualNotification } = useSmartNotifications();
 
   const executeOperation = useCallback(async (operation) => {
     const operationId = `${operation.type}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -42,7 +41,10 @@ export function useRealTimeOperations() {
       // Track operation completion
       const endTime = performance.now();
       const responseTime = endTime - startTime;
-      realTimeAnalyticsService.trackApiCall(operation.type, responseTime, true);
+      
+      // Track performance
+      performanceService.recordMetric('API_RESPONSE_TIME', responseTime);
+      performanceService.trackOperation(true);
       
       // Remove from pending operations
       setPendingOperations(prev => {
@@ -63,10 +65,7 @@ export function useRealTimeOperations() {
 
       // Show success notification
       if (operation.successMessage) {
-        showNotification(operation.successMessage, 'success', {
-          context: operation.context,
-          actions: operation.successActions || []
-        });
+        toast.success(operation.successMessage);
       }
       
       // Broadcast operation success to collaborators
@@ -76,6 +75,11 @@ export function useRealTimeOperations() {
         operationId,
         userId: webSocketService.userId
       });
+      
+      // Call success callback
+      if (operation.onSuccess) {
+        operation.onSuccess(result);
+      }
 
       return result;
     } catch (error) {
@@ -84,7 +88,9 @@ export function useRealTimeOperations() {
       // Track operation failure
       const endTime = performance.now();
       const responseTime = endTime - startTime;
-      realTimeAnalyticsService.trackApiCall(operation.type, responseTime, false);
+      
+      performanceService.recordMetric('API_RESPONSE_TIME', responseTime);
+      performanceService.trackOperation(false);
       
       // Update operation status
       setPendingOperations(prev => {
@@ -106,19 +112,19 @@ export function useRealTimeOperations() {
         operationId
       });
 
-      // Show error notification
-      if (operation.errorMessage) {
-        showNotification(operation.errorMessage, 'error', {
-          context: operation.context,
-          actions: operation.errorActions || []
-        });
-      } else {
-        showNotification(error.message || 'Operation failed', 'error');
-      }
 
       // Queue for retry if retryable
       if (operation.retryable !== false) {
         realTimeManager.queueOperation(operation);
+      }
+      
+      // Call error callback
+      if (operation.onError) {
+        operation.onError(error);
+      } else if (operation.errorMessage) {
+        toast.error(operation.errorMessage);
+      } else {
+        toast.error(error.message || 'Operation failed');
       }
 
       throw error;

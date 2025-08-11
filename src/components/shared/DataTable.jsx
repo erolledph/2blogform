@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Search, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import DynamicTransition from './DynamicTransition';
 
 export default function DataTable({ 
   data = [], 
@@ -10,7 +11,12 @@ export default function DataTable({
   pageSize = 10,
   className = '',
   onRowClick,
-  loading = false
+  loading = false,
+  selectable = false,
+  selectedItems = [],
+  onSelectAll = null,
+  onSelectRow = null,
+  enableAnimations = false
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -74,6 +80,18 @@ export default function DataTable({
       : <ArrowDown className="h-4 w-4 text-primary" />;
   };
 
+  const handleSelectAll = (e) => {
+    const isChecked = e.target.checked;
+    if (onSelectAll) {
+      onSelectAll(isChecked);
+    }
+  };
+
+  const handleRowSelect = (itemId, isSelected) => {
+    if (onSelectRow) {
+      onSelectRow(itemId, isSelected);
+    }
+  };
   if (loading) {
     return (
       <div className={`bg-card rounded-lg border border-border ${className}`}>
@@ -92,7 +110,11 @@ export default function DataTable({
   }
 
   return (
-    <div className={`bg-card rounded-xl border border-border shadow-sm ${className}`}>
+    <DynamicTransition 
+      loading={loading} 
+      transitionType={enableAnimations ? "fade" : "none"}
+      className={`bg-card rounded-xl border border-border shadow-sm ${className}`}
+    >
       {/* Search */}
       {searchable && (
         <div className="p-6 border-b border-border">
@@ -114,6 +136,16 @@ export default function DataTable({
         <table className="w-full">
           <thead>
             <tr className="border-b border-border">
+              {selectable && (
+                <th className="px-6 py-4 text-left">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.length === data.length && data.length > 0}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-primary rounded border-border focus:ring-primary"
+                  />
+                </th>
+              )}
               {columns.map((column) => (
                 <th
                   key={column.key}
@@ -133,7 +165,7 @@ export default function DataTable({
           <tbody>
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-12 text-center text-muted-foreground">
+                <td colSpan={columns.length + (selectable ? 1 : 0)} className="px-6 py-12 text-center text-muted-foreground">
                   No data available
                 </td>
               </tr>
@@ -141,11 +173,24 @@ export default function DataTable({
               paginatedData.map((item, index) => (
                 <tr
                   key={item.id || index}
-                  className={`border-b border-border min-h-[60px] ${
+                  className={`border-b border-border min-h-[60px] transition-colors duration-200 ${
                     onRowClick ? 'cursor-pointer' : ''
-                  }`}
+                  } ${enableAnimations ? 'hover:bg-muted/30' : ''}`}
                   onClick={() => onRowClick && onRowClick(item)}
                 >
+                  {selectable && (
+                    <td className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(item.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleRowSelect(item.id, e.target.checked);
+                        }}
+                        className="w-4 h-4 text-primary rounded border-border focus:ring-primary"
+                      />
+                    </td>
+                  )}
                   {columns.map((column) => (
                     <td key={column.key} className="px-6 py-4 text-sm text-foreground">
                       {column.render ? column.render(item[column.key], item) : item[column.key]}
@@ -185,6 +230,6 @@ export default function DataTable({
           </div>
         </div>
       )}
-    </div>
+    </DynamicTransition>
   );
 }

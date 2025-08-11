@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useCache } from './useCache';
 import { debounce } from '@/utils/helpers';
+import { useLocation } from 'react-router-dom';
 
 // Intelligent prefetching hook with user behavior analysis
 export function useIntelligentPrefetch() {
+  const location = useLocation();
   const cache = useCache();
   const [prefetchQueue, setPrefetchQueue] = useState([]);
   const [isActive, setIsActive] = useState(true);
@@ -11,8 +13,36 @@ export function useIntelligentPrefetch() {
     navigationPatterns: new Map(),
     contentTypes: new Map(),
     timeSpent: new Map(),
-    lastActions: []
+    lastActions: [],
+    currentPage: location.pathname,
+    pageEnterTime: Date.now()
   });
+
+  // Track page changes
+  useEffect(() => {
+    const behavior = behaviorRef.current;
+    const previousPage = behavior.currentPage;
+    const currentPage = location.pathname;
+    
+    if (previousPage !== currentPage) {
+      // Track navigation pattern
+      const pattern = `${previousPage}->${currentPage}`;
+      behavior.navigationPatterns.set(pattern, 
+        (behavior.navigationPatterns.get(pattern) || 0) + 1
+      );
+      
+      // Track time spent on previous page
+      const timeSpent = Date.now() - behavior.pageEnterTime;
+      behavior.timeSpent.set(`${previousPage}_duration`, timeSpent);
+      
+      // Update current page tracking
+      behavior.currentPage = currentPage;
+      behavior.pageEnterTime = Date.now();
+      
+      // Trigger prefetching for likely next pages
+      debouncedPrefetch();
+    }
+  }, [location.pathname]);
 
   // Track user behavior patterns
   const trackBehavior = (action, data = {}) => {
@@ -38,6 +68,7 @@ export function useIntelligentPrefetch() {
     // Track time spent on pages
     if (action === 'page_enter') {
       behavior.timeSpent.set(data.page, timestamp);
+      behavior.pageEnterTime = timestamp;
     } else if (action === 'page_exit') {
       const enterTime = behavior.timeSpent.get(data.page);
       if (enterTime) {
@@ -74,6 +105,25 @@ export function useIntelligentPrefetch() {
         priority: 'medium'
       });
     });
+    
+    // Predict based on common dashboard patterns
+    if (currentPage === '/dashboard/overview') {
+      predictions.push(
+        { type: 'navigation', target: '/dashboard/manage', confidence: 0.8, priority: 'high' },
+        { type: 'navigation', target: '/dashboard/create', confidence: 0.6, priority: 'medium' },
+        { type: 'navigation', target: '/dashboard/analytics', confidence: 0.5, priority: 'low' }
+      );
+    } else if (currentPage === '/dashboard/manage') {
+      predictions.push(
+        { type: 'navigation', target: '/dashboard/create', confidence: 0.7, priority: 'high' },
+        { type: 'navigation', target: '/dashboard/analytics', confidence: 0.6, priority: 'medium' }
+      );
+    } else if (currentPage.includes('/dashboard/create')) {
+      predictions.push(
+        { type: 'navigation', target: '/dashboard/manage', confidence: 0.9, priority: 'high' },
+        { type: 'navigation', target: '/dashboard/storage', confidence: 0.5, priority: 'medium' }
+      );
+    }
     
     // Analyze content type preferences
     const preferredContentTypes = Array.from(behavior.contentTypes.entries())
@@ -132,13 +182,38 @@ export function useIntelligentPrefetch() {
     
     if (cache.has(cacheKey)) return;
     
-    // Simulate page data prefetch
-    // In a real implementation, this would fetch the data needed for the target page
-    const pageData = await new Promise(resolve => {
-      setTimeout(() => {
-        resolve({ page: pagePath, prefetched: true, timestamp: Date.now() });
-      }, 100);
-    });
+    // Prefetch data based on page type
+    let pageData = { page: pagePath, prefetched: true, timestamp: Date.now() };
+    
+    try {
+      if (pagePath.includes('/dashboard/manage')) {
+        // Prefetch content list
+        const { contentService } = await import('@/services/contentService');
+        const userId = getCurrentUserId();
+        const blogId = getCurrentBlogId();
+        if (userId && blogId) {
+          pageData.content = await contentService.fetchAllContent(userId, blogId);
+        }
+      } else if (pagePath.includes('/dashboard/analytics')) {
+        // Prefetch analytics data
+        const { analyticsService } = await import('@/services/analyticsService');
+        const userId = getCurrentUserId();
+        const blogId = getCurrentBlogId();
+        if (userId && blogId) {
+          pageData.analytics = await analyticsService.getSiteAnalytics(userId, blogId);
+        }
+      } else if (pagePath.includes('/dashboard/storage')) {
+        // Prefetch storage stats
+        const { storageService } = await import('@/services/storageService');
+        const userId = getCurrentUserId();
+        if (userId) {
+          pageData.storageStats = await storageService.getUserStorageStats(userId);
+        }
+      }
+    } catch (error) {
+      console.warn('Error prefetching page data:', error);
+      // Continue with basic page data
+    }
     
     cache.set(cacheKey, pageData, 5 * 60 * 1000); // 5 minutes TTL
   };
@@ -149,14 +224,29 @@ export function useIntelligentPrefetch() {
     
     if (cache.has(cacheKey)) return;
     
-    // This would fetch content of the preferred type
-    const contentData = await new Promise(resolve => {
-      setTimeout(() => {
-        resolve({ type: contentType, items: [], prefetched: true });
-      }, 200);
-    });
-    
-    cache.set(cacheKey, contentData, 3 * 60 * 1000); // 3 minutes TTL
+    try {
+      const { contentService } = await import('@/services/contentService');
+      const userId = getCurrentUserId();
+      const blogId = getCurrentBlogId();
+      
+      if (userId && blogId) {
+        const allContent = await contentService.fetchAllContent(userId, blogId);
+        const filteredContent = allContent.filter(item => 
+          item.categories?.includes(contentType) || 
+          item.tags?.includes(contentType)
+        );
+        
+        const contentData = { 
+          type: contentType, 
+          items: filteredContent, 
+          prefetched: true 
+        };
+        
+        cache.set(cacheKey, contentData, 3 * 60 * 1000); // 3 minutes TTL
+      }
+    } catch (error) {
+      console.warn('Error prefetching content by type:', error);
+    }
   };
 
   // Prefetch related content
@@ -165,14 +255,56 @@ export function useIntelligentPrefetch() {
     
     if (cache.has(cacheKey)) return;
     
-    // This would fetch content related to current page
-    const relatedData = await new Promise(resolve => {
-      setTimeout(() => {
-        resolve({ related: true, items: [], prefetched: true });
-      }, 150);
-    });
-    
-    cache.set(cacheKey, relatedData, 2 * 60 * 1000); // 2 minutes TTL
+    try {
+      const currentPath = window.location.pathname;
+      
+      if (currentPath.includes('/dashboard/edit/') || currentPath.includes('/dashboard/create')) {
+        // Prefetch storage images for content creation
+        const { storageService } = await import('@/services/storageService');
+        const userId = getCurrentUserId();
+        
+        if (userId) {
+          const relatedData = { 
+            related: true, 
+            storageImages: await getStorageImages(userId),
+            prefetched: true 
+          };
+          
+          cache.set(cacheKey, relatedData, 2 * 60 * 1000); // 2 minutes TTL
+        }
+      }
+    } catch (error) {
+      console.warn('Error prefetching related content:', error);
+    }
+  };
+
+  // Helper functions
+  const getCurrentUserId = () => {
+    // Get from auth context or localStorage
+    return window.currentUser?.uid || null;
+  };
+
+  const getCurrentBlogId = () => {
+    // Get from current context or URL
+    return window.activeBlogId || null;
+  };
+
+  const getStorageImages = async (userId) => {
+    try {
+      const { storage } = await import('@/firebase');
+      const { ref, listAll } = await import('firebase/storage');
+      
+      const storageRef = ref(storage, `users/${userId}/public_images`);
+      const result = await listAll(storageRef);
+      
+      return result.items.slice(0, 20).map(item => ({
+        name: item.name,
+        fullPath: item.fullPath
+      }));
+    } catch (error) {
+      console.warn('Error getting storage images:', error);
+      return [];
+    }
   };
 
   // Debounced prefetch execution
@@ -253,9 +385,18 @@ export function useIntelligentPrefetch() {
     };
   };
 
+  // Prefetch for specific routes
+  const prefetchRoute = async (route) => {
+    return prefetchData(`route-${route}`, async () => {
+      // Route-specific prefetching logic
+      return { route, prefetched: true, timestamp: Date.now() };
+    }, 'high');
+  };
+
   return {
     trackBehavior,
     prefetchData,
+    prefetchRoute,
     getPrefetchStats,
     isActive,
     setIsActive

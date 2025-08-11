@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { apiCallWithRetry, getUserFriendlyErrorMessage, categorizeError } from '@/utils/helpers';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
 import { TableSkeleton, StatCardSkeleton, UserManagementSkeleton } from '@/components/shared/SkeletonLoader';
@@ -7,6 +8,7 @@ import Modal from '@/components/shared/Modal';
 import InputField from '@/components/shared/InputField';
 import UserDeletionProgress from '@/components/shared/UserDeletionProgress';
 import { userDeletionValidator } from '@/utils/userDeletionValidator';
+import { performanceService } from '@/services/performanceService';
 import { 
   Users, 
   Shield, 
@@ -63,46 +65,28 @@ export default function UserManagementPage() {
         throw new Error('Authentication token not available');
       }
       
-      const response = await fetch('/.netlify/functions/admin-users', {
+      // Use enhanced API call with retry logic
+      const response = await apiCallWithRetry('/.netlify/functions/admin-users', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
-      });
-
-      if (!response.ok) {
-        let errorMessage = `HTTP ${response.status}`;
-        
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-          
-          // Log additional error details for debugging
-          if (errorData.details) {
-            console.error('Server error details:', errorData.details);
-          }
-        } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
-        }
-        
-        throw new Error(errorMessage);
-      }
+      }, 3);
 
       const data = await response.json();
       setUsers(data.users || []);
+      
+      // Track successful operation
+      performanceService.trackOperation(true);
     } catch (error) {
       console.error('Error fetching users:', error);
       
+      // Track failed operation
+      performanceService.trackOperation(false);
+      
       // Provide user-friendly error messages
-      let userMessage = error.message;
-      if (error.message.includes('Authentication token')) {
-        userMessage = 'Authentication failed. Please try logging out and logging back in.';
-      } else if (error.message.includes('Admin access required')) {
-        userMessage = 'You do not have administrator privileges to access this page.';
-      } else if (error.message.includes('Insufficient permissions')) {
-        userMessage = 'The system configuration needs to be updated by a system administrator.';
-      }
+      const userMessage = getUserFriendlyErrorMessage(error);
       
       setError(userMessage);
       toast.error('Failed to fetch users');
@@ -112,70 +96,47 @@ export default function UserManagementPage() {
   };
 
   const handleUpdateUser = async (userId, updates) => {
-    const originalUsers = [...users];
-    
-    // Optimistic UI update
-    const updatedUsers = users.map(user => 
-      user.uid === userId ? { ...user, ...updates } : user
-    );
-    setUsers(updatedUsers);
     try {
       setUpdating(true);
       
       const token = await getAuthToken();
-      const response = await fetch('/.netlify/functions/admin-users', {
+      
+      const response = await apiCallWithRetry('/.netlify/functions/admin-users', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          userId,
-          ...updates
-        })
-      });
-
+        body: JSON.stringify({ userId, ...updates })
+      }, 3);
+      
       if (!response.ok) {
-        let errorMessage = `HTTP ${response.status}`;
-        
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-        } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
-        }
-        
-        throw new Error(errorMessage);
+        throw new Error('Failed to update user');
       }
-
+      
+      // Update user in the list
+      setUsers(prev => prev.map(user => 
+        user.uid === userId ? { ...user, ...updates } : user
+      ));
+      
       toast.success('User updated successfully');
       setEditModal({ isOpen: false, user: null });
     } catch (error) {
-      console.error('Error updating user:', error);
-      toast.error(error.message || 'Failed to update user');
-      setUsers(originalUsers); // Rollback on error
+      console.error('Update user error:', error);
+      toast.error('Failed to update user');
     } finally {
       setUpdating(false);
     }
   };
 
   const handleDeleteUser = async (user) => {
+    const originalUsers = [...users];
+    
     try {
       setDeletingUserId(user.uid);
       
-      // Enhanced logging for debugging
-      console.log('Starting user deletion process:', {
-        targetUser: {
-          uid: user.uid,
-          email: user.email,
-          role: user.role
-        },
-        requestingUser: {
-          uid: currentUser?.uid,
-          email: currentUser?.email,
-          role: currentUser?.role
-        }
-      });
+      // Optimistic UI update - remove user immediately
+      setUsers(prev => prev.filter(u => u.uid !== user.uid));
       
       const token = await getAuthToken();
       
@@ -183,129 +144,86 @@ export default function UserManagementPage() {
         throw new Error('Authentication token not available');
       }
       
-      console.log('Sending delete request to admin-users function...');
+      console.log('Starting user deletion process:', {
+        targetUser: { uid: user.uid, email: user.email, role: user.role },
+        requestingUser: { uid: currentUser?.uid, email: currentUser?.email, role: currentUser?.role }
+      });
       
-      const response = await fetch('/.netlify/functions/admin-users', {
+      const response = await apiCallWithRetry('/.netlify/functions/admin-users', {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          userId: user.uid
-        })
-      });
-
-      console.log('Delete request response:', {
-        status: response.status,
-        statusText: response.statusText,
-        ok: response.ok
-      });
-
-      if (!response.ok) {
-        let errorMessage = `HTTP ${response.status}`;
-        let errorDetails = null;
-        
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-          errorDetails = errorData;
-          
-          console.error('Server returned error:', errorData);
-          
-          // Handle partial success (207 Multi-Status)
-          if (response.status === 207 && errorData.partialSuccess && errorData.deletionSummary) {
-            console.log('Partial deletion success detected');
-            
-            // Show partial success message
-            const summary = errorData.deletionSummary;
-            toast.warning(
-              `User partially deleted: ${summary.successfulOperations}/${summary.totalOperations} operations completed. ${errorData.error}`,
-              { duration: 10000 }
-            );
-            
-            // Remove user from UI since account was likely deleted
-            setUsers(prevUsers => prevUsers.filter(u => u.uid !== user.uid));
-            
-            // Show deletion progress modal
-            setDeletionProgressModal({ isOpen: true, result: errorData });
-            
-            return; // Exit early for partial success
-          }
-        } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
-          console.error('Raw response text:', await response.text().catch(() => 'Could not read response text'));
-        }
-        
-        // Create enhanced error with more context
-        const enhancedError = new Error(errorMessage);
-        enhancedError.details = errorDetails;
-        enhancedError.status = response.status;
-        throw enhancedError;
-      }
-
-      const result = await response.json();
-      console.log('User deletion successful:', result);
+        body: JSON.stringify({ userId: user.uid }),
+        retryOn: ['network', '5xx']
+      }, 3);
       
-      // Show detailed success message
-      if (result.deletionSummary) {
+      const result = await response.json();
+      
+      // Handle partial success (207 Multi-Status)
+      if (response.status === 207 && result.partialSuccess && result.deletionSummary) {
         const summary = result.deletionSummary;
-        toast.success(
-          `User deleted successfully! ${summary.successfulOperations}/${summary.totalOperations} operations completed.`,
-          { duration: 6000 }
+        toast.warning(
+          `User partially deleted: ${summary.successfulOperations}/${summary.totalOperations} operations completed.`,
+          { duration: 10000 }
         );
         
-        if (summary.failedOperations > 0) {
-          toast.warning(
-            `Note: ${summary.failedOperations} cleanup operations failed. Check console for details.`,
-            { duration: 8000 }
-          );
-        }
+        setDeletionProgressModal({ isOpen: true, result });
       } else {
-        toast.success('User deleted successfully');
+        // Full success
+        if (result.deletionSummary) {
+          const summary = result.deletionSummary;
+          toast.success(
+            `User deleted successfully! ${summary.successfulOperations}/${summary.totalOperations} operations completed.`,
+            { duration: 6000 }
+          );
+          
+          if (summary.failedOperations > 0) {
+            toast.warning(
+              `Note: ${summary.failedOperations} cleanup operations failed.`,
+              { duration: 8000 }
+            );
+          }
+          
+          setDeletionProgressModal({ isOpen: true, result });
+        } else {
+          toast.success('User deleted successfully');
+        }
       }
-      
-      // Remove user from UI only after successful deletion
-      const updatedUsers = users.filter(u => u.uid !== user.uid);
-      setUsers(updatedUsers);
       
       setDeleteModal({ isOpen: false, user: null });
+      setDeletingUserId(null);
+      setDeletionValidation(null);
       
-      // Show deletion progress modal if we have detailed results
-      if (result.deletionSummary) {
-        setDeletionProgressModal({ isOpen: true, result });
-      }
     } catch (error) {
-      console.error('User deletion failed:', error);
+      // This catch block handles errors that occur before executeOperation
+      console.error('Pre-operation error:', error);
       
-      // Enhanced error handling with specific messages
-      let userMessage = 'Failed to delete user';
+      // Rollback optimistic update
+      setUsers(originalUsers);
       
-      if (error.status === 404) {
-        userMessage = 'User not found. They may have already been deleted.';
-      } else if (error.status === 403) {
-        userMessage = 'Permission denied. You may not have admin privileges.';
-      } else if (error.status === 400) {
-        userMessage = error.message || 'Invalid request. Please check the user data.';
-      } else if (error.status === 500) {
-        userMessage = 'Server error during deletion. Some data may have been deleted. Please check and retry if needed.';
-      } else if (error.message.includes('Authentication token')) {
-        userMessage = 'Authentication failed. Please try logging out and logging back in.';
-      } else if (error.message.includes('network') || error.message.includes('fetch')) {
-        userMessage = 'Network error. Please check your connection and try again.';
-      } else {
-        userMessage = error.message || 'Failed to delete user';
+      // Categorize and display appropriate error message
+      const errorCategory = categorizeError(error);
+      const userMessage = getUserFriendlyErrorMessage(error);
+      
+      // Show different toast types based on error category
+      switch (errorCategory) {
+        case 'network':
+          toast.error(`Network error: ${userMessage}. The user may have been deleted - refreshing list to verify.`, { duration: 8000 });
+          // Refresh to check actual state
+          setTimeout(() => fetchUsers(), 2000);
+          break;
+        case 'authentication':
+          toast.error(userMessage, { duration: 8000 });
+          break;
+        case 'permission':
+          toast.error(userMessage, { duration: 8000 });
+          break;
+        default:
+          toast.error(`Deletion failed: ${userMessage}`, { duration: 8000 });
       }
       
-      toast.error(userMessage, { duration: 8000 });
-      
-      // Show additional details in development
-      if (process.env.NODE_ENV === 'development' && error.details) {
-        console.error('Detailed error information:', error.details);
-      }
-      
-    } finally {
-      // Always clean up state in finally block to ensure UI consistency
       setDeletingUserId(null);
       setDeleteModal({ isOpen: false, user: null });
       setDeletionValidation(null);
@@ -385,6 +303,7 @@ export default function UserManagementPage() {
 
   const toggleAdminRole = async (user) => {
     const newRole = user.role === 'admin' ? 'user' : 'admin';
+    setUpdating(true);
     await handleUpdateUser(user.uid, { 
       role: newRole 
     });

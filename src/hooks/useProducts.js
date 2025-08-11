@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { productsService } from '@/services/productsService';
 import { useCachedData } from '@/hooks/useCache';
@@ -20,7 +20,7 @@ export function useProducts(blogId) {
     `products-${currentUser?.uid}-${blogId}`,
     () => productsService.fetchAllProducts(currentUser?.uid, blogId),
     [currentUser?.uid, blogId],
-    3 * 60 * 1000 // 3 minutes TTL
+    2 * 60 * 1000 // Reduced to 2 minutes TTL for more frequent updates
   );
 
   // Update local state when cached data changes
@@ -67,12 +67,20 @@ export function useProducts(blogId) {
     }
   };
 
+  // Enhanced refetch with real-time notification
+  const enhancedRefetch = useCallback(async () => {
+    try {
+      await (refetchCached || fetchProducts)();
+    } catch (error) {
+      console.error('Error refreshing products:', error);
+    }
+  }, [refetchCached, fetchProducts, blogId]);
   return {
     products,
     setProducts,
     loading,
     error,
-    refetch: refetchCached || fetchProducts,
+    refetch: enhancedRefetch,
     invalidateCache: invalidate || (() => {})
   };
 }

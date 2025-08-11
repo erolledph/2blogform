@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProducts } from '@/hooks/useProducts';
 import { settingsService } from '@/services/settingsService';
+import { apiCallWithRetry, getUserFriendlyErrorMessage } from '@/utils/helpers';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
 import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
+import DynamicTransition from '@/components/shared/DynamicTransition';
 import { Edit, Trash2, Plus, ImageIcon, DollarSign, Package, ExternalLink, Eye, Upload, Download, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { getStatusBadgeClass } from '@/utils/helpers';
@@ -108,7 +110,7 @@ export default function ManageProductsPage({ activeBlogId }) {
         }
 
         const token = await getAuthToken();
-        const response = await fetch('/api/import/products', {
+        const response = await apiCallWithRetry('/api/import/products', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -119,11 +121,6 @@ export default function ManageProductsPage({ activeBlogId }) {
             items: jsonData
           })
         });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
 
         const results = await response.json();
         
@@ -137,7 +134,8 @@ export default function ManageProductsPage({ activeBlogId }) {
         }
 
       } catch (error) {
-        toast.error(error.message || 'Failed to import products');
+        const userMessage = getUserFriendlyErrorMessage(error);
+        toast.error(userMessage);
       } finally {
         setImporting(false);
         // Always refetch after import operations to ensure UI is up to date
@@ -261,13 +259,13 @@ export default function ManageProductsPage({ activeBlogId }) {
       return;
     }
 
+    setPublishingLoading(true);
+    
     try {
-      setPublishingLoading(true);
-      
       const token = await getAuthToken();
       
       const promises = selectedItems.map(async (itemId) => {
-        const response = await fetch(`/.netlify/functions/admin-product`, {
+        const response = await apiCallWithRetry(`/.netlify/functions/admin-product`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -283,13 +281,15 @@ export default function ManageProductsPage({ activeBlogId }) {
         if (!response.ok) {
           throw new Error(`Failed to publish item ${itemId}`);
         }
+        
+        return response.json();
       });
 
       await Promise.all(promises);
       
       toast.success(`Successfully published ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
-      
       setSelectedItems([]);
+      refetch();
     } catch (error) {
       console.error('Bulk publish error:', error);
       toast.error('Failed to publish selected items');
@@ -388,11 +388,11 @@ export default function ManageProductsPage({ activeBlogId }) {
   };
 
   const handleDelete = async (product) => {
+    setDeletingItemId(product.id);
+    
     try {
-      setDeletingItemId(product.id);
-      
       const token = await getAuthToken();
-      const response = await fetch(`/.netlify/functions/admin-product`, {
+      const response = await apiCallWithRetry(`/.netlify/functions/admin-product`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -406,11 +406,12 @@ export default function ManageProductsPage({ activeBlogId }) {
       }
       
       toast.success('Product deleted successfully');
-      
       setDeleteModal({ isOpen: false, product: null });
+      setDeletingItemId(null);
+      refetch();
     } catch (error) {
-      console.error('Error deleting product:', error);
-    } finally {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete product');
       setDeletingItemId(null);
     }
   };
@@ -570,7 +571,7 @@ export default function ManageProductsPage({ activeBlogId }) {
 
 
   return (
-    <div className="section-spacing">
+    <DynamicTransition loading={loading} error={error} className="section-spacing">
       {/* Header and Action Buttons - Always visible */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-12">
         <div className="page-header mb-0 flex-1">
@@ -644,76 +645,58 @@ export default function ManageProductsPage({ activeBlogId }) {
       </div>
 
       {/* Products Table */}
-      {loading ? (
+      {products.length === 0 && !loading && !error ? (
         <div className="card">
-          <div className="card-content p-0">
-            <TableSkeleton rows={8} columns={6} hasSelection={true} hasActions={true} />
+          <div className="card-content text-center py-20">
+            <Package className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
+            <h3 className="text-2xl font-semibold text-foreground mb-4">No products found</h3>
+            <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
+              Get started by adding your first product to the catalog. Once you have products, you can export them to get a genuine JSON template that matches your data structure.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
+              <Link to="/dashboard/create-product" className="btn-primary">
+                <Plus className="h-5 w-5 mr-3" />
+                Add Your First Product
+              </Link>
+            </div>
+            <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-lg max-w-2xl mx-auto">
+              <h4 className="text-sm font-medium text-green-800 mb-2">💡 Pro Tip: Generate Your Own JSON Template</h4>
+              <p className="text-sm text-green-700 leading-relaxed">
+                Create at least one product, then use the "Export All" button to generate a JSON template that perfectly matches your data structure and image references.
+              </p>
+            </div>
           </div>
         </div>
       ) : (
-        error ? (
-          <div className="card border-red-200 bg-red-50">
-            <div className="card-content p-8 text-center">
-              <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
-              <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Products</h3>
-              <p className="text-red-700 mb-6">{error}</p>
-              <button onClick={refetch} className="btn-secondary">
-                Try Again
-              </button>
-            </div>
+        <div className="card">
+          <div className="card-content p-0">
+            <DataTable
+              data={products}
+              columns={columns}
+              searchable={true}
+              filterable={true}
+              filterOptions={{
+                statuses: ['draft', 'published'],
+                categories: true,
+                tags: true,
+                dateRange: true
+              }}
+              sortable={true}
+              pagination={true}
+              pageSize={10}
+              selectable={true}
+              selectedItems={selectedItems}
+              onSelectAll={handleSelectAll}
+              onSelectRow={handleSelectRow}
+              enableAnimations={true}
+              loading={loading}
+              onFiltersChange={(filters) => {
+                // Filters are handled internally by DataTable
+                // This callback can be used for additional logic if needed
+              }}
+            />
           </div>
-        ) : products.length === 0 ? (
-          <div className="card">
-            <div className="card-content text-center py-20">
-              <Package className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
-              <h3 className="text-2xl font-semibold text-foreground mb-4">No products found</h3>
-              <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
-                Get started by adding your first product to the catalog. Once you have products, you can export them to get a genuine JSON template that matches your data structure.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                <Link to="/dashboard/create-product" className="btn-primary">
-                  <Plus className="h-5 w-5 mr-3" />
-                  Add Your First Product
-                </Link>
-              </div>
-              <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-lg max-w-2xl mx-auto">
-                <h4 className="text-sm font-medium text-green-800 mb-2">💡 Pro Tip: Generate Your Own JSON Template</h4>
-                <p className="text-sm text-green-700 leading-relaxed">
-                  Create at least one product, then use the "Export All" button to generate a JSON template that perfectly matches your data structure and image references.
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="card">
-            <div className="card-content p-0">
-              <DataTable
-                data={products}
-                columns={columns}
-                searchable={true}
-                filterable={true}
-                filterOptions={{
-                  statuses: ['draft', 'published'],
-                  categories: true,
-                  tags: true,
-                  dateRange: true
-                }}
-                sortable={true}
-                pagination={true}
-                pageSize={10}
-                selectable={true}
-                selectedItems={selectedItems}
-                onSelectAll={handleSelectAll}
-                onSelectRow={handleSelectRow}
-                enableAnimations={true}
-                onFiltersChange={(filters) => {
-                  // Filters are handled internally by DataTable
-                  // This callback can be used for additional logic if needed
-                }}
-              />
-            </div>
-          </div>
-        )
+        </div>
       )}
 
       {/* Clear Selection Button */}
@@ -764,7 +747,7 @@ export default function ManageProductsPage({ activeBlogId }) {
           </div>
         </div>
       </Modal>
-    </div>
+    </DynamicTransition>
   );
 }
 
