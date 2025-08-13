@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { productsService } from '@/services/productsService';
 import { useCachedData } from '@/hooks/useCache';
