@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
 import { apiCallWithRetry, getUserFriendlyErrorMessage, categorizeError } from '@/utils/helpers';
+import { realTimeManager } from '@/services/realTimeService';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
 import { TableSkeleton, StatCardSkeleton, UserManagementSkeleton } from '@/components/shared/SkeletonLoader';
@@ -31,6 +33,7 @@ import toast from 'react-hot-toast';
 
 export default function UserManagementPage() {
   const { currentUser, getAuthToken } = useAuth();
+  const { executeOperation } = useRealTimeOperations();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,12 +51,39 @@ export default function UserManagementPage() {
   useEffect(() => {
     if (isAdmin) {
       fetchUsers();
+      
+      // Subscribe to real-time user events
+      const unsubscribe = realTimeManager.subscribe('user-event', (event) => {
+        handleRealTimeUserEvent(event);
+      });
+      
+      return unsubscribe;
     } else {
       setLoading(false);
       setError('Access denied: Admin privileges required');
     }
   }, [isAdmin]);
 
+  const handleRealTimeUserEvent = (event) => {
+    switch (event.type) {
+      case 'user-deleted':
+        setUsers(prev => prev.filter(u => u.uid !== event.data.userId));
+        toast.info(`User ${event.data.email} was deleted by another admin`);
+        break;
+      case 'user-updated':
+        setUsers(prev => prev.map(u => 
+          u.uid === event.data.userId 
+            ? { ...u, ...event.data.updates }
+            : u
+        ));
+        toast.info(`User ${event.data.email} was updated by another admin`);
+        break;
+      case 'user-created':
+        setUsers(prev => [event.data.user, ...prev]);
+        toast.info(`New user ${event.data.user.email} was created`);
+        break;
+    }
+  };
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -96,37 +126,55 @@ export default function UserManagementPage() {
   };
 
   const handleUpdateUser = async (userId, updates) => {
-    try {
-      setUpdating(true);
-      
-      const token = await getAuthToken();
-      
-      const response = await apiCallWithRetry('/.netlify/functions/admin-users', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ userId, ...updates })
-      }, 3);
-      
-      if (!response.ok) {
-        throw new Error('Failed to update user');
+    await executeOperation({
+      type: 'user-update',
+      dataKey: 'users',
+      context: { area: 'user-management' },
+      optimisticUpdate: {
+        type: 'update',
+        userId,
+        updates
+      },
+      execute: async () => {
+        const token = await getAuthToken();
+        
+        const response = await apiCallWithRetry('/.netlify/functions/admin-users', {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ userId, ...updates })
+        }, 3);
+        
+        const result = await response.json();
+        
+        // Apply optimistic update immediately
+        setUsers(prev => prev.map(user => 
+          user.uid === userId ? { ...user, ...updates } : user
+        ));
+        
+        // Emit real-time event for other admins
+        realTimeManager.simulateUserEvent('user-updated', {
+          userId,
+          updates,
+          email: users.find(u => u.uid === userId)?.email
+        });
+        
+        return result;
+      },
+      successMessage: 'User updated successfully',
+      errorMessage: 'Failed to update user',
+      onSuccess: () => {
+        setEditModal({ isOpen: false, user: null });
+        setUpdating(false);
+      },
+      onError: (error) => {
+        // Rollback optimistic update
+        fetchUsers();
+        setUpdating(false);
       }
-      
-      // Update user in the list
-      setUsers(prev => prev.map(user => 
-        user.uid === userId ? { ...user, ...updates } : user
-      ));
-      
-      toast.success('User updated successfully');
-      setEditModal({ isOpen: false, user: null });
-    } catch (error) {
-      console.error('Update user error:', error);
-      toast.error('Failed to update user');
-    } finally {
-      setUpdating(false);
-    }
+    });
   };
 
   const handleDeleteUser = async (user) => {
@@ -138,64 +186,119 @@ export default function UserManagementPage() {
       // Optimistic UI update - remove user immediately
       setUsers(prev => prev.filter(u => u.uid !== user.uid));
       
-      const token = await getAuthToken();
-      
-      if (!token) {
-        throw new Error('Authentication token not available');
-      }
-      
-      console.log('Starting user deletion process:', {
-        targetUser: { uid: user.uid, email: user.email, role: user.role },
-        requestingUser: { uid: currentUser?.uid, email: currentUser?.email, role: currentUser?.role }
-      });
-      
-      const response = await apiCallWithRetry('/.netlify/functions/admin-users', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      await executeOperation({
+        type: 'user-deletion',
+        dataKey: 'users',
+        context: { area: 'user-management' },
+        optimisticUpdate: {
+          type: 'delete',
+          userId: user.uid
         },
-        body: JSON.stringify({ userId: user.uid }),
-        retryOn: ['network', '5xx']
-      }, 3);
-      
-      const result = await response.json();
-      
-      // Handle partial success (207 Multi-Status)
-      if (response.status === 207 && result.partialSuccess && result.deletionSummary) {
-        const summary = result.deletionSummary;
-        toast.warning(
-          `User partially deleted: ${summary.successfulOperations}/${summary.totalOperations} operations completed.`,
-          { duration: 10000 }
-        );
-        
-        setDeletionProgressModal({ isOpen: true, result });
-      } else {
-        // Full success
-        if (result.deletionSummary) {
-          const summary = result.deletionSummary;
-          toast.success(
-            `User deleted successfully! ${summary.successfulOperations}/${summary.totalOperations} operations completed.`,
-            { duration: 6000 }
-          );
+        execute: async () => {
+          const token = await getAuthToken();
           
-          if (summary.failedOperations > 0) {
-            toast.warning(
-              `Note: ${summary.failedOperations} cleanup operations failed.`,
-              { duration: 8000 }
-            );
+          if (!token) {
+            throw new Error('Authentication token not available');
           }
           
-          setDeletionProgressModal({ isOpen: true, result });
-        } else {
-          toast.success('User deleted successfully');
-        }
-      }
-      
-      setDeleteModal({ isOpen: false, user: null });
-      setDeletingUserId(null);
-      setDeletionValidation(null);
-      
+          console.log('Starting user deletion process:', {
+            targetUser: { uid: user.uid, email: user.email, role: user.role },
+            requestingUser: { uid: currentUser?.uid, email: currentUser?.email, role: currentUser?.role }
+          });
+          
+          const response = await apiCallWithRetry('/.netlify/functions/admin-users', {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ userId: user.uid }),
+            retryOn: ['network', '5xx'] // Retry on network and server errors
+          }, 3);
+          
+          const result = await response.json();
+          
+          // Handle partial success (207 Multi-Status)
+          if (response.status === 207 && result.partialSuccess && result.deletionSummary) {
+            const summary = result.deletionSummary;
+            toast.warning(
+              `User partially deleted: ${summary.successfulOperations}/${summary.totalOperations} operations completed.`,
+              { duration: 10000 }
+            );
+            
+            setDeletionProgressModal({ isOpen: true, result });
+            return result;
+          }
+          
+          // Full success
+          if (result.deletionSummary) {
+            const summary = result.deletionSummary;
+            toast.success(
+              `User deleted successfully! ${summary.successfulOperations}/${summary.totalOperations} operations completed.`,
+              { duration: 6000 }
+            );
+            
+            if (summary.failedOperations > 0) {
+              toast.warning(
+                `Note: ${summary.failedOperations} cleanup operations failed.`,
+                { duration: 8000 }
+              );
+            }
+            
+            setDeletionProgressModal({ isOpen: true, result });
+          } else {
+            toast.success('User deleted successfully');
+          }
+          
+          // Emit real-time event for other admins
+          realTimeManager.simulateUserEvent('user-deleted', {
+            userId: user.uid,
+            email: user.email
+          });
+          
+          return result;
+        },
+        successMessage: null, // We handle success messages in the execute function
+        errorMessage: null, // We handle error messages in the onError callback
+        onSuccess: () => {
+          setDeleteModal({ isOpen: false, user: null });
+          setDeletingUserId(null);
+          setDeletionValidation(null);
+        },
+        onError: (error) => {
+          console.error('User deletion failed:', error);
+          
+          // Rollback optimistic update
+          setUsers(originalUsers);
+          
+          // Categorize and display appropriate error message
+          const errorCategory = categorizeError(error);
+          const userMessage = getUserFriendlyErrorMessage(error);
+          
+          // Show different toast types based on error category
+          switch (errorCategory) {
+            case 'network':
+              toast.error(`Network error: ${userMessage}. The user may have been deleted - refreshing list to verify.`, { duration: 8000 });
+              // Refresh to check actual state
+              setTimeout(() => fetchUsers(), 2000);
+              break;
+            case 'authentication':
+              toast.error(userMessage, { duration: 8000 });
+              break;
+            case 'permission':
+              toast.error(userMessage, { duration: 8000 });
+              break;
+            default:
+              toast.error(`Deletion failed: ${userMessage}`, { duration: 8000 });
+          }
+          
+          setDeletingUserId(null);
+          setDeleteModal({ isOpen: false, user: null });
+          setDeletionValidation(null);
+        },
+        retryable: true,
+        maxRetries: 3
+      });
     } catch (error) {
       // This catch block handles errors that occur before executeOperation
       console.error('Pre-operation error:', error);
@@ -203,26 +306,8 @@ export default function UserManagementPage() {
       // Rollback optimistic update
       setUsers(originalUsers);
       
-      // Categorize and display appropriate error message
-      const errorCategory = categorizeError(error);
       const userMessage = getUserFriendlyErrorMessage(error);
-      
-      // Show different toast types based on error category
-      switch (errorCategory) {
-        case 'network':
-          toast.error(`Network error: ${userMessage}. The user may have been deleted - refreshing list to verify.`, { duration: 8000 });
-          // Refresh to check actual state
-          setTimeout(() => fetchUsers(), 2000);
-          break;
-        case 'authentication':
-          toast.error(userMessage, { duration: 8000 });
-          break;
-        case 'permission':
-          toast.error(userMessage, { duration: 8000 });
-          break;
-        default:
-          toast.error(`Deletion failed: ${userMessage}`, { duration: 8000 });
-      }
+      toast.error(`Failed to delete user: ${userMessage}`, { duration: 8000 });
       
       setDeletingUserId(null);
       setDeleteModal({ isOpen: false, user: null });

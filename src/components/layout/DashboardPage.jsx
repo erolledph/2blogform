@@ -2,6 +2,11 @@ import React, { useState, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { blogService } from '@/services/blogService';
+import { useIntelligentPrefetch } from '@/hooks/useIntelligentPrefetch';
+import { webSocketService } from '@/services/webSocketService';
+import { realTimeManager } from '@/services/realTimeService';
+import RealTimeStatusBar from '@/components/shared/RealTimeStatusBar';
+import PerformanceMonitor from '@/components/shared/PerformanceMonitor';
 import toast from 'react-hot-toast';
 import Sidebar from './Sidebar';
 import Header from './Header';
@@ -24,11 +29,49 @@ const ManageBlogPage = React.lazy(() => import('@/features/dashboard/manage-blog
 export default function DashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { currentUser } = useAuth();
+  const { trackBehavior, prefetchData } = useIntelligentPrefetch();
   
   // activeBlogId is now managed by BlogSelector component for multi-blog users
   const [activeBlogId, setActiveBlogId] = useState(null);
   const [blogInitialized, setBlogInitialized] = useState(false);
   
+  // Initialize real-time services
+  useEffect(() => {
+    if (currentUser?.uid) {
+      // Connect WebSocket service
+      webSocketService.connect(currentUser.uid);
+      
+      // Track page entry for intelligent prefetching
+      trackBehavior('page_enter', { page: 'dashboard' });
+      
+      return () => {
+        trackBehavior('page_exit', { page: 'dashboard' });
+        webSocketService.disconnect();
+      };
+    }
+  }, [currentUser?.uid, trackBehavior]);
+  
+  // Intelligent prefetching based on user behavior
+  useEffect(() => {
+    if (activeBlogId && currentUser?.uid) {
+      // Prefetch commonly accessed data
+      prefetchData(
+        `content-stats-${currentUser.uid}-${activeBlogId}`,
+        () => import('@/services/contentService').then(({ contentService }) => 
+          contentService.getContentStats(currentUser.uid, activeBlogId)
+        ),
+        'medium'
+      );
+      
+      prefetchData(
+        `product-stats-${currentUser.uid}-${activeBlogId}`,
+        () => import('@/services/productsService').then(({ productsService }) => 
+          productsService.getProductStats(currentUser.uid, activeBlogId)
+        ),
+        'medium'
+      );
+    }
+  }, [activeBlogId, currentUser?.uid, prefetchData]);
   // Prevent body scrolling when sidebar is open on mobile
   useEffect(() => {
     const handleBodyScroll = () => {
@@ -166,6 +209,10 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+      
+      {/* Real-time status and performance monitoring */}
+      <RealTimeStatusBar />
+      <PerformanceMonitor autoHide={true} />
     </div>
   );
 }

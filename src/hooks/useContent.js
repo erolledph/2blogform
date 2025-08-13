@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { contentService } from '@/services/contentService';
 import { useCachedData } from '@/hooks/useCache';
+import { realTimeManager } from '@/services/realTimeService';
 
 export function useContent(blogId) {
   const [content, setContent] = useState([]);
@@ -23,6 +24,39 @@ export function useContent(blogId) {
     2 * 60 * 1000 // Reduced to 2 minutes TTL for more frequent updates
   );
 
+  // Subscribe to real-time content updates
+  useEffect(() => {
+    const unsubscribe = realTimeManager.subscribe('content-update', (update) => {
+      if (update.blogId === blogId) {
+        handleRealTimeContentUpdate(update);
+      }
+    });
+    
+    return unsubscribe;
+  }, [blogId]);
+
+  const handleRealTimeContentUpdate = (update) => {
+    switch (update.type) {
+      case 'created':
+        setContent(prev => [update.data, ...prev]);
+        break;
+      case 'updated':
+        setContent(prev => prev.map(item => 
+          item.id === update.data.id ? { ...item, ...update.data } : item
+        ));
+        break;
+      case 'deleted':
+        setContent(prev => prev.filter(item => item.id !== update.data.id));
+        break;
+      case 'status-changed':
+        setContent(prev => prev.map(item => 
+          item.id === update.data.id 
+            ? { ...item, status: update.data.status, updatedAt: new Date() }
+            : item
+        ));
+        break;
+    }
+  };
   // Update local state when cached data changes
   useEffect(() => {
     if (cachedContent) {
@@ -73,8 +107,16 @@ export function useContent(blogId) {
   const enhancedRefetch = useCallback(async () => {
     try {
       await (refetchCached || fetchContent)();
+      
+      // Notify real-time manager of data refresh
+      realTimeManager.notifySubscribers('data-refreshed', {
+        dataKey: 'content',
+        blogId,
+        timestamp: new Date()
+      });
     } catch (error) {
       console.error('Error refreshing content:', error);
+      toast.error('Failed to refresh content');
     }
   }, [refetchCached, fetchContent, blogId]);
   return {
