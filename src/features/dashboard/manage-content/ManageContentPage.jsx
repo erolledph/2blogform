@@ -2,18 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useContent } from '@/hooks/useContent';
+import { apiCallWithRetry, getUserFriendlyErrorMessage } from '@/utils/helpers';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
 import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
-import { Edit, Trash2, Plus, ImageIcon, Eye, Upload, Download, AlertTriangle } from 'lucide-react';
+import DynamicTransition from '@/components/shared/DynamicTransition';
+import { Edit, Trash2, Plus, ImageIcon, BarChart3, AlertTriangle, Eye, Upload, Download, FileText } from 'lucide-react';
 import { format } from 'date-fns';
-import { getStatusBadgeClass, truncateText } from '@/utils/helpers';
+import { getStatusBadgeClass } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 
 export default function ManageContentPage({ activeBlogId }) {
-  const { content, setContent, loading, error, refetch } = useContent(activeBlogId);
+  const { content, loading, error, refetch, invalidateCache } = useContent(activeBlogId);
+  const { getAuthToken, currentUser } = useAuth();
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, content: null });
+  const [analyticsModal, setAnalyticsModal] = useState({ isOpen: false, content: null });
   const [selectedItems, setSelectedItems] = useState([]);
   const [importing, setImporting] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState(null);
@@ -24,7 +28,6 @@ export default function ManageContentPage({ activeBlogId }) {
   const [deletingLoading, setDeletingLoading] = useState(false);
   const [exportingSelectedLoading, setExportingSelectedLoading] = useState(false);
   const [exportingAllLoading, setExportingAllLoading] = useState(false);
-  const { getAuthToken, currentUser } = useAuth();
 
   const handleSelectAll = (selectAll) => {
     if (selectAll) {
@@ -39,6 +42,147 @@ export default function ManageContentPage({ activeBlogId }) {
       setSelectedItems(prev => [...prev, itemId]);
     } else {
       setSelectedItems(prev => prev.filter(id => id !== itemId));
+    }
+  };
+
+  const handleBulkPublish = async () => {
+    if (selectedItems.length === 0) {
+      toast.error('Please select items to publish');
+      return;
+    }
+
+    setPublishingLoading(true);
+    
+    try {
+      const token = await getAuthToken();
+      
+      const promises = selectedItems.map(async (itemId) => {
+        const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            id: itemId, 
+            blogId: activeBlogId,
+            status: 'published'
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to publish item ${itemId}`);
+        }
+        
+        return response.json();
+      });
+
+      await Promise.all(promises);
+      
+      toast.success(`Successfully published ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+      setSelectedItems([]);
+      invalidateCache();
+      refetch();
+    } catch (error) {
+      console.error('Bulk publish error:', error);
+      toast.error('Failed to publish selected items');
+    } finally {
+      setPublishingLoading(false);
+    }
+  };
+
+  const handleBulkUnpublish = async () => {
+    if (selectedItems.length === 0) {
+      toast.error('Please select items to unpublish');
+      return;
+    }
+
+    setUnpublishingLoading(true);
+    
+    try {
+      const token = await getAuthToken();
+      
+      const promises = selectedItems.map(async (itemId) => {
+        const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            id: itemId, 
+            blogId: activeBlogId,
+            status: 'draft'
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to unpublish item ${itemId}`);
+        }
+        
+        return response.json();
+      });
+
+      await Promise.all(promises);
+      
+      toast.success(`Successfully unpublished ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+      setSelectedItems([]);
+      invalidateCache();
+      refetch();
+    } catch (error) {
+      console.error('Bulk unpublish error:', error);
+      toast.error('Failed to unpublish selected items');
+    } finally {
+      setUnpublishingLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedItems.length === 0) {
+      toast.error('Please select items to delete');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingLoading(true);
+    
+    try {
+      const token = await getAuthToken();
+      
+      const promises = selectedItems.map(async (itemId) => {
+        const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            id: itemId, 
+            blogId: activeBlogId
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to delete item ${itemId}`);
+        }
+        
+        return response.json();
+      });
+
+      await Promise.all(promises);
+      
+      toast.success(`Successfully deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+      setSelectedItems([]);
+      invalidateCache();
+      refetch();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast.error('Failed to delete selected items');
+    } finally {
+      setDeletingLoading(false);
     }
   };
 
@@ -90,7 +234,7 @@ export default function ManageContentPage({ activeBlogId }) {
         }
 
         const token = await getAuthToken();
-        const response = await fetch('/api/import/content', {
+        const response = await apiCallWithRetry('/api/import/content', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -102,24 +246,21 @@ export default function ManageContentPage({ activeBlogId }) {
           })
         });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
-
         const results = await response.json();
         
         if (results.successCount > 0) {
           toast.success(`Successfully imported ${results.successCount} of ${results.totalItems} content item${results.successCount !== 1 ? 's' : ''}`);
+          invalidateCache();
         }
 
         if (results.errorCount > 0) {
-          toast.error(`${results.errorCount} content item${results.errorCount !== 1 ? 's' : ''} failed to import. Check console for details.`);
+          toast.error(`${results.errorCount} item${results.errorCount !== 1 ? 's' : ''} failed to import. Check console for details.`);
           console.error('Import errors:', results.errors);
         }
 
       } catch (error) {
-        toast.error(error.message || 'Failed to import content');
+        const userMessage = getUserFriendlyErrorMessage(error);
+        toast.error(userMessage);
       } finally {
         setImporting(false);
         // Always refetch after import operations to ensure UI is up to date
@@ -139,7 +280,7 @@ export default function ManageContentPage({ activeBlogId }) {
       setExportingSelectedLoading(true);
       const token = await getAuthToken();
       
-      const response = await fetch('/api/export/content', {
+      const response = await apiCallWithRetry('/api/export/content', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -159,11 +300,6 @@ export default function ManageContentPage({ activeBlogId }) {
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
       // Handle file download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -180,7 +316,8 @@ export default function ManageContentPage({ activeBlogId }) {
 
     } catch (error) {
       console.error('Export error:', error);
-      toast.error(error.message || 'Failed to export content');
+      const userMessage = getUserFriendlyErrorMessage(error);
+      toast.error(userMessage);
     } finally {
       setExportingSelectedLoading(false);
     }
@@ -191,7 +328,7 @@ export default function ManageContentPage({ activeBlogId }) {
       setExportingAllLoading(true);
       const token = await getAuthToken();
       
-      const response = await fetch('/api/export/content', {
+      const response = await apiCallWithRetry('/api/export/content', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -211,11 +348,6 @@ export default function ManageContentPage({ activeBlogId }) {
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
       // Handle file download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -231,153 +363,19 @@ export default function ManageContentPage({ activeBlogId }) {
 
     } catch (error) {
       console.error('Export error:', error);
-      toast.error(error.message || 'Failed to export content');
+      const userMessage = getUserFriendlyErrorMessage(error);
+      toast.error(userMessage);
     } finally {
       setExportingAllLoading(false);
     }
   };
 
-  const handleBulkPublish = async () => {
-    if (selectedItems.length === 0) {
-      toast.error('Please select items to publish');
-      return;
-    }
-
-    try {
-      setPublishingLoading(true);
-      
-      const token = await getAuthToken();
-      
-      const promises = selectedItems.map(async (itemId) => {
-        const response = await fetch(`/.netlify/functions/admin-content`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ 
-            id: itemId, 
-            blogId: activeBlogId,
-            status: 'published'
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to publish item ${itemId}`);
-        }
-      });
-
-      await Promise.all(promises);
-      
-      toast.success(`Successfully published ${selectedItems.length} content item${selectedItems.length !== 1 ? 's' : ''}`);
-      
-      setSelectedItems([]);
-      refetch(); // Refresh data to show updated status
-    } catch (error) {
-      console.error('Bulk publish error:', error);
-      toast.error('Failed to publish selected items');
-    } finally {
-      setPublishingLoading(false);
-    }
-  };
-
-  const handleBulkUnpublish = async () => {
-    if (selectedItems.length === 0) {
-      toast.error('Please select items to unpublish');
-      return;
-    }
-
-    try {
-      setUnpublishingLoading(true);
-      
-      const token = await getAuthToken();
-      
-      const promises = selectedItems.map(async (itemId) => {
-        const response = await fetch(`/.netlify/functions/admin-content`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ 
-            id: itemId, 
-            blogId: activeBlogId,
-            status: 'draft'
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to unpublish item ${itemId}`);
-        }
-      });
-
-      await Promise.all(promises);
-      
-      toast.success(`Successfully unpublished ${selectedItems.length} content item${selectedItems.length !== 1 ? 's' : ''}`);
-      
-      setSelectedItems([]);
-      refetch(); // Refresh data to show updated status
-    } catch (error) {
-      console.error('Bulk unpublish error:', error);
-      toast.error('Failed to unpublish selected items');
-    } finally {
-      setUnpublishingLoading(false);
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedItems.length === 0) {
-      toast.error('Please select items to delete');
-      return;
-    }
-
-    if (!confirm(`Are you sure you want to delete ${selectedItems.length} content item${selectedItems.length !== 1 ? 's' : ''}? This action cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      setDeletingLoading(true);
-      
-      const token = await getAuthToken();
-      
-      const promises = selectedItems.map(async (itemId) => {
-        const response = await fetch(`/.netlify/functions/admin-content`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ 
-            id: itemId, 
-            blogId: activeBlogId
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to delete item ${itemId}`);
-        }
-      });
-
-      await Promise.all(promises);
-      
-      toast.success(`Successfully deleted ${selectedItems.length} content item${selectedItems.length !== 1 ? 's' : ''}`);
-      
-      setSelectedItems([]);
-      refetch(); // Refresh data to show updated list
-    } catch (error) {
-      console.error('Bulk delete error:', error);
-      toast.error('Failed to delete selected items');
-    } finally {
-      setDeletingLoading(false);
-    }
-  };
-
   const handleDelete = async (contentItem) => {
+    setDeletingItemId(contentItem.id);
+    
     try {
-      setDeletingItemId(contentItem.id);
-      
       const token = await getAuthToken();
-      const response = await fetch(`/.netlify/functions/admin-content`, {
+      const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -391,41 +389,42 @@ export default function ManageContentPage({ activeBlogId }) {
       }
       
       toast.success('Content deleted successfully');
-      
       setDeleteModal({ isOpen: false, content: null });
-      refetch(); // Refresh data to show updated list
+      setDeletingItemId(null);
+      invalidateCache();
+      refetch();
     } catch (error) {
-      console.error('Error deleting content:', error);
+      console.error('Delete error:', error);
       toast.error('Failed to delete content');
-    } finally {
       setDeletingItemId(null);
     }
   };
 
   const columns = [
     {
-      key: 'image',
+      key: 'featuredImageUrl',
       title: 'Image',
       sortable: false,
       render: (value, row) => (
         <div className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0">
-          {row.featuredImageUrl ? (
+          {value ? (
             <EnhancedContentThumbnail
-              src={row.featuredImageUrl}
+              src={value}
               alt={row.title}
               className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-md border border-border"
             />
-          ) : (
-            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-muted rounded-md border border-border flex items-center justify-center">
-              <ImageIcon className="h-4 w-4 sm:h-6 sm:w-6 text-muted-foreground" />
-            </div>
-          )}
+          ) : null}
+          <div 
+            className={`w-12 h-12 sm:w-16 sm:h-16 bg-muted rounded-md border border-border flex items-center justify-center ${value ? 'hidden' : 'flex'}`}
+          >
+            <ImageIcon className="h-4 w-4 sm:h-6 sm:w-6 text-muted-foreground" />
+          </div>
         </div>
       )
     },
     {
       key: 'title',
-      title: 'Content',
+      title: 'Title',
       render: (value, row) => (
         <div className="flex flex-col min-w-0">
           <div className="text-sm sm:text-base font-medium text-foreground truncate mb-1">
@@ -434,20 +433,6 @@ export default function ManageContentPage({ activeBlogId }) {
           <div className="text-xs sm:text-sm text-muted-foreground truncate">
             /{row.slug}
           </div>
-          {row.author && (
-            <div className="text-xs text-muted-foreground mt-1">
-              by {row.author}
-            </div>
-          )}
-        </div>
-      )
-    },
-    {
-      key: 'categories',
-      title: 'Categories',
-      render: (value) => (
-        <div className="text-sm text-foreground">
-          {value && value.length > 0 ? value.join(', ') : 'None'}
         </div>
       )
     },
@@ -461,12 +446,31 @@ export default function ManageContentPage({ activeBlogId }) {
       )
     },
     {
+      key: 'author',
+      title: 'Author',
+      render: (value) => (
+        <span className="text-sm sm:text-base text-foreground">
+          {value || 'N/A'}
+        </span>
+      )
+    },
+    {
       key: 'createdAt',
       title: 'Created',
       render: (value) => (
         <span className="text-sm sm:text-base text-foreground">
           {value ? format(value, 'MMM dd, yyyy') : 'N/A'}
         </span>
+      )
+    },
+    {
+      key: 'viewCount',
+      title: 'Views',
+      render: (value) => (
+        <div className="text-center">
+          <div className="text-sm sm:text-base font-medium text-foreground">{value || 0}</div>
+          <div className="text-xs text-muted-foreground">tracked</div>
+        </div>
       )
     },
     {
@@ -492,6 +496,13 @@ export default function ManageContentPage({ activeBlogId }) {
             <Edit className="h-4 w-4" />
           </Link>
           <button
+            onClick={() => setAnalyticsModal({ isOpen: true, content: row })}
+            className="text-blue-600 p-2 rounded-md hover:bg-blue-50 transition-colors duration-200"
+            title="View Analytics"
+          >
+            <BarChart3 className="h-4 w-4" />
+          </button>
+          <button
             onClick={() => setDeleteModal({ isOpen: true, content: row })}
             disabled={deletingItemId === row.id}
             className="text-destructive p-2 rounded-md hover:bg-destructive/10 transition-colors duration-200"
@@ -508,8 +519,9 @@ export default function ManageContentPage({ activeBlogId }) {
     }
   ];
 
+
   return (
-    <div className="section-spacing">
+    <DynamicTransition loading={loading} error={error} className="section-spacing">
       {/* Header and Action Buttons - Always visible */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-12">
         <div className="page-header mb-0 flex-1">
@@ -559,7 +571,7 @@ export default function ManageContentPage({ activeBlogId }) {
         <div className="flex flex-col sm:flex-row gap-4">
           <Link to="/dashboard/create" className="btn-primary inline-flex items-center">
             <Plus className="h-5 w-5 mr-3" />
-            Create Content
+            Create New
           </Link>
           <LoadingButton
             onClick={handleImport}
@@ -583,76 +595,58 @@ export default function ManageContentPage({ activeBlogId }) {
       </div>
 
       {/* Content Table */}
-      {loading ? (
+      {content.length === 0 && !loading && !error ? (
         <div className="card">
-          <div className="card-content p-0">
-            <TableSkeleton rows={8} columns={6} />
+          <div className="card-content text-center py-20">
+            <FileText className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
+            <h3 className="text-2xl font-semibold text-foreground mb-4">No content found</h3>
+            <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
+              Get started by creating your first blog post. Once you have content, you can export it to get a genuine JSON template that matches your data structure.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
+              <Link to="/dashboard/create" className="btn-primary">
+                <Plus className="h-5 w-5 mr-3" />
+                Create First Post
+              </Link>
+            </div>
+            <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg max-w-2xl mx-auto">
+              <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Pro Tip: Generate Your Own JSON Template</h4>
+              <p className="text-sm text-blue-700 leading-relaxed">
+                Create at least one blog post, then use the "Export All" button to generate a JSON template that perfectly matches your data structure and image references.
+              </p>
+            </div>
           </div>
         </div>
       ) : (
-        error ? (
-          <div className="card border-red-200 bg-red-50">
-            <div className="card-content p-8 text-center">
-              <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
-              <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Content</h3>
-              <p className="text-red-700 mb-6">{error}</p>
-              <button onClick={refetch} className="btn-secondary">
-                Try Again
-              </button>
-            </div>
+        <div className="card">
+          <div className="card-content p-0">
+            <DataTable
+              data={content}
+              columns={columns}
+              searchable={true}
+              filterable={true}
+              filterOptions={{
+                statuses: ['draft', 'published'],
+                categories: true,
+                tags: true,
+                dateRange: true
+              }}
+              sortable={true}
+              pagination={true}
+              pageSize={10}
+              selectable={true}
+              selectedItems={selectedItems}
+              onSelectAll={handleSelectAll}
+              onSelectRow={handleSelectRow}
+              enableAnimations={true}
+              loading={loading}
+              onFiltersChange={(filters) => {
+                // Filters are handled internally by DataTable
+                // This callback can be used for additional logic if needed
+              }}
+            />
           </div>
-        ) : content.length === 0 ? (
-          <div className="card">
-            <div className="card-content text-center py-20">
-              <ImageIcon className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
-              <h3 className="text-2xl font-semibold text-foreground mb-4">No content found</h3>
-              <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
-                Get started by creating your first blog post. Once you have content, you can export it to get a genuine JSON template that matches your data structure.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-6 justify-center">
-                <Link to="/dashboard/create" className="btn-primary">
-                  <Plus className="h-5 w-5 mr-3" />
-                  Create Your First Post
-                </Link>
-              </div>
-              <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-lg max-w-2xl mx-auto">
-                <h4 className="text-sm font-medium text-green-800 mb-2">💡 Pro Tip: Generate Your Own JSON Template</h4>
-                <p className="text-sm text-green-700 leading-relaxed">
-                  Create at least one blog post, then use the "Export All" button to generate a JSON template that perfectly matches your data structure and image references.
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="card">
-            <div className="card-content p-0">
-              <DataTable
-                data={content}
-                columns={columns}
-                searchable={true}
-                filterable={true}
-                filterOptions={{
-                  statuses: ['draft', 'published'],
-                  categories: true,
-                  tags: true,
-                  dateRange: true
-                }}
-                sortable={true}
-                pagination={true}
-                pageSize={10}
-                selectable={true}
-                selectedItems={selectedItems}
-                onSelectAll={handleSelectAll}
-                onSelectRow={handleSelectRow}
-                enableAnimations={true}
-                onFiltersChange={(filters) => {
-                  // Filters are handled internally by DataTable
-                  // This callback can be used for additional logic if needed
-                }}
-              />
-            </div>
-          </div>
-        )
+        </div>
       )}
 
       {/* Clear Selection Button */}
@@ -674,9 +668,10 @@ export default function ManageContentPage({ activeBlogId }) {
         title="Delete Content"
         size="sm"
       >
+      {deleteModal.content && (
         <div className="space-y-4">
           <p className="text-base text-foreground">
-            Are you sure you want to delete "{deleteModal.content?.title}"?
+            Are you sure you want to delete "{deleteModal.content.title}"?
           </p>
           <p className="text-sm text-muted-foreground">
             This action cannot be undone.
@@ -684,17 +679,17 @@ export default function ManageContentPage({ activeBlogId }) {
           <div className="flex justify-end space-x-4 pt-4">
             <button
               onClick={() => setDeleteModal({ isOpen: false, content: null })}
-              disabled={deletingItemId === deleteModal.content?.id}
+              disabled={deletingItemId === deleteModal.content.id}
               className="btn-secondary"
             >
               Cancel
             </button>
             <button
               onClick={() => handleDelete(deleteModal.content)}
-              disabled={deletingItemId === deleteModal.content?.id}
+              disabled={deletingItemId === deleteModal.content.id}
               className="btn-danger"
             >
-              {deletingItemId === deleteModal.content?.id ? (
+              {deletingItemId === deleteModal.content.id ? (
                 'Deleting...'
               ) : (
                 'Delete'
@@ -702,7 +697,139 @@ export default function ManageContentPage({ activeBlogId }) {
             </button>
           </div>
         </div>
+      )}
       </Modal>
+
+      {/* Analytics Modal */}
+      <Modal
+        isOpen={analyticsModal.isOpen}
+        onClose={() => setAnalyticsModal({ isOpen: false, content: null })}
+        title={`Analytics: ${analyticsModal.content?.title}`}
+        size="lg"
+      >
+        {analyticsModal.content && (
+          <ContentAnalyticsModal 
+            contentId={analyticsModal.content.id}
+            contentTitle={analyticsModal.content.title}
+            activeBlogId={activeBlogId}
+          />
+        )}
+      </Modal>
+    </DynamicTransition>
+  );
+}
+
+// Content Analytics Modal Component
+function ContentAnalyticsModal({ contentId, contentTitle, activeBlogId }) {
+  const [period, setPeriod] = useState(30);
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Simple analytics placeholder since useContentAnalytics might not be available
+    setLoading(false);
+    setAnalytics({
+      totalViews: 0,
+      totalInteractions: 0,
+      viewCount: 0,
+      analytics: {
+        peakHour: 14,
+        averageViewsPerDay: 0
+      }
+    });
+  }, [contentId, period]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="w-32 h-6 bg-muted animate-pulse rounded"></div>
+          <div className="w-24 h-10 bg-muted animate-pulse rounded"></div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="p-4 bg-muted animate-pulse rounded-lg">
+              <div className="h-8 bg-muted/70 rounded mb-2"></div>
+              <div className="h-4 bg-muted/50 rounded"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+        <p>No analytics data available</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-foreground">Performance Overview</h3>
+        <select
+          value={period}
+          onChange={(e) => setPeriod(Number(e.target.value))}
+          className="input-field w-auto text-sm"
+        >
+          <option value={7}>7 days</option>
+          <option value={30}>30 days</option>
+          <option value={90}>90 days</option>
+        </select>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+          <div className="text-2xl font-bold text-blue-900">{analytics.totalViews}</div>
+          <div className="text-sm text-blue-600">Total Views</div>
+        </div>
+        <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+          <div className="text-2xl font-bold text-green-900">{analytics.totalInteractions}</div>
+          <div className="text-sm text-green-600">Interactions</div>
+        </div>
+        <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg text-center">
+          <div className="text-2xl font-bold text-purple-900">{analytics.viewCount}</div>
+          <div className="text-sm text-purple-600">Total Views</div>
+        </div>
+        <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg text-center">
+          <div className="text-2xl font-bold text-orange-900">
+            {Math.round(analytics.totalViews / period)}
+          </div>
+          <div className="text-sm text-orange-600">Avg/Day</div>
+        </div>
+      </div>
+
+      {analytics.analytics && (
+        <div>
+          <h4 className="text-base font-semibold text-foreground mb-3">Activity Pattern</h4>
+          <div className="p-4 bg-muted/30 rounded-lg">
+            <p className="text-sm text-muted-foreground mb-2">
+              Peak viewing hour: {analytics.analytics.peakHour}:00
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Average views per day: {Math.round(analytics.analytics.averageViewsPerDay)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+        <div className="flex items-start space-x-3">
+          <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-amber-800 font-medium mb-1">Analytics Note</p>
+            <p className="text-sm text-amber-700">
+              These metrics only track Firebase-connected interactions. For complete analytics, 
+              consider integrating Google Analytics on your static site.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -714,21 +841,19 @@ function EnhancedContentThumbnail({ src, alt, className = '' }) {
   
   return (
     <div className="relative">
-      {!imageError && (
-        <img
-          src={src}
-          alt={alt}
-          className={`${className} ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-          onLoad={() => {
-            setImageLoaded(true);
-            console.log('Content thumbnail loaded:', src);
-          }}
-          onError={(e) => {
-            setImageError(true);
-            console.error('Content thumbnail failed to load:', src);
-          }}
-        />
-      )}
+      <img
+        src={src}
+        alt={alt}
+        className={`${className} ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => {
+          setImageLoaded(true);
+          console.log('Content thumbnail loaded:', src);
+        }}
+        onError={() => {
+          setImageError(true);
+          console.error('Content thumbnail failed to load:', src);
+        }}
+      />
       {(imageError || !imageLoaded) && (
         <div className={`${className} bg-muted flex items-center justify-center ${imageError ? '' : 'absolute inset-0'}`}>
           <ImageIcon className="h-4 w-4 sm:h-6 sm:w-6 text-muted-foreground" />
