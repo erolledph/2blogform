@@ -159,6 +159,71 @@ export function StatCardSkeleton() {
   );
 }
 
+// Specialized skeleton for file storage page
+export function FileStorageSkeleton({ rows = 5 }) {
+  return (
+    <div className="card">
+      <div className="card-content p-0">
+        <div className="overflow-hidden">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="px-6 py-4">
+                  <SkeletonLoader width="3/4" height="sm" />
+                </th>
+                <th className="px-6 py-4">
+                  <SkeletonLoader width="3/4" height="sm" />
+                </th>
+                <th className="px-6 py-4">
+                  <SkeletonLoader width="3/4" height="sm" />
+                </th>
+                <th className="px-6 py-4">
+                  <SkeletonLoader width="3/4" height="sm" />
+                </th>
+                <th className="px-6 py-4">
+                  <SkeletonLoader width="3/4" height="sm" />
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-background divide-y divide-border">
+              {Array.from({ length: rows }).map((_, index) => (
+                <tr key={index}>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-muted rounded border border-border"></div>
+                      <div className="space-y-2">
+                        <SkeletonLoader width="1/2" height="md" />
+                        <SkeletonLoader width="1/3" height="sm" />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <SkeletonLoader width="1/4" height="md" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <SkeletonLoader width="1/4" height="md" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <SkeletonLoader width="1/3" height="md" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex space-x-2">
+                      <SkeletonLoader type="button" className="w-8 h-8 rounded" />
+                      <SkeletonLoader type="button" className="w-8 h-8 rounded" />
+                      <SkeletonLoader type="button" className="w-8 h-8 rounded" />
+                      <SkeletonLoader type="button" className="w-8 h-8 rounded" />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Specialized skeleton for content preview pages
 export function ContentPreviewSkeleton() {
   return (
