@@ -2,8 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/hooks/useAuth';
-import { performanceService } from '@/services/performanceService';
-import { realTimeAnalyticsService } from '@/services/realTimeAnalytics';
 import LoginPage from '@/features/auth/LoginPage';
 import RegisterPage from '@/features/auth/RegisterPage';
 import ForgotPasswordPage from '@/features/auth/ForgotPasswordPage';
@@ -17,22 +15,6 @@ function App() {
   React.useEffect(() => {
     // Setup service worker update notification
     if ('serviceWorker' in navigator) {
-      // Clear all caches on app start to ensure fresh content
-      navigator.serviceWorker.ready.then(registration => {
-        if (registration.active) {
-          const messageChannel = new MessageChannel();
-          messageChannel.port1.onmessage = (event) => {
-            if (event.data.type === 'ALL_CACHES_CLEARED') {
-              console.log('All caches cleared by service worker');
-            }
-          };
-          registration.active.postMessage(
-            { type: 'CLEAR_ALL_CACHES' },
-            [messageChannel.port2]
-          );
-        }
-      });
-      
       window.showUpdateNotification = () => {
         // Show update available notification
         if (window.confirm('A new version is available. Reload to update?')) {
@@ -40,18 +22,6 @@ function App() {
         }
       };
     }
-    
-    // Initialize performance monitoring
-    if (performanceService && !performanceService.isMonitoring) {
-      performanceService.startMonitoring();
-    }
-    
-    // Make services available globally for debugging
-    window.performanceService = performanceService;
-    window.realTimeAnalyticsService = realTimeAnalyticsService;
-    
-    // Track initial page load
-    performanceService.recordMetric('APP_INITIALIZATION', performance.now());
   }, []);
   
   return (
@@ -85,23 +55,6 @@ function App() {
                     border: '1px solid hsl(214.3 31.8% 91.4%)',
                     borderRadius: '0.5rem',
                     fontSize: '0.875rem',
-                  },
-                  success: {
-                    duration: 3000,
-                    iconTheme: {
-                      primary: 'hsl(142 76% 36%)',
-                      secondary: 'hsl(0 0% 100%)',
-                    },
-                  },
-                  error: {
-                    duration: 6000,
-                    iconTheme: {
-                      primary: 'hsl(0 84.2% 60.2%)',
-                      secondary: 'hsl(0 0% 100%)',
-                    },
-                  },
-                  loading: {
-                    duration: Infinity,
                   },
                 }}
               />

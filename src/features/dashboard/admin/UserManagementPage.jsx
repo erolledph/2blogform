@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { apiCallWithRetry, getUserFriendlyErrorMessage, categorizeError } from '@/utils/helpers';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
-import { TableSkeleton, StatCardSkeleton, UserManagementSkeleton } from '@/components/shared/SkeletonLoader';
+import { TableSkeleton, StatCardSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import InputField from '@/components/shared/InputField';
-import UserDeletionProgress from '@/components/shared/UserDeletionProgress';
-import { userDeletionValidator } from '@/utils/userDeletionValidator';
-import { performanceService } from '@/services/performanceService';
 import { 
   Users, 
   Shield, 
@@ -23,8 +19,7 @@ import {
   X,
   HardDrive,
   Database,
-  Trash2,
-  Info
+  Trash2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -36,11 +31,8 @@ export default function UserManagementPage() {
   const [error, setError] = useState(null);
   const [editModal, setEditModal] = useState({ isOpen: false, user: null });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, user: null });
-  const [deletionProgressModal, setDeletionProgressModal] = useState({ isOpen: false, result: null });
-  const [deletionValidation, setDeletionValidation] = useState(null);
-  const [validatingDeletion, setValidatingDeletion] = useState(false);
   const [updating, setUpdating] = useState(false);
-  const [deletingUserId, setDeletingUserId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Check if current user is admin
   const isAdmin = currentUser?.role === 'admin';
@@ -65,28 +57,46 @@ export default function UserManagementPage() {
         throw new Error('Authentication token not available');
       }
       
-      // Use enhanced API call with retry logic
-      const response = await apiCallWithRetry('/.netlify/functions/admin-users', {
+      const response = await fetch('/.netlify/functions/admin-users', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
-      }, 3);
+      });
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}`;
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+          
+          // Log additional error details for debugging
+          if (errorData.details) {
+            console.error('Server error details:', errorData.details);
+          }
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+        }
+        
+        throw new Error(errorMessage);
+      }
 
       const data = await response.json();
       setUsers(data.users || []);
-      
-      // Track successful operation
-      performanceService.trackOperation(true);
     } catch (error) {
       console.error('Error fetching users:', error);
       
-      // Track failed operation
-      performanceService.trackOperation(false);
-      
       // Provide user-friendly error messages
-      const userMessage = getUserFriendlyErrorMessage(error);
+      let userMessage = error.message;
+      if (error.message.includes('Authentication token')) {
+        userMessage = 'Authentication failed. Please try logging out and logging back in.';
+      } else if (error.message.includes('Admin access required')) {
+        userMessage = 'You do not have administrator privileges to access this page.';
+      } else if (error.message.includes('Insufficient permissions')) {
+        userMessage = 'The system configuration needs to be updated by a system administrator.';
+      }
       
       setError(userMessage);
       toast.error('Failed to fetch users');
@@ -96,34 +106,48 @@ export default function UserManagementPage() {
   };
 
   const handleUpdateUser = async (userId, updates) => {
+    const originalUsers = [...users];
+    
+    // Optimistic UI update
+    const updatedUsers = users.map(user => 
+      user.uid === userId ? { ...user, ...updates } : user
+    );
+    setUsers(updatedUsers);
     try {
       setUpdating(true);
       
       const token = await getAuthToken();
-      
-      const response = await apiCallWithRetry('/.netlify/functions/admin-users', {
+      const response = await fetch('/.netlify/functions/admin-users', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ userId, ...updates })
-      }, 3);
-      
+        body: JSON.stringify({
+          userId,
+          ...updates
+        })
+      });
+
       if (!response.ok) {
-        throw new Error('Failed to update user');
+        let errorMessage = `HTTP ${response.status}`;
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+        }
+        
+        throw new Error(errorMessage);
       }
-      
-      // Update user in the list
-      setUsers(prev => prev.map(user => 
-        user.uid === userId ? { ...user, ...updates } : user
-      ));
-      
+
       toast.success('User updated successfully');
       setEditModal({ isOpen: false, user: null });
     } catch (error) {
-      console.error('Update user error:', error);
-      toast.error('Failed to update user');
+      console.error('Error updating user:', error);
+      toast.error(error.message || 'Failed to update user');
+      setUsers(originalUsers); // Rollback on error
     } finally {
       setUpdating(false);
     }
@@ -132,178 +156,50 @@ export default function UserManagementPage() {
   const handleDeleteUser = async (user) => {
     const originalUsers = [...users];
     
+    // Optimistic UI update - remove user immediately
+    const updatedUsers = users.filter(u => u.uid !== user.uid);
+    setUsers(updatedUsers);
     try {
-      setDeletingUserId(user.uid);
-      
-      // Optimistic UI update - remove user immediately
-      setUsers(prev => prev.filter(u => u.uid !== user.uid));
+      setDeleting(true);
       
       const token = await getAuthToken();
-      
-      if (!token) {
-        throw new Error('Authentication token not available');
-      }
-      
-      console.log('Starting user deletion process:', {
-        targetUser: { uid: user.uid, email: user.email, role: user.role },
-        requestingUser: { uid: currentUser?.uid, email: currentUser?.email, role: currentUser?.role }
-      });
-      
-      const response = await apiCallWithRetry('/.netlify/functions/admin-users', {
+      const response = await fetch('/.netlify/functions/admin-users', {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ userId: user.uid }),
-        retryOn: ['network', '5xx']
-      }, 3);
-      
-      const result = await response.json();
-      
-      // Handle partial success (207 Multi-Status)
-      if (response.status === 207 && result.partialSuccess && result.deletionSummary) {
-        const summary = result.deletionSummary;
-        toast.warning(
-          `User partially deleted: ${summary.successfulOperations}/${summary.totalOperations} operations completed.`,
-          { duration: 10000 }
-        );
-        
-        setDeletionProgressModal({ isOpen: true, result });
-      } else {
-        // Full success
-        if (result.deletionSummary) {
-          const summary = result.deletionSummary;
-          toast.success(
-            `User deleted successfully! ${summary.successfulOperations}/${summary.totalOperations} operations completed.`,
-            { duration: 6000 }
-          );
-          
-          if (summary.failedOperations > 0) {
-            toast.warning(
-              `Note: ${summary.failedOperations} cleanup operations failed.`,
-              { duration: 8000 }
-            );
-          }
-          
-          setDeletionProgressModal({ isOpen: true, result });
-        } else {
-          toast.success('User deleted successfully');
-        }
-      }
-      
-      setDeleteModal({ isOpen: false, user: null });
-      setDeletingUserId(null);
-      setDeletionValidation(null);
-      
-    } catch (error) {
-      // This catch block handles errors that occur before executeOperation
-      console.error('Pre-operation error:', error);
-      
-      // Rollback optimistic update
-      setUsers(originalUsers);
-      
-      // Categorize and display appropriate error message
-      const errorCategory = categorizeError(error);
-      const userMessage = getUserFriendlyErrorMessage(error);
-      
-      // Show different toast types based on error category
-      switch (errorCategory) {
-        case 'network':
-          toast.error(`Network error: ${userMessage}. The user may have been deleted - refreshing list to verify.`, { duration: 8000 });
-          // Refresh to check actual state
-          setTimeout(() => fetchUsers(), 2000);
-          break;
-        case 'authentication':
-          toast.error(userMessage, { duration: 8000 });
-          break;
-        case 'permission':
-          toast.error(userMessage, { duration: 8000 });
-          break;
-        default:
-          toast.error(`Deletion failed: ${userMessage}`, { duration: 8000 });
-      }
-      
-      setDeletingUserId(null);
-      setDeleteModal({ isOpen: false, user: null });
-      setDeletionValidation(null);
-    }
-  };
-
-  const handleDeleteUserClick = async (user) => {
-    try {
-      setValidatingDeletion(true);
-      
-      // Basic client-side validation
-      if (user.uid === currentUser?.uid) {
-        toast.error('Cannot delete your own account');
-        return;
-      }
-      
-      if (!user.uid || typeof user.uid !== 'string') {
-        toast.error('Invalid user ID');
-        return;
-      }
-      
-      // Perform basic validation
-      try {
-        const validation = await userDeletionValidator.validateUserDeletion(user.uid, currentUser?.uid);
-        setDeletionValidation(validation);
-        
-        if (!validation.canDelete) {
-          toast.error(`Cannot delete user: ${validation.blockers.join(', ')}`);
-          return;
-        }
-        
-        // Show warnings if any
-        if (validation.warnings.length > 0) {
-          validation.warnings.forEach(warning => {
-            toast.warning(warning, { duration: 6000 });
-          });
-        }
-      } catch (validationError) {
-        console.warn('Validation failed, proceeding with basic checks:', validationError);
-        // Set basic validation data if detailed validation fails
-        setDeletionValidation({
-          canDelete: true,
-          warnings: ['Could not perform complete validation - proceeding with caution'],
-          blockers: [],
-          dataEstimate: {
-            blogs: 'Unknown',
-            content: 'Unknown',
-            products: 'Unknown',
-            estimatedTime: '1-5 minutes'
-          }
-        });
-      }
-      
-      setDeleteModal({ isOpen: true, user });
-    } catch (error) {
-      console.error('Error validating user deletion:', error);
-      toast.error('Validation failed, but you can still proceed with deletion if needed.');
-      
-      // Allow deletion to proceed with minimal validation
-      setDeletionValidation({
-        canDelete: true,
-        warnings: ['Validation failed - proceeding with basic safety checks'],
-        blockers: [],
-        dataEstimate: {
-          blogs: 'Unknown',
-          content: 'Unknown', 
-          products: 'Unknown',
-          estimatedTime: 'Unknown'
-        }
+        body: JSON.stringify({
+          userId: user.uid
+        })
       });
-      setDeleteModal({ isOpen: true, user });
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}`;
+        
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse error response:', parseError);
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      toast.success('User deleted successfully');
+      setDeleteModal({ isOpen: false, user: null });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast.error(error.message || 'Failed to delete user');
+      setUsers(originalUsers); // Rollback on error
     } finally {
-      setValidatingDeletion(false);
+      setDeleting(false);
     }
   };
-
 
   const toggleAdminRole = async (user) => {
     const newRole = user.role === 'admin' ? 'user' : 'admin';
-    setUpdating(true);
     await handleUpdateUser(user.uid, { 
       role: newRole 
     });
@@ -433,21 +329,25 @@ export default function UserManagementPage() {
           {/* Delete user button */}
           {row.uid !== currentUser?.uid && (
             <button
-              onClick={() => handleDeleteUserClick(row)}
-              disabled={validatingDeletion}
+              onClick={() => setDeleteModal({ isOpen: true, user: row })}
+              disabled={deleting}
               className="text-red-600 p-2 rounded-md hover:bg-red-50 transition-colors duration-200"
               title="Delete user"
             >
-              {deletingUserId === row.uid ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
-              ) : validatingDeletion ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
-              ) : (
-                <Trash2 className="h-4 w-4" />
-              )}
+              <Trash2 className="h-4 w-4" />
             </button>
           )}
           
+          {/* Delete user button */}
+          {row.uid !== currentUser?.uid && (
+            <button
+              onClick={() => setDeleteModal({ isOpen: true, user: row })}
+              className="text-red-600 p-2 rounded-md hover:bg-red-50 transition-colors duration-200"
+              title="Delete user"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
       )
     }
@@ -550,7 +450,11 @@ export default function UserManagementPage() {
 
       {/* Users Table */}
       {loading ? (
-        <UserManagementSkeleton />
+        <div className="card">
+          <div className="card-content p-0">
+            <TableSkeleton rows={10} columns={7} />
+          </div>
+        </div>
       ) : (
         error ? (
           <div className="card border-red-200 bg-red-50">
@@ -600,13 +504,7 @@ export default function UserManagementPage() {
       {/* Delete User Modal */}
       <Modal
         isOpen={deleteModal.isOpen}
-        onClose={() => {
-          // Only allow closing if not currently deleting
-          if (!deletingUserId) {
-            setDeleteModal({ isOpen: false, user: null });
-            setDeletionValidation(null);
-          }
-        }}
+        onClose={() => setDeleteModal({ isOpen: false, user: null })}
         title={`Delete User: ${deleteModal.user?.email}`}
         size="md"
       >
@@ -626,19 +524,6 @@ export default function UserManagementPage() {
               </div>
             </div>
 
-            {/* Data Estimate */}
-            {deletionValidation?.dataEstimate && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-blue-800 mb-2">Data to be deleted:</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm text-blue-700">
-                  <div>Blogs: {deletionValidation.dataEstimate.blogs}</div>
-                  <div>Content: {deletionValidation.dataEstimate.content}</div>
-                  <div>Products: {deletionValidation.dataEstimate.products}</div>
-                  <div>Estimated time: {deletionValidation.dataEstimate.estimatedTime}</div>
-                </div>
-              </div>
-            )}
-
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <h4 className="text-sm font-medium text-red-800 mb-2">This action will permanently delete:</h4>
               <ul className="text-sm text-red-700 space-y-1">
@@ -657,88 +542,35 @@ export default function UserManagementPage() {
                 <div>
                   <p className="text-sm text-amber-800 font-medium">This action cannot be undone</p>
                   <p className="text-sm text-amber-700">
-                    Make sure you have backed up any important data before proceeding. The deletion process may take several minutes for users with large amounts of data.
+                    Make sure you have backed up any important data before proceeding.
                   </p>
                 </div>
               </div>
             </div>
-            
-            {/* Additional warning for users with lots of data */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
-                <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-blue-800 font-medium">Deletion Process</p>
-                  <p className="text-sm text-blue-700">
-                    The system will attempt to delete all user data in the following order:
-                  </p>
-                  <ol className="text-sm text-blue-700 mt-2 space-y-1 list-decimal list-inside">
-                    <li>All blogs, content, and products</li>
-                    <li>User settings and preferences</li>
-                    <li>Analytics and interaction data</li>
-                    <li>Uploaded files and images</li>
-                    <li>User authentication account</li>
-                  </ol>
-                  <p className="text-sm text-blue-700 mt-2">
-                    If any step fails, the process will continue with remaining steps and report the results.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Validation warnings */}
-            {deletionValidation?.warnings && deletionValidation.warnings.length > 0 && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <h4 className="text-sm font-medium text-amber-800 mb-2">Warnings:</h4>
-                <ul className="text-sm text-amber-700 space-y-1">
-                  {deletionValidation.warnings.map((warning, index) => (
-                    <li key={index}>• {warning}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
 
             <div className="flex justify-end space-x-4 pt-4 border-t border-border">
               <button
-                onClick={() => {
-                  if (!deletingUserId) {
-                    setDeleteModal({ isOpen: false, user: null });
-                    setDeletionValidation(null);
-                  }
-                }}
-                disabled={deletingUserId === deleteModal.user?.uid}
+                onClick={() => setDeleteModal({ isOpen: false, user: null })}
+                disabled={deleting}
                 className="btn-secondary"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDeleteUser(deleteModal.user)}
-                disabled={deletingUserId === deleteModal.user?.uid}
+                disabled={deleting}
                 className="btn-danger"
               >
-                {deletingUserId === deleteModal.user?.uid ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Deleting User...
-                  </>
+                {deleting ? (
+                  'Deleting...'
                 ) : (
-                  <>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete User
-                  </>
+                  'Delete User'
                 )}
               </button>
             </div>
           </div>
         )}
       </Modal>
-
-      {/* User Deletion Progress Modal */}
-      <UserDeletionProgress
-        isVisible={deletionProgressModal.isOpen}
-        onClose={() => setDeletionProgressModal({ isOpen: false, result: null })}
-        deletionResult={deletionProgressModal.result}
-      />
     </div>
   );
 }

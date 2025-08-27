@@ -12,7 +12,7 @@ import ImageUploader from '@/components/shared/ImageUploader';
 import Modal from '@/components/shared/Modal';
 import UploadDiagnostics from '@/components/shared/UploadDiagnostics';
 import ImageDisplayDiagnostics from '@/components/shared/ImageDisplayDiagnostics';
-import { FormSkeleton } from '@/components/shared/SkeletonLoader';
+import SkeletonLoader from '@/components/shared/SkeletonLoader';
 import { Save, ArrowLeft, DollarSign, Percent, Image as ImageIcon, Trash2, Plus, Upload } from 'lucide-react';
 import { generateSlug, parseArrayInput } from '@/utils/helpers';
 import toast from 'react-hot-toast';
@@ -407,7 +407,21 @@ export default function CreateProductPage({ activeBlogId }) {
 
   if (loading && isEditing) {
     return (
-      <FormSkeleton sections={2} fieldsPerSection={4} />
+      <div className="section-spacing">
+        <div className="space-y-8">
+          <SkeletonLoader lines={2} height="xl" />
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
+            <div className="xl:col-span-2 space-y-8">
+              <SkeletonLoader type="card" />
+              <SkeletonLoader type="card" />
+            </div>
+            <div className="space-y-8">
+              <SkeletonLoader type="card" />
+              <SkeletonLoader type="card" />
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 

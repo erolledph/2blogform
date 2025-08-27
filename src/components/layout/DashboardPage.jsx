@@ -129,10 +129,7 @@ export default function DashboardPage() {
           <div className="page-container">
             <Suspense fallback={
               <div className="p-8">
-                <div className="space-y-8">
-                  <div className="h-10 bg-muted animate-pulse rounded w-64"></div>
-                  <TableSkeleton rows={5} columns={4} hasSelection={false} hasActions={true} />
-                </div>
+                <TableSkeleton rows={5} columns={4} />
               </div>
             }>
               {/* Only render routes when blog is initialized */}
@@ -156,10 +153,7 @@ export default function DashboardPage() {
                 </Routes>
               ) : (
                 <div className="p-8">
-                  <div className="space-y-8">
-                    <div className="h-10 bg-muted animate-pulse rounded w-64"></div>
-                    <TableSkeleton rows={5} columns={4} hasSelection={false} hasActions={true} />
-                  </div>
+                  <TableSkeleton rows={5} columns={4} />
                 </div>
               )}
             </Suspense>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, Wifi, WifiOff } from 'lucide-react';
 
 export default function Header({ onMenuClick }) {
   const [notifications, setNotifications] = useState([]);
@@ -21,8 +21,9 @@ export default function Header({ onMenuClick }) {
           </button>
         </div>
 
-        {/* Center - Empty space */}
-        <div className="flex-1"></div>
+        {/* Center - Empty space for future use */}
+        <div className="flex-1 flex justify-center">
+        </div>
 
         {/* Right side - Notifications */}
         <div className="flex items-center space-x-2 sm:space-x-3">
@@ -60,16 +61,6 @@ export default function Header({ onMenuClick }) {
                       ))
                     )}
                   </div>
-                  {notifications.length > 0 && (
-                    <div className="p-3 border-t border-border">
-                      <button
-                        onClick={() => setNotifications([])}
-                        className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
-                      >
-                        Clear all notifications
-                      </button>
-                    </div>
-                  )}
                 </div>
             )}
           </div>
