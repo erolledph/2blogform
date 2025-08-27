@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { FileText, Eye, Calendar, TrendingUp, Plus, BarChart3, Package, ShoppingBag } from 'lucide-react';
 import { useContentStats } from '@/hooks/useContent';
 import { useProductStats } from '@/hooks/useProducts';
-import { StatCardSkeleton, DashboardOverviewSkeleton } from '@/components/shared/SkeletonLoader';
+import { StatCardSkeleton } from '@/components/shared/SkeletonLoader';
 
 export default function OverviewPage({ activeBlogId }) {
   const { stats, loading, error } = useContentStats(activeBlogId);
@@ -96,7 +96,11 @@ export default function OverviewPage({ activeBlogId }) {
       <div className="mb-16">
         <h2 className="text-2xl font-bold text-foreground mb-8">Blog Content</h2>
         {loading ? (
-          <DashboardOverviewSkeleton />
+          <div className="grid-responsive-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <StatCardSkeleton key={index} />
+            ))}
+          </div>
         ) : (
           <div className="grid-responsive-4">
             {statCards.map((stat, index) => (

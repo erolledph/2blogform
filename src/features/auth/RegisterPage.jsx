@@ -99,21 +99,6 @@ export default function RegisterPage() {
 
     try {
       setLoading(true);
-      console.log('🔐 Registration attempt:', {
-        email: formData.email,
-        displayName: formData.displayName,
-        timestamp: new Date().toISOString(),
-        environment: import.meta.env.MODE,
-        production: import.meta.env.PROD,
-        firebaseConfig: {
-          apiKey: import.meta.env.VITE_FIREBASE_API_KEY ? 'Present' : 'Missing',
-          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-          storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-          messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ? 'Present' : 'Missing',
-          appId: import.meta.env.VITE_FIREBASE_APP_ID ? 'Present' : 'Missing'
-        }
-      });
       
       // Create user account
       const userCredential = await createUserWithEmailAndPassword(
@@ -123,14 +108,8 @@ export default function RegisterPage() {
       );
       
       const user = userCredential.user;
-      console.log('✅ User account created:', {
-        uid: user.uid,
-        email: user.email,
-        emailVerified: user.emailVerified
-      });
       
       // Initialize user settings
-      console.log('⚙️ Initializing user settings...');
       await settingsService.setUserSettings(user.uid, {
         role: 'user',
         canManageMultipleBlogs: false,
@@ -139,40 +118,17 @@ export default function RegisterPage() {
         totalStorageMB: 100,
         displayName: formData.displayName.trim()
       });
-      console.log('✅ User settings initialized');
       
       // Create default blog
-      console.log('📝 Creating default blog...');
       await blogService.ensureDefaultBlog(user.uid);
-      console.log('✅ Default blog created');
       
       toast.success('Account created successfully! Welcome to Admin CMS!');
       navigate('/dashboard');
     } catch (error) {
-      console.error('❌ === REGISTRATION FAILED ===');
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-      
-      // Enhanced production error logging
-      if (import.meta.env.PROD) {
-        console.error('🚨 PRODUCTION REGISTRATION ERROR:');
-        console.error('Check if Firebase environment variables are configured in hosting settings');
-      }
-      
-      console.error('Environment variables check:', {
-        apiKey: import.meta.env.VITE_FIREBASE_API_KEY ? 'Present' : 'Missing',
-        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ? 'Present' : 'Missing',
-        appId: import.meta.env.VITE_FIREBASE_APP_ID ? 'Present' : 'Missing'
-      });
-      console.error('=== END REGISTRATION ERROR ===');
+      console.error('Registration error:', error);
       
       let errorMessage = 'Failed to create account';
-      if (error.code === 'auth/invalid-api-key' || !import.meta.env.VITE_FIREBASE_API_KEY) {
-        errorMessage = 'Configuration error. Please contact support.';
-      } else if (error.code === 'auth/email-already-in-use') {
+      if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'An account with this email already exists';
       } else if (error.code === 'auth/weak-password') {
         errorMessage = 'Password is too weak';

@@ -5,7 +5,6 @@ class CacheManager {
   constructor() {
     this.cache = new Map();
     this.timers = new Map();
-    this.prefetchQueue = new Map();
     this.stats = {
       hits: 0,
       misses: 0,
@@ -185,7 +184,6 @@ class CacheManager {
     return null;
   }
 
-  // Initialize prefetch queue if not exists
   // Execute prefetch task
   async executePrefetch(key) {
     const task = this.prefetchQueue.get(key);
@@ -237,8 +235,17 @@ class CacheManager {
 const globalCache = new CacheManager();
 
 export function useCache() {
-  // Return the global cache instance directly to prevent infinite re-renders
-  return globalCache;
+  return {
+    set: (key, value, ttl) => globalCache.set(key, value, ttl),
+    get: (key) => globalCache.get(key),
+    delete: (key) => globalCache.delete(key),
+    clear: () => globalCache.clear(),
+    has: (key) => globalCache.has(key),
+    prefetch: (key, fetchFunction, priority) => globalCache.prefetch(key, fetchFunction, priority),
+    getStats: () => globalCache.getStats(),
+    getMostAccessed: (limit) => globalCache.getMostAccessed(limit),
+    cleanup: () => globalCache.cleanup()
+  };
 }
 
 // Hook for cached data fetching
