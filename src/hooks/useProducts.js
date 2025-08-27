@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { productsService } from '@/services/productsService';
 import { useCachedData } from '@/hooks/useCache';
-import { realTimeManager } from '@/services/realTimeService';
 
 export function useProducts(blogId) {
   const [products, setProducts] = useState([]);
@@ -24,39 +23,6 @@ export function useProducts(blogId) {
     2 * 60 * 1000 // Reduced to 2 minutes TTL for more frequent updates
   );
 
-  // Subscribe to real-time product updates
-  useEffect(() => {
-    const unsubscribe = realTimeManager.subscribe('product-update', (update) => {
-      if (update.blogId === blogId) {
-        handleRealTimeProductUpdate(update);
-      }
-    });
-    
-    return unsubscribe;
-  }, [blogId]);
-
-  const handleRealTimeProductUpdate = (update) => {
-    switch (update.type) {
-      case 'created':
-        setProducts(prev => [update.data, ...prev]);
-        break;
-      case 'updated':
-        setProducts(prev => prev.map(item => 
-          item.id === update.data.id ? { ...item, ...update.data } : item
-        ));
-        break;
-      case 'deleted':
-        setProducts(prev => prev.filter(item => item.id !== update.data.id));
-        break;
-      case 'status-changed':
-        setProducts(prev => prev.map(item => 
-          item.id === update.data.id 
-            ? { ...item, status: update.data.status, updatedAt: new Date() }
-            : item
-        ));
-        break;
-    }
-  };
   // Update local state when cached data changes
   useEffect(() => {
     if (cachedProducts) {
@@ -105,16 +71,8 @@ export function useProducts(blogId) {
   const enhancedRefetch = useCallback(async () => {
     try {
       await (refetchCached || fetchProducts)();
-      
-      // Notify real-time manager of data refresh
-      realTimeManager.notifySubscribers('data-refreshed', {
-        dataKey: 'products',
-        blogId,
-        timestamp: new Date()
-      });
     } catch (error) {
       console.error('Error refreshing products:', error);
-      toast.error('Failed to refresh products');
     }
   }, [refetchCached, fetchProducts, blogId]);
   return {

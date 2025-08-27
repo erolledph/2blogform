@@ -65,12 +65,77 @@ export default function LoginPage() {
 
     try {
       setLoading(true);
+      console.log('🔐 Login form submission:', {
+        email: formData.email,
+        timestamp: new Date().toISOString(),
+        environment: import.meta.env.MODE,
+        production: import.meta.env.PROD,
+        firebaseConfig: {
+          apiKey: import.meta.env.VITE_FIREBASE_API_KEY ? 'Present' : 'Missing',
+          authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+          projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+          storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+          messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ? 'Present' : 'Missing',
+          appId: import.meta.env.VITE_FIREBASE_APP_ID ? 'Present' : 'Missing'
+        }
+      });
+      
       await login(formData.email, formData.password);
+      console.log('✅ Login successful for:', formData.email);
       // Don't navigate immediately - let the auth state change handle it
       toast.success('Login successful!');
     } catch (error) {
-      console.error('Login error:', error);
-      toast.error('Failed to login. Please check your credentials.');
+      console.error('❌ === LOGIN FAILED ===');
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
+      // Enhanced production error logging
+      if (import.meta.env.PROD) {
+        console.error('🚨 PRODUCTION LOGIN ERROR DETAILS:');
+        console.error('Environment variables status:', {
+          VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY ? 'Set' : '❌ MISSING',
+          VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '❌ MISSING',
+          VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID || '❌ MISSING',
+          VITE_FIREBASE_STORAGE_BUCKET: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '❌ MISSING',
+          VITE_FIREBASE_MESSAGING_SENDER_ID: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ? 'Set' : '❌ MISSING',
+          VITE_FIREBASE_APP_ID: import.meta.env.VITE_FIREBASE_APP_ID ? 'Set' : '❌ MISSING'
+        });
+        
+        if (!import.meta.env.VITE_FIREBASE_API_KEY) {
+          console.error('');
+          console.error('🔧 TO FIX PRODUCTION LOGIN ISSUES:');
+          console.error('1. Go to your Bolt Hosting dashboard');
+          console.error('2. Navigate to Environment Variables or Settings');
+          console.error('3. Add all Firebase environment variables from your .env file');
+          console.error('4. Redeploy the application');
+          console.error('');
+          console.error('📋 Required variables (copy from .env file):');
+          console.error('   VITE_FIREBASE_API_KEY');
+          console.error('   VITE_FIREBASE_AUTH_DOMAIN');
+          console.error('   VITE_FIREBASE_PROJECT_ID');
+          console.error('   VITE_FIREBASE_STORAGE_BUCKET');
+          console.error('   VITE_FIREBASE_MESSAGING_SENDER_ID');
+          console.error('   VITE_FIREBASE_APP_ID');
+        }
+      }
+      
+      console.error('Environment variables check:', {
+        apiKey: import.meta.env.VITE_FIREBASE_API_KEY ? 'Present' : 'Missing',
+        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+        storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ? 'Present' : 'Missing',
+        appId: import.meta.env.VITE_FIREBASE_APP_ID ? 'Present' : 'Missing'
+      });
+      console.error('Current URL:', window.location.href);
+      console.error('=== END LOGIN ERROR ===');
+      
+      // Show user-friendly error message
+      if (error.code === 'auth/invalid-api-key' || !import.meta.env.VITE_FIREBASE_API_KEY) {
+        toast.error('Configuration error. Please contact support.');
+      } else {
+        toast.error('Failed to login. Please check your credentials.');
+      }
       setLoading(false);
     } finally {
       // Don't set loading to false here if login was successful

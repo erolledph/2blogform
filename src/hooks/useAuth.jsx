@@ -24,10 +24,17 @@ export function AuthProvider({ children }) {
   const cache = useCache();
 
   function login(email, password) {
+    console.log('🔐 Login attempt:', { 
+      email, 
+      timestamp: new Date().toISOString(),
+      environment: import.meta.env.MODE,
+      hasFirebaseConfig: !!(import.meta.env.VITE_FIREBASE_API_KEY && import.meta.env.VITE_FIREBASE_PROJECT_ID)
+    });
     return signInWithEmailAndPassword(auth, email, password);
   }
 
   function logout() {
+    console.log('🔐 Logout called');
     // Clear cache on logout
     cache.clear();
     return signOut(auth);

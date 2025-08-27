@@ -3,9 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useProducts } from '@/hooks/useProducts';
 import { settingsService } from '@/services/settingsService';
-import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
 import { apiCallWithRetry, getUserFriendlyErrorMessage } from '@/utils/helpers';
-import { realTimeManager } from '@/services/realTimeService';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
 import { TableSkeleton } from '@/components/shared/SkeletonLoader';
@@ -18,7 +16,6 @@ import toast from 'react-hot-toast';
 
 export default function ManageProductsPage({ activeBlogId }) {
   const { products, setProducts, loading, error, refetch } = useProducts(activeBlogId);
-  const { executeOperation } = useRealTimeOperations();
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, product: null });
   const [userCurrency, setUserCurrency] = useState('$');
   const [selectedItems, setSelectedItems] = useState([]);
@@ -37,16 +34,6 @@ export default function ManageProductsPage({ activeBlogId }) {
     fetchUserSettings();
   }, [currentUser]);
 
-  // Subscribe to real-time product updates
-  useEffect(() => {
-    const unsubscribe = realTimeManager.subscribe('product-update', (update) => {
-      if (update.blogId === activeBlogId) {
-        console.log('Real-time product update received:', update);
-      }
-    });
-    
-    return unsubscribe;
-  }, [activeBlogId]);
   const fetchUserSettings = async () => {
     if (!currentUser?.uid) return;
     
@@ -139,13 +126,6 @@ export default function ManageProductsPage({ activeBlogId }) {
         
         if (results.successCount > 0) {
           toast.success(`Successfully imported ${results.successCount} of ${results.totalItems} product${results.successCount !== 1 ? 's' : ''}`);
-          
-          // Emit real-time event for imported products
-          realTimeManager.notifySubscribers('product-update', {
-            type: 'bulk-imported',
-            blogId: activeBlogId,
-            count: results.successCount
-          });
         }
 
         if (results.errorCount > 0) {
@@ -281,57 +261,41 @@ export default function ManageProductsPage({ activeBlogId }) {
 
     setPublishingLoading(true);
     
-    await executeOperation({
-      type: 'bulk-publish-products',
-      dataKey: 'products',
-      context: { area: 'product-management' },
-      execute: async () => {
-        const token = await getAuthToken();
-        
-        const promises = selectedItems.map(async (itemId) => {
-          const response = await apiCallWithRetry(`/.netlify/functions/admin-product`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ 
-              id: itemId, 
-              blogId: activeBlogId,
-              status: 'published'
-            })
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Failed to publish item ${itemId}`);
-          }
-          
-          return response.json();
+    try {
+      const token = await getAuthToken();
+      
+      const promises = selectedItems.map(async (itemId) => {
+        const response = await apiCallWithRetry(`/.netlify/functions/admin-product`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            id: itemId, 
+            blogId: activeBlogId,
+            status: 'published'
+          })
         });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to publish item ${itemId}`);
+        }
+        
+        return response.json();
+      });
 
-        await Promise.all(promises);
-        
-        // Emit real-time event
-        realTimeManager.notifySubscribers('product-update', {
-          type: 'bulk-status-changed',
-          blogId: activeBlogId,
-          itemIds: selectedItems,
-          status: 'published'
-        });
-        
-        return { itemIds: selectedItems, status: 'published' };
-      },
-      successMessage: `Successfully published ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`,
-      errorMessage: 'Failed to publish selected items',
-      onSuccess: () => {
-        setSelectedItems([]);
-        setPublishingLoading(false);
-        refetch();
-      },
-      onError: () => {
-        setPublishingLoading(false);
-      }
-    });
+      await Promise.all(promises);
+      
+      toast.success(`Successfully published ${selectedItems.length} product${selectedItems.length !== 1 ? 's' : ''}`);
+      setSelectedItems([]);
+      refetch();
+    } catch (error) {
+      console.error('Bulk publish error:', error);
+      toast.error('Failed to publish selected items');
+    } finally {
+      setPublishingLoading(false);
+    }
   };
 
   const handleBulkUnpublish = async () => {
@@ -426,43 +390,30 @@ export default function ManageProductsPage({ activeBlogId }) {
   const handleDelete = async (product) => {
     setDeletingItemId(product.id);
     
-    await executeOperation({
-      type: 'delete-product',
-      dataKey: 'products',
-      context: { area: 'product-management' },
-      execute: async () => {
-        const token = await getAuthToken();
-        const response = await apiCallWithRetry(`/.netlify/functions/admin-product`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ id: product.id, blogId: activeBlogId })
-        });
+    try {
+      const token = await getAuthToken();
+      const response = await apiCallWithRetry(`/.netlify/functions/admin-product`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ id: product.id, blogId: activeBlogId })
+      });
 
-        const result = await response.json();
-        
-        // Emit real-time event
-        realTimeManager.notifySubscribers('product-update', {
-          type: 'deleted',
-          blogId: activeBlogId,
-          data: { id: product.id }
-        });
-        
-        return result;
-      },
-      successMessage: 'Product deleted successfully',
-      errorMessage: 'Failed to delete product',
-      onSuccess: () => {
-        setDeleteModal({ isOpen: false, product: null });
-        setDeletingItemId(null);
-        refetch();
-      },
-      onError: () => {
-        setDeletingItemId(null);
+      if (!response.ok) {
+        throw new Error('Failed to delete product');
       }
-    });
+      
+      toast.success('Product deleted successfully');
+      setDeleteModal({ isOpen: false, product: null });
+      setDeletingItemId(null);
+      refetch();
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete product');
+      setDeletingItemId(null);
+    }
   };
 
   const calculateDiscountedPrice = (price, percentOff) => {

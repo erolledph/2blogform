@@ -237,17 +237,8 @@ class CacheManager {
 const globalCache = new CacheManager();
 
 export function useCache() {
-  return {
-    set: (key, value, ttl) => globalCache.set(key, value, ttl),
-    get: (key) => globalCache.get(key),
-    delete: (key) => globalCache.delete(key),
-    clear: () => globalCache.clear(),
-    has: (key) => globalCache.has(key),
-    prefetch: (key, fetchFunction, priority) => globalCache.prefetch(key, fetchFunction, priority),
-    getStats: () => globalCache.getStats(),
-    getMostAccessed: (limit) => globalCache.getMostAccessed(limit),
-    cleanup: () => globalCache.cleanup()
-  };
+  // Return the global cache instance directly to prevent infinite re-renders
+  return globalCache;
 }
 
 // Hook for cached data fetching

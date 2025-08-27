@@ -1,41 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Wifi, WifiOff, Activity } from 'lucide-react';
-import { realTimeManager } from '@/services/realTimeService';
-import { performanceService } from '@/services/performanceService';
-import ConnectionStatus from '@/components/shared/ConnectionStatus';
-import { PerformanceWidget, CachePerformanceMonitor } from '@/components/shared/PerformanceMonitor';
+import { Bell } from 'lucide-react';
 
 export default function Header({ onMenuClick }) {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState(realTimeManager.getConnectionStatus());
 
-  useEffect(() => {
-    // Subscribe to connection status changes
-    const unsubscribe = realTimeManager.subscribe('connection', (status) => {
-      setConnectionStatus(realTimeManager.getConnectionStatus());
-    });
-    
-    // Subscribe to real-time notifications
-    const unsubscribeNotifications = realTimeManager.subscribe('operation-success', (operation) => {
-      if (operation.type.includes('user') || operation.type.includes('admin')) {
-        setNotifications(prev => [
-          {
-            id: Date.now(),
-            message: operation.successMessage || 'Operation completed',
-            time: new Date().toLocaleTimeString(),
-            type: 'success'
-          },
-          ...prev.slice(0, 9) // Keep last 10 notifications
-        ]);
-      }
-    });
-    
-    return () => {
-      unsubscribe();
-      unsubscribeNotifications();
-    };
-  }, []);
   return (
     <header className="bg-white/95 backdrop-blur-md border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-30 shadow-sm">
       <div className="flex items-center justify-between">
@@ -52,14 +21,8 @@ export default function Header({ onMenuClick }) {
           </button>
         </div>
 
-        {/* Center - Empty space for future use */}
-        <div className="flex-1 flex justify-center">
-          <div className="flex items-center space-x-4">
-            <ConnectionStatus showDetails={false} />
-            <PerformanceWidget />
-            <CachePerformanceMonitor />
-          </div>
-        </div>
+        {/* Center - Empty space */}
+        <div className="flex-1"></div>
 
         {/* Right side - Notifications */}
         <div className="flex items-center space-x-2 sm:space-x-3">

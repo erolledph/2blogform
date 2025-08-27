@@ -17,6 +17,22 @@ function App() {
   React.useEffect(() => {
     // Setup service worker update notification
     if ('serviceWorker' in navigator) {
+      // Clear all caches on app start to ensure fresh content
+      navigator.serviceWorker.ready.then(registration => {
+        if (registration.active) {
+          const messageChannel = new MessageChannel();
+          messageChannel.port1.onmessage = (event) => {
+            if (event.data.type === 'ALL_CACHES_CLEARED') {
+              console.log('All caches cleared by service worker');
+            }
+          };
+          registration.active.postMessage(
+            { type: 'CLEAR_ALL_CACHES' },
+            [messageChannel.port2]
+          );
+        }
+      });
+      
       window.showUpdateNotification = () => {
         // Show update available notification
         if (window.confirm('A new version is available. Reload to update?')) {

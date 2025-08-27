@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useContent } from '@/hooks/useContent';
-import { useRealTimeOperations } from '@/hooks/useRealTimeOperations';
 import { apiCallWithRetry, getUserFriendlyErrorMessage } from '@/utils/helpers';
-import { realTimeManager } from '@/services/realTimeService';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
 import { TableSkeleton } from '@/components/shared/SkeletonLoader';
@@ -18,7 +16,6 @@ import toast from 'react-hot-toast';
 export default function ManageContentPage({ activeBlogId }) {
   const { content, loading, error, refetch, invalidateCache } = useContent(activeBlogId);
   const { getAuthToken, currentUser } = useAuth();
-  const { executeOperation } = useRealTimeOperations();
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, content: null });
   const [analyticsModal, setAnalyticsModal] = useState({ isOpen: false, content: null });
   const [selectedItems, setSelectedItems] = useState([]);
@@ -32,17 +29,6 @@ export default function ManageContentPage({ activeBlogId }) {
   const [exportingSelectedLoading, setExportingSelectedLoading] = useState(false);
   const [exportingAllLoading, setExportingAllLoading] = useState(false);
 
-  // Subscribe to real-time content updates
-  useEffect(() => {
-    const unsubscribe = realTimeManager.subscribe('content-update', (update) => {
-      if (update.blogId === activeBlogId) {
-        // Content updates are handled by useContent hook
-        console.log('Real-time content update received:', update);
-      }
-    });
-    
-    return unsubscribe;
-  }, [activeBlogId]);
   const handleSelectAll = (selectAll) => {
     if (selectAll) {
       setSelectedItems(content.map(item => item.id));
@@ -67,58 +53,42 @@ export default function ManageContentPage({ activeBlogId }) {
 
     setPublishingLoading(true);
     
-    await executeOperation({
-      type: 'bulk-publish-content',
-      dataKey: 'content',
-      context: { area: 'content-management' },
-      execute: async () => {
-        const token = await getAuthToken();
-        
-        const promises = selectedItems.map(async (itemId) => {
-          const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ 
-              id: itemId, 
-              blogId: activeBlogId,
-              status: 'published'
-            })
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Failed to publish item ${itemId}`);
-          }
-          
-          return response.json();
+    try {
+      const token = await getAuthToken();
+      
+      const promises = selectedItems.map(async (itemId) => {
+        const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            id: itemId, 
+            blogId: activeBlogId,
+            status: 'published'
+          })
         });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to publish item ${itemId}`);
+        }
+        
+        return response.json();
+      });
 
-        await Promise.all(promises);
-        
-        // Emit real-time event
-        realTimeManager.notifySubscribers('content-update', {
-          type: 'bulk-status-changed',
-          blogId: activeBlogId,
-          itemIds: selectedItems,
-          status: 'published'
-        });
-        
-        return { itemIds: selectedItems, status: 'published' };
-      },
-      successMessage: `Successfully published ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`,
-      errorMessage: 'Failed to publish selected items',
-      onSuccess: () => {
-        setSelectedItems([]);
-        setPublishingLoading(false);
-        invalidateCache();
-        refetch();
-      },
-      onError: () => {
-        setPublishingLoading(false);
-      }
-    });
+      await Promise.all(promises);
+      
+      toast.success(`Successfully published ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+      setSelectedItems([]);
+      invalidateCache();
+      refetch();
+    } catch (error) {
+      console.error('Bulk publish error:', error);
+      toast.error('Failed to publish selected items');
+    } finally {
+      setPublishingLoading(false);
+    }
   };
 
   const handleBulkUnpublish = async () => {
@@ -129,58 +99,42 @@ export default function ManageContentPage({ activeBlogId }) {
 
     setUnpublishingLoading(true);
     
-    await executeOperation({
-      type: 'bulk-unpublish-content',
-      dataKey: 'content',
-      context: { area: 'content-management' },
-      execute: async () => {
-        const token = await getAuthToken();
-        
-        const promises = selectedItems.map(async (itemId) => {
-          const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ 
-              id: itemId, 
-              blogId: activeBlogId,
-              status: 'draft'
-            })
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Failed to unpublish item ${itemId}`);
-          }
-          
-          return response.json();
+    try {
+      const token = await getAuthToken();
+      
+      const promises = selectedItems.map(async (itemId) => {
+        const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            id: itemId, 
+            blogId: activeBlogId,
+            status: 'draft'
+          })
         });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to unpublish item ${itemId}`);
+        }
+        
+        return response.json();
+      });
 
-        await Promise.all(promises);
-        
-        // Emit real-time event
-        realTimeManager.notifySubscribers('content-update', {
-          type: 'bulk-status-changed',
-          blogId: activeBlogId,
-          itemIds: selectedItems,
-          status: 'draft'
-        });
-        
-        return { itemIds: selectedItems, status: 'draft' };
-      },
-      successMessage: `Successfully unpublished ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`,
-      errorMessage: 'Failed to unpublish selected items',
-      onSuccess: () => {
-        setSelectedItems([]);
-        setUnpublishingLoading(false);
-        invalidateCache();
-        refetch();
-      },
-      onError: () => {
-        setUnpublishingLoading(false);
-      }
-    });
+      await Promise.all(promises);
+      
+      toast.success(`Successfully unpublished ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+      setSelectedItems([]);
+      invalidateCache();
+      refetch();
+    } catch (error) {
+      console.error('Bulk unpublish error:', error);
+      toast.error('Failed to unpublish selected items');
+    } finally {
+      setUnpublishingLoading(false);
+    }
   };
 
   const handleBulkDelete = async () => {
@@ -195,56 +149,41 @@ export default function ManageContentPage({ activeBlogId }) {
 
     setDeletingLoading(true);
     
-    await executeOperation({
-      type: 'bulk-delete-content',
-      dataKey: 'content',
-      context: { area: 'content-management' },
-      execute: async () => {
-        const token = await getAuthToken();
-        
-        const promises = selectedItems.map(async (itemId) => {
-          const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ 
-              id: itemId, 
-              blogId: activeBlogId
-            })
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Failed to delete item ${itemId}`);
-          }
-          
-          return response.json();
+    try {
+      const token = await getAuthToken();
+      
+      const promises = selectedItems.map(async (itemId) => {
+        const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            id: itemId, 
+            blogId: activeBlogId
+          })
         });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to delete item ${itemId}`);
+        }
+        
+        return response.json();
+      });
 
-        await Promise.all(promises);
-        
-        // Emit real-time event
-        realTimeManager.notifySubscribers('content-update', {
-          type: 'bulk-deleted',
-          blogId: activeBlogId,
-          itemIds: selectedItems
-        });
-        
-        return { itemIds: selectedItems };
-      },
-      successMessage: `Successfully deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`,
-      errorMessage: 'Failed to delete selected items',
-      onSuccess: () => {
-        setSelectedItems([]);
-        setDeletingLoading(false);
-        invalidateCache();
-        refetch();
-      },
-      onError: () => {
-        setDeletingLoading(false);
-      }
-    });
+      await Promise.all(promises);
+      
+      toast.success(`Successfully deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+      setSelectedItems([]);
+      invalidateCache();
+      refetch();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast.error('Failed to delete selected items');
+    } finally {
+      setDeletingLoading(false);
+    }
   };
 
   const handleImport = () => {
@@ -312,13 +251,6 @@ export default function ManageContentPage({ activeBlogId }) {
         if (results.successCount > 0) {
           toast.success(`Successfully imported ${results.successCount} of ${results.totalItems} content item${results.successCount !== 1 ? 's' : ''}`);
           invalidateCache();
-          
-          // Emit real-time event for imported content
-          realTimeManager.notifySubscribers('content-update', {
-            type: 'bulk-imported',
-            blogId: activeBlogId,
-            count: results.successCount
-          });
         }
 
         if (results.errorCount > 0) {
@@ -441,44 +373,31 @@ export default function ManageContentPage({ activeBlogId }) {
   const handleDelete = async (contentItem) => {
     setDeletingItemId(contentItem.id);
     
-    await executeOperation({
-      type: 'delete-content',
-      dataKey: 'content',
-      context: { area: 'content-management' },
-      execute: async () => {
-        const token = await getAuthToken();
-        const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ id: contentItem.id, blogId: activeBlogId })
-        });
+    try {
+      const token = await getAuthToken();
+      const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ id: contentItem.id, blogId: activeBlogId })
+      });
 
-        const result = await response.json();
-        
-        // Emit real-time event
-        realTimeManager.notifySubscribers('content-update', {
-          type: 'deleted',
-          blogId: activeBlogId,
-          data: { id: contentItem.id }
-        });
-        
-        return result;
-      },
-      successMessage: 'Content deleted successfully',
-      errorMessage: 'Failed to delete content',
-      onSuccess: () => {
-        setDeleteModal({ isOpen: false, content: null });
-        setDeletingItemId(null);
-        invalidateCache();
-        refetch();
-      },
-      onError: () => {
-        setDeletingItemId(null);
+      if (!response.ok) {
+        throw new Error('Failed to delete content');
       }
-    });
+      
+      toast.success('Content deleted successfully');
+      setDeleteModal({ isOpen: false, content: null });
+      setDeletingItemId(null);
+      invalidateCache();
+      refetch();
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete content');
+      setDeletingItemId(null);
+    }
   };
 
   const columns = [
