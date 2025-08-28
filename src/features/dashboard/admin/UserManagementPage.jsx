@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, UserPlus, Shield, Mail, Calendar, Search, Filter, MoreVertical, Edit, Trash2, Ban, CheckCircle } from 'lucide-react';
-import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
-import { Modal } from '@/components/shared/Modal';
+import LoadingSpinner from '@/components/shared/LoadingSpinner';
+import Modal from '@/components/shared/Modal';
 
 export default function UserManagementPage({ activeBlogId }) {
   const [users, setUsers] = useState([]);
