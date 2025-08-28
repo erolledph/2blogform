@@ -174,24 +174,48 @@ export default function UserManagementPage() {
         })
       });
 
-      if (!response.ok) {
-        let errorMessage = `HTTP ${response.status}`;
+      const responseData = await response.json();
+      
+      if (response.ok) {
+        // Complete success
+        toast.success('User deleted successfully');
+        setDeleteModal({ isOpen: false, user: null });
+      } else if (response.status === 207) {
+        // Partial deletion (Multi-Status)
+        console.warn('Partial user deletion:', responseData);
+        toast.error(`User deletion completed with errors: ${responseData.message}`);
         
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-        } catch (parseError) {
-          console.error('Failed to parse error response:', parseError);
+        // Show detailed error information
+        if (responseData.errors && responseData.errors.length > 0) {
+          console.error('Deletion errors:', responseData.errors);
+          toast.error(`Issues encountered: ${responseData.errors.slice(0, 2).join(', ')}`);
+        }
+        
+        setDeleteModal({ isOpen: false, user: null });
+      } else {
+        // Complete failure
+        let errorMessage = responseData.error || `HTTP ${response.status}`;
+        
+        if (response.status === 403 && responseData.recommendation) {
+          errorMessage += `. ${responseData.recommendation}`;
         }
         
         throw new Error(errorMessage);
       }
 
-      toast.success('User deleted successfully');
-      setDeleteModal({ isOpen: false, user: null });
     } catch (error) {
       console.error('Error deleting user:', error);
-      toast.error(error.message || 'Failed to delete user');
+      
+      // Provide more helpful error messages
+      let userMessage = error.message || 'Failed to delete user';
+      
+      if (error.message.includes('insufficient permission')) {
+        userMessage = 'Permission denied: The system lacks necessary permissions to delete this user completely. Contact your system administrator.';
+      } else if (error.message.includes('Firebase Admin SDK')) {
+        userMessage = 'Configuration error: Firebase Admin SDK permissions need to be updated. Contact your system administrator.';
+      }
+      
+      toast.error(userMessage);
       setUsers(originalUsers); // Rollback on error
     } finally {
       setDeleting(false);
@@ -331,17 +355,6 @@ export default function UserManagementPage() {
             <button
               onClick={() => setDeleteModal({ isOpen: true, user: row })}
               disabled={deleting}
-              className="text-red-600 p-2 rounded-md hover:bg-red-50 transition-colors duration-200"
-              title="Delete user"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          )}
-          
-          {/* Delete user button */}
-          {row.uid !== currentUser?.uid && (
-            <button
-              onClick={() => setDeleteModal({ isOpen: true, user: row })}
               className="text-red-600 p-2 rounded-md hover:bg-red-50 transition-colors duration-200"
               title="Delete user"
             >

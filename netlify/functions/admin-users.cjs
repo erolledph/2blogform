@@ -441,115 +441,245 @@ exports.handler = async (event, context) => {
           
           console.log(`Admin ${requestingUserId} is deleting user ${userId} (${userRecord.email})`);
 
+          // Track deletion progress for better error reporting
+          const deletionProgress = {
+            userRecord: userRecord,
+            blogsDeleted: false,
+            userSettingsDeleted: false,
+            appSettingsDeleted: false,
+            analyticsDeleted: false,
+            storageDeleted: false,
+            authDeleted: false,
+            errors: []
+          };
           // Step 1: Delete all user's blogs and their content/products
-          const blogsRef = db.collection('users').doc(userId).collection('blogs');
-          const blogsSnapshot = await blogsRef.get();
-          
-          for (const blogDoc of blogsSnapshot.docs) {
-            const blogId = blogDoc.id;
-            console.log(`Deleting blog ${blogId} for user ${userId}`);
+          try {
+            const blogsRef = db.collection('users').doc(userId).collection('blogs');
+            const blogsSnapshot = await blogsRef.get();
             
-            // Delete all content in this blog
-            const contentRef = blogsRef.doc(blogId).collection('content');
-            await deleteCollection(contentRef);
-            
-            // Delete all products in this blog
-            const productsRef = blogsRef.doc(blogId).collection('products');
-            await deleteCollection(productsRef);
-            
-            // Delete the blog document itself
-            await blogDoc.ref.delete();
+            for (const blogDoc of blogsSnapshot.docs) {
+              const blogId = blogDoc.id;
+              console.log(`Deleting blog ${blogId} for user ${userId}`);
+              
+              // Delete all content in this blog
+              const contentRef = blogsRef.doc(blogId).collection('content');
+              await deleteCollection(contentRef);
+              
+              // Delete all products in this blog
+              const productsRef = blogsRef.doc(blogId).collection('products');
+              await deleteCollection(productsRef);
+              
+              // Delete the blog document itself
+              await blogDoc.ref.delete();
+            }
+            deletionProgress.blogsDeleted = true;
+            console.log(`Successfully deleted ${blogsSnapshot.size} blogs for user ${userId}`);
+          } catch (error) {
+            console.error(`Error deleting blogs for user ${userId}:`, error);
+            deletionProgress.errors.push(`Failed to delete blogs: ${error.message}`);
           }
 
           // Step 2: Delete user settings
-          const userSettingsRef = db.collection('users').doc(userId).collection('userSettings').doc('preferences');
-          const userSettingsDoc = await userSettingsRef.get();
-          if (userSettingsDoc.exists) {
-            await userSettingsRef.delete();
+          try {
+            const userSettingsRef = db.collection('users').doc(userId).collection('userSettings').doc('preferences');
+            const userSettingsDoc = await userSettingsRef.get();
+            if (userSettingsDoc.exists) {
+              await userSettingsRef.delete();
+            }
+            deletionProgress.userSettingsDeleted = true;
+            console.log(`Successfully deleted user settings for user ${userId}`);
+          } catch (error) {
+            console.error(`Error deleting user settings for user ${userId}:`, error);
+            deletionProgress.errors.push(`Failed to delete user settings: ${error.message}`);
           }
 
           // Step 3: Delete user's app settings
-          const appSettingsRef = db.collection('users').doc(userId).collection('appSettings').doc('public');
-          const appSettingsDoc = await appSettingsRef.get();
-          if (appSettingsDoc.exists) {
-            await appSettingsRef.delete();
+          try {
+            const appSettingsRef = db.collection('users').doc(userId).collection('appSettings').doc('public');
+            const appSettingsDoc = await appSettingsRef.get();
+            if (appSettingsDoc.exists) {
+              await appSettingsRef.delete();
+            }
+            deletionProgress.appSettingsDeleted = true;
+            console.log(`Successfully deleted app settings for user ${userId}`);
+          } catch (error) {
+            console.error(`Error deleting app settings for user ${userId}:`, error);
+            deletionProgress.errors.push(`Failed to delete app settings: ${error.message}`);
           }
 
           // Step 4: Delete user's analytics data (pageViews and interactions)
-          // Note: These are global collections, so we filter by userId
-          const pageViewsRef = db.collection('pageViews').where('userId', '==', userId);
-          const pageViewsSnapshot = await pageViewsRef.get();
-          if (!pageViewsSnapshot.empty) {
-            const pageViewsBatch = db.batch();
-            pageViewsSnapshot.docs.forEach(doc => {
-              pageViewsBatch.delete(doc.ref);
-            });
-            await pageViewsBatch.commit();
-          }
+          try {
+            // Note: These are global collections, so we filter by userId
+            const pageViewsRef = db.collection('pageViews').where('userId', '==', userId);
+            const pageViewsSnapshot = await pageViewsRef.get();
+            if (!pageViewsSnapshot.empty) {
+              const pageViewsBatch = db.batch();
+              pageViewsSnapshot.docs.forEach(doc => {
+                pageViewsBatch.delete(doc.ref);
+              });
+              await pageViewsBatch.commit();
+              console.log(`Deleted ${pageViewsSnapshot.size} page views for user ${userId}`);
+            }
 
-          const interactionsRef = db.collection('interactions').where('userId', '==', userId);
-          const interactionsSnapshot = await interactionsRef.get();
-          if (!interactionsSnapshot.empty) {
-            const interactionsBatch = db.batch();
-            interactionsSnapshot.docs.forEach(doc => {
-              interactionsBatch.delete(doc.ref);
-            });
-            await interactionsBatch.commit();
+            const interactionsRef = db.collection('interactions').where('userId', '==', userId);
+            const interactionsSnapshot = await interactionsRef.get();
+            if (!interactionsSnapshot.empty) {
+              const interactionsBatch = db.batch();
+              interactionsSnapshot.docs.forEach(doc => {
+                interactionsBatch.delete(doc.ref);
+              });
+              await interactionsBatch.commit();
+              console.log(`Deleted ${interactionsSnapshot.size} interactions for user ${userId}`);
+            }
+            deletionProgress.analyticsDeleted = true;
+          } catch (error) {
+            console.error(`Error deleting analytics data for user ${userId}:`, error);
+            deletionProgress.errors.push(`Failed to delete analytics data: ${error.message}`);
           }
 
           // Step 5: Delete the main user document
-          await db.collection('users').doc(userId).delete();
-
-          // Step 6: Delete user's Firebase Storage files
-          const bucket = admin.storage().bucket();
-          
           try {
-            // Delete public images
-            await bucket.deleteFiles({
-              prefix: `users/${userId}/public_images/`,
-              force: true
-            });
-            console.log(`Deleted public images for user ${userId}`);
-          } catch (storageError) {
-            console.warn(`Error deleting public images for user ${userId}:`, storageError.message);
-            // Continue with deletion even if storage cleanup fails
+            await db.collection('users').doc(userId).delete();
+            console.log(`Successfully deleted main user document for user ${userId}`);
+          } catch (error) {
+            console.error(`Error deleting main user document for user ${userId}:`, error);
+            deletionProgress.errors.push(`Failed to delete main user document: ${error.message}`);
           }
 
+          // Step 6: Delete user's Firebase Storage files
           try {
+            const bucket = admin.storage().bucket();
+            let storageErrors = [];
+            
+            // Delete public images
+            try {
+              const [publicFiles] = await bucket.getFiles({ prefix: `users/${userId}/public_images/` });
+              if (publicFiles.length > 0) {
+                await bucket.deleteFiles({
+                  prefix: `users/${userId}/public_images/`,
+                  force: true
+                });
+                console.log(`Deleted ${publicFiles.length} public images for user ${userId}`);
+              }
+            } catch (storageError) {
+              console.error(`Error deleting public images for user ${userId}:`, storageError);
+              storageErrors.push(`Public images: ${storageError.message}`);
+            }
+
             // Delete private files
-            await bucket.deleteFiles({
-              prefix: `users/${userId}/private/`,
-              force: true
-            });
-            console.log(`Deleted private files for user ${userId}`);
-          } catch (storageError) {
-            console.warn(`Error deleting private files for user ${userId}:`, storageError.message);
-            // Continue with deletion even if storage cleanup fails
+            try {
+              const [privateFiles] = await bucket.getFiles({ prefix: `users/${userId}/private/` });
+              if (privateFiles.length > 0) {
+                await bucket.deleteFiles({
+                  prefix: `users/${userId}/private/`,
+                  force: true
+                });
+                console.log(`Deleted ${privateFiles.length} private files for user ${userId}`);
+              }
+            } catch (storageError) {
+              console.error(`Error deleting private files for user ${userId}:`, storageError);
+              storageErrors.push(`Private files: ${storageError.message}`);
+            }
+            
+            if (storageErrors.length === 0) {
+              deletionProgress.storageDeleted = true;
+            } else {
+              deletionProgress.errors.push(`Storage cleanup issues: ${storageErrors.join(', ')}`);
+            }
+          } catch (error) {
+            console.error(`Critical error during storage cleanup for user ${userId}:`, error);
+            deletionProgress.errors.push(`Storage cleanup failed: ${error.message}`);
           }
 
           // Step 7: Delete user from Firebase Authentication (do this last)
-          await auth.deleteUser(userId);
+          try {
+            await auth.deleteUser(userId);
+            deletionProgress.authDeleted = true;
+            console.log(`Successfully deleted authentication record for user ${userId}`);
+          } catch (error) {
+            console.error(`Error deleting authentication record for user ${userId}:`, error);
+            deletionProgress.errors.push(`Failed to delete authentication record: ${error.message}`);
+          }
           
-          console.log(`Successfully deleted user ${userId} and all associated data`);
-          
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ 
-              success: true,
-              message: 'User and all associated data deleted successfully',
-              deletedUserId: userId,
-              deletedUserEmail: userRecord.email
-            })
+          // Generate comprehensive deletion report
+          const deletionSummary = {
+            userId,
+            userEmail: userRecord.email,
+            blogsDeleted: deletionProgress.blogsDeleted,
+            userSettingsDeleted: deletionProgress.userSettingsDeleted,
+            appSettingsDeleted: deletionProgress.appSettingsDeleted,
+            analyticsDeleted: deletionProgress.analyticsDeleted,
+            storageDeleted: deletionProgress.storageDeleted,
+            authDeleted: deletionProgress.authDeleted,
+            errors: deletionProgress.errors,
+            partialDeletion: deletionProgress.errors.length > 0,
+            completedSteps: [
+              deletionProgress.blogsDeleted && 'Blogs and content',
+              deletionProgress.userSettingsDeleted && 'User settings',
+              deletionProgress.appSettingsDeleted && 'App settings',
+              deletionProgress.analyticsDeleted && 'Analytics data',
+              deletionProgress.storageDeleted && 'Storage files',
+              deletionProgress.authDeleted && 'Authentication record'
+            ].filter(Boolean)
           };
+          
+          console.log(`User deletion completed for ${userId}:`, deletionSummary);
+          
+          if (deletionProgress.errors.length === 0) {
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify({ 
+                success: true,
+                message: 'User and all associated data deleted successfully',
+                ...deletionSummary
+              })
+            };
+          } else {
+            // Partial deletion occurred
+            return {
+              statusCode: 207, // Multi-Status - indicates partial success
+              headers,
+              body: JSON.stringify({ 
+                success: false,
+                message: `User deletion completed with ${deletionProgress.errors.length} error(s)`,
+                warning: 'Some data may not have been completely removed',
+                ...deletionSummary
+              })
+            };
+          }
         } catch (error) {
           console.error('Error during user deletion:', error);
+          
+          // Provide more specific error information
+          let errorDetails = {
+            code: error.code,
+            message: error.message,
+            userId,
+            userEmail: userRecord?.email || 'Unknown'
+          };
           
           if (error.code === 'auth/user-not-found') {
             return {
               statusCode: 404,
               headers,
-              body: JSON.stringify({ error: 'User not found' })
+              body: JSON.stringify({ 
+                error: 'User not found',
+                details: errorDetails
+              })
+            };
+          }
+          
+          if (error.code === 'auth/insufficient-permission') {
+            return {
+              statusCode: 403,
+              headers,
+              body: JSON.stringify({ 
+                error: 'Insufficient permissions to delete user',
+                message: 'The Firebase Admin SDK service account may lack necessary permissions',
+                recommendation: 'Check Firebase IAM roles for the service account',
+                details: errorDetails
+              })
             };
           }
 
@@ -557,9 +687,10 @@ exports.handler = async (event, context) => {
             statusCode: 500,
             headers,
             body: JSON.stringify({ 
-              error: 'Failed to delete user completely',
-              details: process.env.NODE_ENV === 'development' ? error.message : undefined,
-              code: error.code
+              error: 'User deletion failed',
+              message: 'An error occurred during the deletion process',
+              details: process.env.NODE_ENV === 'development' ? errorDetails : undefined,
+              recommendation: 'Check server logs for detailed error information'
             })
           };
         }
