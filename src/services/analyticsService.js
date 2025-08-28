@@ -76,39 +76,59 @@ export const analyticsService = {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
 
-      // Get page views for this user's content
-      const viewsQuery = query(
-        collection(db, 'pageViews'),
-        where('contentId', '==', contentId),
-        where('userId', '==', userId),
-        where('blogId', '==', actualBlogId)
-      );
-      const viewsSnapshot = await getDocs(viewsQuery);
-      const allViews = viewsSnapshot.docs.map(doc => doc.data());
+      let allViews = [];
+      let allInteractions = [];
+      let contentData = {};
+      const errors = [];
+
+      // Get page views for this user's content with error handling
+      try {
+        const viewsQuery = query(
+          collection(db, 'pageViews'),
+          where('contentId', '==', contentId),
+          where('userId', '==', userId),
+          where('blogId', '==', actualBlogId)
+        );
+        const viewsSnapshot = await getDocs(viewsQuery);
+        allViews = viewsSnapshot.docs.map(doc => doc.data());
+      } catch (error) {
+        console.error('Error fetching content page views:', error);
+        errors.push('pageViews');
+      }
       
       // Filter by date client-side and sort
       const views = allViews
         .filter(view => view.timestamp && view.timestamp.toDate() >= startDate)
         .sort((a, b) => b.timestamp.toDate() - a.timestamp.toDate());
 
-      // Get interactions for this user's content
-      const interactionsQuery = query(
-        collection(db, 'interactions'),
-        where('contentId', '==', contentId),
-        where('userId', '==', userId),
-        where('blogId', '==', actualBlogId)
-      );
-      const interactionsSnapshot = await getDocs(interactionsQuery);
-      const allInteractions = interactionsSnapshot.docs.map(doc => doc.data());
+      // Get interactions for this user's content with error handling
+      try {
+        const interactionsQuery = query(
+          collection(db, 'interactions'),
+          where('contentId', '==', contentId),
+          where('userId', '==', userId),
+          where('blogId', '==', actualBlogId)
+        );
+        const interactionsSnapshot = await getDocs(interactionsQuery);
+        allInteractions = interactionsSnapshot.docs.map(doc => doc.data());
+      } catch (error) {
+        console.error('Error fetching content interactions:', error);
+        errors.push('interactions');
+      }
       
       // Filter by date client-side and sort
       const interactions = allInteractions
         .filter(interaction => interaction.timestamp && interaction.timestamp.toDate() >= startDate)
         .sort((a, b) => b.timestamp.toDate() - a.timestamp.toDate());
 
-      // Get content details from user's nested collection
-      const contentDoc = await getDoc(doc(db, 'users', userId, 'blogs', actualBlogId, 'content', contentId));
-      const contentData = contentDoc.exists() ? contentDoc.data() : {};
+      // Get content details from user's nested collection with error handling
+      try {
+        const contentDoc = await getDoc(doc(db, 'users', userId, 'blogs', actualBlogId, 'content', contentId));
+        contentData = contentDoc.exists() ? contentDoc.data() : {};
+      } catch (error) {
+        console.error('Error fetching content details for analytics:', error);
+        errors.push('contentDetails');
+      }
 
       return {
         contentId,
@@ -119,12 +139,28 @@ export const analyticsService = {
         shareCount: contentData.shareCount || 0,
         views,
         interactions,
-        analytics: this.processAnalytics(views, interactions)
+        analytics: this.processAnalytics(views, interactions),
+        errors: errors.length > 0 ? errors : null,
+        note: errors.length > 0 ? 'Some analytics data could not be accessed due to permissions or connectivity issues' : null
       };
 
     } catch (error) {
       console.error('Error getting content analytics:', error);
-      return null;
+      
+      // Return structured error response instead of null
+      return {
+        contentId,
+        totalViews: 0,
+        totalInteractions: 0,
+        viewCount: 0,
+        clickCount: 0,
+        shareCount: 0,
+        views: [],
+        interactions: [],
+        analytics: { dailyViews: {}, hourlyViews: {}, peakHour: '0', averageViewsPerDay: 0 },
+        error: error.message,
+        note: 'Content analytics data unavailable due to an error. Check console for details.'
+      };
     }
   },
 
@@ -138,38 +174,61 @@ export const analyticsService = {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
 
-      // Get all page views for this user's blog
-      const viewsQuery = query(
-        collection(db, 'pageViews'),
-        where('userId', '==', userId),
-        where('blogId', '==', actualBlogId),
-        where('timestamp', '>=', startDate),
-        orderBy('timestamp', 'desc')
-      );
-      const viewsSnapshot = await getDocs(viewsQuery);
-      const views = viewsSnapshot.docs.map(doc => doc.data());
+      let views = [];
+      let interactions = [];
+      let allContent = [];
+      const errors = [];
 
-      // Get all interactions for this user's blog
-      const interactionsQuery = query(
-        collection(db, 'interactions'),
-        where('userId', '==', userId),
-        where('blogId', '==', actualBlogId),
-        where('timestamp', '>=', startDate),
-        orderBy('timestamp', 'desc')
-      );
-      const interactionsSnapshot = await getDocs(interactionsQuery);
-      const interactions = interactionsSnapshot.docs.map(doc => doc.data());
+      // Get all page views for this user's blog with error handling
+      try {
+        const viewsQuery = query(
+          collection(db, 'pageViews'),
+          where('userId', '==', userId),
+          where('blogId', '==', actualBlogId),
+          where('timestamp', '>=', startDate),
+          orderBy('timestamp', 'desc')
+        );
+        const viewsSnapshot = await getDocs(viewsQuery);
+        views = viewsSnapshot.docs.map(doc => doc.data());
+      } catch (error) {
+        console.error('Error fetching page views:', error);
+        errors.push('pageViews');
+        // Continue with empty views array
+      }
 
-      // Get top content from user's nested collection
-      const contentQuery = query(
-        collection(db, 'users', userId, 'blogs', actualBlogId, 'content'),
-        where('status', '==', 'published')
-      );
-      const contentSnapshot = await getDocs(contentQuery);
-      const allContent = contentSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      // Get all interactions for this user's blog with error handling
+      try {
+        const interactionsQuery = query(
+          collection(db, 'interactions'),
+          where('userId', '==', userId),
+          where('blogId', '==', actualBlogId),
+          where('timestamp', '>=', startDate),
+          orderBy('timestamp', 'desc')
+        );
+        const interactionsSnapshot = await getDocs(interactionsQuery);
+        interactions = interactionsSnapshot.docs.map(doc => doc.data());
+      } catch (error) {
+        console.error('Error fetching interactions:', error);
+        errors.push('interactions');
+        // Continue with empty interactions array
+      }
+
+      // Get top content from user's nested collection with error handling
+      try {
+        const contentQuery = query(
+          collection(db, 'users', userId, 'blogs', actualBlogId, 'content'),
+          where('status', '==', 'published')
+        );
+        const contentSnapshot = await getDocs(contentQuery);
+        allContent = contentSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+      } catch (error) {
+        console.error('Error fetching content for analytics:', error);
+        errors.push('content');
+        // Continue with empty content array
+      }
       
       // Sort by viewCount client-side and take top 10
       const topContent = allContent
@@ -183,12 +242,27 @@ export const analyticsService = {
         topContent,
         dailyStats: this.processDailyStats(views, interactions, days),
         referrerStats: this.processReferrerStats(views),
-        interactionStats: this.processInteractionStats(interactions)
+        interactionStats: this.processInteractionStats(interactions),
+        errors: errors.length > 0 ? errors : null,
+        note: errors.length > 0 ? 'Some analytics data could not be accessed due to permissions or connectivity issues' : null
       };
 
     } catch (error) {
       console.error('Error getting site analytics:', error);
-      return null;
+      
+      // Return structured error response instead of null
+      return {
+        totalViews: 0,
+        totalInteractions: 0,
+        uniqueSessions: 0,
+        topContent: [],
+        dailyStats: {},
+        referrerStats: {},
+        interactionStats: {},
+        error: error.message,
+        note: 'Analytics data unavailable due to an error. Check console for details.',
+        lastUpdated: new Date()
+      };
     }
   },
 
