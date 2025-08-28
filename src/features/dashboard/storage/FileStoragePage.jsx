@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { storageService } from '@/services/storageService';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
-import { TableSkeleton, StatCardSkeleton, FileStorageSkeleton } from '@/components/shared/SkeletonLoader';
+import { TableSkeleton, StatCardSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import InputField from '@/components/shared/InputField';
@@ -739,8 +739,7 @@ export default function FileStoragePage() {
 
 
   return (
-    <>
-      <div className="space-y-12">
+    <div className="space-y-12">
       {/* Header and Action Buttons - Always visible */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-12">
         <div>
@@ -859,31 +858,36 @@ export default function FileStoragePage() {
 
       {/* File Storage Content */}
       {loading ? (
-        <FileStorageSkeleton />
+        <div className="card">
+          <div className="card-content p-0">
+            <TableSkeleton rows={10} columns={6} />
+          </div>
+        </div>
       ) : error ? (
-        <div className="card border-red-200 bg-red-50">
-          <div className="card-content p-12 text-center">
-            <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
-            <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Storage Items</h3>
-            <p className="text-lg text-red-700 mb-6">{error}</p>
-            <div className="space-y-6">
-              <button onClick={fetchItems} className="btn-secondary">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Try Again
-              </button>
-              <div className="text-sm text-red-600">
-                <p>If this error persists, try:</p>
-                <ul className="list-disc list-inside mt-3 space-y-2">
-                  <li>Refreshing the page</li>
-                  <li>Checking your internet connection</li>
-                  <li>Logging out and back in</li>
-                  <li>Contacting support if the issue continues</li>
-                </ul>
+        {error ? (
+          <div className="card border-red-200 bg-red-50">
+            <div className="card-content p-12 text-center">
+              <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
+              <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Storage Items</h3>
+              <p className="text-lg text-red-700 mb-6">{error}</p>
+              <div className="space-y-6">
+                <button onClick={fetchItems} className="btn-secondary">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </button>
+                <div className="text-sm text-red-600">
+                  <p>If this error persists, try:</p>
+                  <ul className="list-disc list-inside mt-3 space-y-2">
+                    <li>Refreshing the page</li>
+                    <li>Checking your internet connection</li>
+                    <li>Logging out and back in</li>
+                    <li>Contacting support if the issue continues</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ) : items.length === 0 ? (
+        ) : items.length === 0 ? (
           <div className="card">
             <div className="card-content text-center py-20">
               <Folder className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
@@ -911,9 +915,8 @@ export default function FileStoragePage() {
               />
             </div>
           </div>
-        )
-      }
-      </div>
+        )}
+      )}
 
       {/* Delete Confirmation Modal */}
       <Modal
@@ -1334,6 +1337,6 @@ export default function FileStoragePage() {
           </div>
         </div>
       </Modal>
-    </>
+    </div>
   );
 }

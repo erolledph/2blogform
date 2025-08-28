@@ -2,12 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useContent } from '@/hooks/useContent';
-import { apiCallWithRetry, getUserFriendlyErrorMessage } from '@/utils/helpers';
 import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
 import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
-import DynamicTransition from '@/components/shared/DynamicTransition';
 import { Edit, Trash2, Plus, ImageIcon, BarChart3, AlertTriangle, Eye, Upload, Download, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { getStatusBadgeClass } from '@/utils/helpers';
@@ -51,13 +49,13 @@ export default function ManageContentPage({ activeBlogId }) {
       return;
     }
 
-    setPublishingLoading(true);
-    
     try {
+      setPublishingLoading(true);
+      
       const token = await getAuthToken();
       
       const promises = selectedItems.map(async (itemId) => {
-        const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
+        const response = await fetch(`/.netlify/functions/admin-content`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -73,13 +71,12 @@ export default function ManageContentPage({ activeBlogId }) {
         if (!response.ok) {
           throw new Error(`Failed to publish item ${itemId}`);
         }
-        
-        return response.json();
       });
 
       await Promise.all(promises);
       
       toast.success(`Successfully published ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+      
       setSelectedItems([]);
       invalidateCache();
       refetch();
@@ -97,13 +94,13 @@ export default function ManageContentPage({ activeBlogId }) {
       return;
     }
 
-    setUnpublishingLoading(true);
-    
     try {
+      setUnpublishingLoading(true);
+      
       const token = await getAuthToken();
       
       const promises = selectedItems.map(async (itemId) => {
-        const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
+        const response = await fetch(`/.netlify/functions/admin-content`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -119,13 +116,12 @@ export default function ManageContentPage({ activeBlogId }) {
         if (!response.ok) {
           throw new Error(`Failed to unpublish item ${itemId}`);
         }
-        
-        return response.json();
       });
 
       await Promise.all(promises);
       
       toast.success(`Successfully unpublished ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+      
       setSelectedItems([]);
       invalidateCache();
       refetch();
@@ -147,13 +143,13 @@ export default function ManageContentPage({ activeBlogId }) {
       return;
     }
 
-    setDeletingLoading(true);
-    
     try {
+      setDeletingLoading(true);
+      
       const token = await getAuthToken();
       
       const promises = selectedItems.map(async (itemId) => {
-        const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
+        const response = await fetch(`/.netlify/functions/admin-content`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
@@ -168,13 +164,12 @@ export default function ManageContentPage({ activeBlogId }) {
         if (!response.ok) {
           throw new Error(`Failed to delete item ${itemId}`);
         }
-        
-        return response.json();
       });
 
       await Promise.all(promises);
       
       toast.success(`Successfully deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+      
       setSelectedItems([]);
       invalidateCache();
       refetch();
@@ -234,7 +229,7 @@ export default function ManageContentPage({ activeBlogId }) {
         }
 
         const token = await getAuthToken();
-        const response = await apiCallWithRetry('/api/import/content', {
+        const response = await fetch('/api/import/content', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -245,6 +240,11 @@ export default function ManageContentPage({ activeBlogId }) {
             items: jsonData
           })
         });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP ${response.status}`);
+        }
 
         const results = await response.json();
         
@@ -259,8 +259,7 @@ export default function ManageContentPage({ activeBlogId }) {
         }
 
       } catch (error) {
-        const userMessage = getUserFriendlyErrorMessage(error);
-        toast.error(userMessage);
+        toast.error(error.message || 'Failed to import content');
       } finally {
         setImporting(false);
         // Always refetch after import operations to ensure UI is up to date
@@ -280,7 +279,7 @@ export default function ManageContentPage({ activeBlogId }) {
       setExportingSelectedLoading(true);
       const token = await getAuthToken();
       
-      const response = await apiCallWithRetry('/api/export/content', {
+      const response = await fetch('/api/export/content', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -300,6 +299,11 @@ export default function ManageContentPage({ activeBlogId }) {
         })
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
       // Handle file download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -316,8 +320,7 @@ export default function ManageContentPage({ activeBlogId }) {
 
     } catch (error) {
       console.error('Export error:', error);
-      const userMessage = getUserFriendlyErrorMessage(error);
-      toast.error(userMessage);
+      toast.error(error.message || 'Failed to export content');
     } finally {
       setExportingSelectedLoading(false);
     }
@@ -328,7 +331,7 @@ export default function ManageContentPage({ activeBlogId }) {
       setExportingAllLoading(true);
       const token = await getAuthToken();
       
-      const response = await apiCallWithRetry('/api/export/content', {
+      const response = await fetch('/api/export/content', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -348,6 +351,11 @@ export default function ManageContentPage({ activeBlogId }) {
         })
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
       // Handle file download
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -363,19 +371,18 @@ export default function ManageContentPage({ activeBlogId }) {
 
     } catch (error) {
       console.error('Export error:', error);
-      const userMessage = getUserFriendlyErrorMessage(error);
-      toast.error(userMessage);
+      toast.error(error.message || 'Failed to export content');
     } finally {
       setExportingAllLoading(false);
     }
   };
 
   const handleDelete = async (contentItem) => {
-    setDeletingItemId(contentItem.id);
-    
     try {
+      setDeletingItemId(contentItem.id);
+      
       const token = await getAuthToken();
-      const response = await apiCallWithRetry(`/.netlify/functions/admin-content`, {
+      const response = await fetch(`/.netlify/functions/admin-content`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -389,13 +396,15 @@ export default function ManageContentPage({ activeBlogId }) {
       }
       
       toast.success('Content deleted successfully');
+      
       setDeleteModal({ isOpen: false, content: null });
-      setDeletingItemId(null);
       invalidateCache();
       refetch();
+      invalidateCache();
     } catch (error) {
-      console.error('Delete error:', error);
+      console.error('Error deleting content:', error);
       toast.error('Failed to delete content');
+    } finally {
       setDeletingItemId(null);
     }
   };
@@ -521,7 +530,7 @@ export default function ManageContentPage({ activeBlogId }) {
 
 
   return (
-    <DynamicTransition loading={loading} error={error} className="section-spacing">
+    <div className="section-spacing">
       {/* Header and Action Buttons - Always visible */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-12">
         <div className="page-header mb-0 flex-1">
@@ -595,58 +604,76 @@ export default function ManageContentPage({ activeBlogId }) {
       </div>
 
       {/* Content Table */}
-      {content.length === 0 && !loading && !error ? (
+      {loading ? (
         <div className="card">
-          <div className="card-content text-center py-20">
-            <FileText className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
-            <h3 className="text-2xl font-semibold text-foreground mb-4">No content found</h3>
-            <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
-              Get started by creating your first blog post. Once you have content, you can export it to get a genuine JSON template that matches your data structure.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-6 justify-center">
-              <Link to="/dashboard/create" className="btn-primary">
-                <Plus className="h-5 w-5 mr-3" />
-                Create First Post
-              </Link>
-            </div>
-            <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg max-w-2xl mx-auto">
-              <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Pro Tip: Generate Your Own JSON Template</h4>
-              <p className="text-sm text-blue-700 leading-relaxed">
-                Create at least one blog post, then use the "Export All" button to generate a JSON template that perfectly matches your data structure and image references.
-              </p>
-            </div>
+          <div className="card-content p-0">
+            <TableSkeleton rows={8} columns={7} />
           </div>
         </div>
       ) : (
-        <div className="card">
-          <div className="card-content p-0">
-            <DataTable
-              data={content}
-              columns={columns}
-              searchable={true}
-              filterable={true}
-              filterOptions={{
-                statuses: ['draft', 'published'],
-                categories: true,
-                tags: true,
-                dateRange: true
-              }}
-              sortable={true}
-              pagination={true}
-              pageSize={10}
-              selectable={true}
-              selectedItems={selectedItems}
-              onSelectAll={handleSelectAll}
-              onSelectRow={handleSelectRow}
-              enableAnimations={true}
-              loading={loading}
-              onFiltersChange={(filters) => {
-                // Filters are handled internally by DataTable
-                // This callback can be used for additional logic if needed
-              }}
-            />
+        error ? (
+          <div className="card border-red-200 bg-red-50">
+            <div className="card-content p-8 text-center">
+              <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
+              <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Content</h3>
+              <p className="text-red-700 mb-6">{error}</p>
+              <button onClick={refetch} className="btn-secondary">
+                Try Again
+              </button>
+            </div>
           </div>
-        </div>
+        ) : content.length === 0 ? (
+          <div className="card">
+            <div className="card-content text-center py-20">
+              <FileText className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
+              <h3 className="text-2xl font-semibold text-foreground mb-4">No content found</h3>
+              <p className="text-lg text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
+                Get started by creating your first blog post. Once you have content, you can export it to get a genuine JSON template that matches your data structure.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-6 justify-center">
+                <Link to="/dashboard/create" className="btn-primary">
+                  <Plus className="h-5 w-5 mr-3" />
+                  Create First Post
+                </Link>
+              </div>
+              <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg max-w-2xl mx-auto">
+                <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Pro Tip: Generate Your Own JSON Template</h4>
+                <p className="text-sm text-blue-700 leading-relaxed">
+                  Create at least one blog post, then use the "Export All" button to generate a JSON template that perfectly matches your data structure and image references.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="card">
+            <div className="card-content p-0">
+              <DataTable
+                data={content}
+                columns={columns}
+                searchable={true}
+                filterable={true}
+                filterOptions={{
+                  statuses: ['draft', 'published'],
+                  categories: true,
+                  tags: true,
+                  dateRange: true
+                }}
+                sortable={true}
+                pagination={true}
+                pageSize={10}
+                selectable={true}
+                selectedItems={selectedItems}
+                onSelectAll={handleSelectAll}
+                onSelectRow={handleSelectRow}
+                enableAnimations={true}
+                onFiltersChange={(filters) => {
+                  // Filters are handled internally by DataTable
+                  // This callback can be used for additional logic if needed
+                }}
+              />
+            </div>
+          </div>
+        )
       )}
 
       {/* Clear Selection Button */}
@@ -715,7 +742,7 @@ export default function ManageContentPage({ activeBlogId }) {
           />
         )}
       </Modal>
-    </DynamicTransition>
+    </div>
   );
 }
 
