@@ -386,14 +386,3 @@ export function AccountSettingsSkeleton() {
     </div>
   );
 }
-
-// Specialized skeleton for analytics page
-export function AnalyticsSkeleton() {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-      {Array.from({ length: 4 }).map((_, index) => (
-        <StatCardSkeleton key={index} />
-      ))}
-    </div>
-  );
-}
