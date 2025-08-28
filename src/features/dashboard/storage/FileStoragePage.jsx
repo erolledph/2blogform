@@ -915,7 +915,7 @@ export default function FileStoragePage() {
             </div>
           </div>
         )
-      )}
+      }
 
       {/* Delete Confirmation Modal */}
       <Modal
