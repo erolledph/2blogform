@@ -864,30 +864,29 @@ export default function FileStoragePage() {
           </div>
         </div>
       ) : error ? (
-        {error ? (
-          <div className="card border-red-200 bg-red-50">
-            <div className="card-content p-12 text-center">
-              <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
-              <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Storage Items</h3>
-              <p className="text-lg text-red-700 mb-6">{error}</p>
-              <div className="space-y-6">
-                <button onClick={fetchItems} className="btn-secondary">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Try Again
-                </button>
-                <div className="text-sm text-red-600">
-                  <p>If this error persists, try:</p>
-                  <ul className="list-disc list-inside mt-3 space-y-2">
-                    <li>Refreshing the page</li>
-                    <li>Checking your internet connection</li>
-                    <li>Logging out and back in</li>
-                    <li>Contacting support if the issue continues</li>
-                  </ul>
-                </div>
+        <div className="card border-red-200 bg-red-50">
+          <div className="card-content p-12 text-center">
+            <AlertTriangle className="h-16 w-16 mx-auto mb-6 text-red-500" />
+            <h3 className="text-xl font-bold text-red-800 mb-4">Error Loading Storage Items</h3>
+            <p className="text-lg text-red-700 mb-6">{error}</p>
+            <div className="space-y-6">
+              <button onClick={fetchItems} className="btn-secondary">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </button>
+              <div className="text-sm text-red-600">
+                <p>If this error persists, try:</p>
+                <ul className="list-disc list-inside mt-3 space-y-2">
+                  <li>Refreshing the page</li>
+                  <li>Checking your internet connection</li>
+                  <li>Logging out and back in</li>
+                  <li>Contacting support if the issue continues</li>
+                </ul>
               </div>
             </div>
           </div>
-        ) : items.length === 0 ? (
+        </div>
+      ) : items.length === 0 ? (
           <div className="card">
             <div className="card-content text-center py-20">
               <Folder className="mx-auto h-16 w-16 text-muted-foreground mb-6" />
@@ -915,8 +914,8 @@ export default function FileStoragePage() {
               />
             </div>
           </div>
-        )}
-      )}
+        )
+      }
 
       {/* Delete Confirmation Modal */}
       <Modal
