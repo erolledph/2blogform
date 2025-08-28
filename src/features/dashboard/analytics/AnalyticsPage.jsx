@@ -1,8 +1,8 @@
 import React from 'react';
 import { useSiteAnalytics, useBackendUsage } from '@/hooks/useAnalytics';
 import { BarChart3, TrendingUp, Users, Eye, Database, HardDrive, Wifi, AlertTriangle } from 'lucide-react';
-import { StatCardSkeleton } from '@/components/shared/SkeletonLoader';
-import { DynamicTransition } from '@/components/shared/DynamicTransition';
+import { StatCardSkeleton, AnalyticsSkeleton } from '@/components/shared/SkeletonLoader';
+import DynamicTransition from '@/components/shared/DynamicTransition';
 
 export default function AnalyticsPage({ activeBlogId }) {
   const { analytics: siteAnalytics, loading: siteLoading, error: siteError, refetch: refetchSite } = useSiteAnalytics(activeBlogId);
@@ -10,6 +10,7 @@ export default function AnalyticsPage({ activeBlogId }) {
 
   const loading = siteLoading || usageLoading;
   const error = siteError || usageError;
+
 
   return (
     <div className="section-spacing">
@@ -22,11 +23,7 @@ export default function AnalyticsPage({ activeBlogId }) {
 
       {/* Site Analytics Overview */}
       {siteLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <StatCardSkeleton key={index} />
-          ))}
-        </div>
+        <AnalyticsSkeleton />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
           <div className="card border-blue-200 bg-blue-50">
