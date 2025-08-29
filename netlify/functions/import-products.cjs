@@ -72,7 +72,7 @@ function validateProductItem(item, index) {
     } else {
       errors.push('Missing required field: slug (and cannot generate from name)');
     }
-  } else if (!/^[a-z0-9-]+$/.test(item.slug)) {
+  } else if (typeof item.slug !== 'string' || !/^[a-z0-9-]+$/.test(item.slug)) {
     errors.push('Slug can only contain lowercase letters, numbers, and hyphens');
   } else if (item.slug.length > 100) {
     errors.push('Slug must be less than 100 characters');
@@ -90,15 +90,24 @@ function validateProductItem(item, index) {
     errors.push('Invalid percentOff: must be a number between 0 and 100');
   }
   
-  // Validate status
-  if (item.status && !['draft', 'published'].includes(item.status.toLowerCase())) {
-    errors.push('Invalid status: must be "draft" or "published"');
+  // Normalize and validate status
+  let normalizedStatus = '';
+  if (item.status === null || item.status === undefined || item.status === '') {
+    normalizedStatus = 'draft';
+  } else if (typeof item.status === 'string') {
+    normalizedStatus = item.status.trim().toLowerCase();
+  } else {
+    normalizedStatus = String(item.status).trim().toLowerCase();
   }
   
-  // Set defaults
-  if (!item.status) {
-    item.status = 'draft';
+  // Validate normalized status
+  if (!['draft', 'published'].includes(normalizedStatus)) {
+    errors.push('Invalid status: must be "draft" or "published"');
+  } else {
+    item.status = normalizedStatus;
   }
+  
+  // Set default for percentOff
   if (item.percentOff === undefined || item.percentOff === null) {
     item.percentOff = 0;
   }

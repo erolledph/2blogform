@@ -72,20 +72,27 @@ function validateContentItem(item, index) {
     } else {
       errors.push('Missing required field: slug (and cannot generate from title)');
     }
-  } else if (!/^[a-z0-9-]+$/.test(item.slug)) {
+  } else if (typeof item.slug !== 'string' || !/^[a-z0-9-]+$/.test(item.slug)) {
     errors.push('Slug can only contain lowercase letters, numbers, and hyphens');
   } else if (item.slug.length > 100) {
     errors.push('Slug must be less than 100 characters');
   }
   
-  // Validate status
-  if (item.status && !['draft', 'published'].includes(item.status.toLowerCase())) {
-    errors.push('Invalid status: must be "draft" or "published"');
+  // Normalize and validate status
+  let normalizedStatus = '';
+  if (item.status === null || item.status === undefined || item.status === '') {
+    normalizedStatus = 'draft';
+  } else if (typeof item.status === 'string') {
+    normalizedStatus = item.status.trim().toLowerCase();
+  } else {
+    normalizedStatus = String(item.status).trim().toLowerCase();
   }
   
-  // Set default status if missing
-  if (!item.status) {
-    item.status = 'draft';
+  // Validate normalized status
+  if (!['draft', 'published'].includes(normalizedStatus)) {
+    errors.push('Invalid status: must be "draft" or "published"');
+  } else {
+    item.status = normalizedStatus;
   }
   
   // Validate optional fields
