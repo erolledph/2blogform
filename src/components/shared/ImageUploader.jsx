@@ -6,6 +6,7 @@ import { storageService } from '@/services/storageService';
 import { fromBlob } from 'image-resize-compress';
 import InputField from './InputField';
 import Modal from './Modal';
+import LoadingSpinner from './LoadingSpinner';
 import { Upload, Image as ImageIcon, FileImage, CheckCircle, AlertTriangle, Settings } from 'lucide-react';
 import { firebaseErrorHandler } from '@/utils/firebaseErrorHandler';
 import { formatBytes } from '@/utils/helpers';
