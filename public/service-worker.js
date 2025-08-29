@@ -151,6 +151,11 @@ async function handleRequest(request, strategy, cacheName) {
 // Special handler for Firebase Storage images
 async function handleFirebaseStorageImage(request, cache) {
   try {
+    // Only handle GET requests for caching
+    if (request.method !== 'GET') {
+      return fetch(request);
+    }
+    
     // Always try network first for Firebase Storage to get fresh images
     const networkResponse = await fetch(request);
     
@@ -206,7 +211,8 @@ async function cacheFirst(request, cache) {
   try {
     const networkResponse = await fetch(request);
     
-    if (request.method === 'GET' && networkResponse.ok) {
+    // Only cache GET requests with successful responses
+    if (request.method === 'GET' && networkResponse.ok && networkResponse.status < 400) {
       cache.put(request, networkResponse.clone());
     }
     
@@ -224,7 +230,8 @@ async function networkFirst(request, cache) {
   try {
     const networkResponse = await fetch(request);
     
-    if (request.method === 'GET' && networkResponse.ok) {
+    // Only cache GET requests with successful responses
+    if (request.method === 'GET' && networkResponse.ok && networkResponse.status < 400) {
       cache.put(request, networkResponse.clone());
     }
     
@@ -248,7 +255,8 @@ async function staleWhileRevalidate(request, cache) {
   
   // Always try to fetch fresh data in background
   const fetchPromise = fetch(request).then((networkResponse) => {
-    if (request.method === 'GET' && networkResponse.ok) {
+    // Only cache GET requests with successful responses
+    if (request.method === 'GET' && networkResponse.ok && networkResponse.status < 400) {
       cache.put(request, networkResponse.clone());
     }
     return networkResponse;
@@ -473,7 +481,8 @@ async function prefetchUrls(urls) {
   const fetchPromises = urls.map(async (url) => {
     try {
       const response = await fetch(url);
-      if (response.ok) {
+      // Only cache successful GET responses
+      if (response.ok && response.status < 400) {
         await cache.put(url, response);
       }
     } catch (error) {
@@ -486,6 +495,11 @@ async function prefetchUrls(urls) {
 
 // Performance monitoring
 self.addEventListener('fetch', (event) => {
+  // Skip non-GET requests for caching strategies
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  
   // Track performance metrics
   const startTime = performance.now();
   
