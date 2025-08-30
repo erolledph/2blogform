@@ -5,6 +5,7 @@ import LoadingButton from '@/components/shared/LoadingButton';
 import { TableSkeleton, StatCardSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
 import InputField from '@/components/shared/InputField';
+import CreateUserModal from '@/components/shared/CreateUserModal';
 import { 
   Users, 
   Shield, 
@@ -19,7 +20,8 @@ import {
   X,
   HardDrive,
   Database,
-  Trash2
+  Trash2,
+  UserPlus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -31,6 +33,7 @@ export default function UserManagementPage() {
   const [error, setError] = useState(null);
   const [editModal, setEditModal] = useState({ isOpen: false, user: null });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, user: null });
+  const [createUserModal, setCreateUserModal] = useState({ isOpen: false });
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -222,6 +225,12 @@ export default function UserManagementPage() {
     }
   };
 
+  const handleUserCreated = async (newUser) => {
+    // Refresh the user list to show the newly created user
+    await fetchUsers();
+    toast.success(`User account created successfully for ${newUser?.email || 'new user'}`);
+  };
+
   const toggleAdminRole = async (user) => {
     const newRole = user.role === 'admin' ? 'user' : 'admin';
     await handleUpdateUser(user.uid, { 
@@ -388,12 +397,23 @@ export default function UserManagementPage() {
 
   return (
     <div className="section-spacing">
-      {/* Page Header - Always visible */}
-      <div className="page-header mb-16">
-        <h1 className="page-title">User Management</h1>
-        <p className="page-description">
-          Manage user roles and multi-blog access permissions
-        </p>
+      {/* Header and Action Buttons - Always visible */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-12">
+        <div className="page-header mb-0 flex-1">
+          <h1 className="page-title">User Management</h1>
+          <p className="page-description">
+            Manage user roles and multi-blog access permissions
+          </p>
+        </div>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => setCreateUserModal({ isOpen: true })}
+            className="btn-primary inline-flex items-center"
+          >
+            <UserPlus className="h-5 w-5 mr-2" />
+            Create New User
+          </button>
+        </div>
       </div>
 
       {/* Stats Overview */}
@@ -584,6 +604,13 @@ export default function UserManagementPage() {
           </div>
         )}
       </Modal>
+
+      {/* Create User Modal */}
+      <CreateUserModal
+        isOpen={createUserModal.isOpen}
+        onClose={() => setCreateUserModal({ isOpen: false })}
+        onUserCreated={handleUserCreated}
+      />
     </div>
   );
 }

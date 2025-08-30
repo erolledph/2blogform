@@ -180,6 +180,157 @@ exports.handler = async (event, context) => {
     const { httpMethod } = event;
     
     switch (httpMethod) {
+      case 'POST': {
+        console.log('Admin Users Function: Processing POST request (create user)...');
+        // Create new user account
+        const data = JSON.parse(event.body);
+        console.log('Admin Users Function: POST request data:', {
+          email: data.email,
+          displayName: data.displayName,
+          hasPassword: !!data.password
+        });
+        const { email, password, displayName } = data;
+        
+        // Enhanced input validation
+        if (!email || typeof email !== 'string' || !email.trim()) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Email is required and must be a non-empty string' })
+          };
+        }
+        
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Invalid email format' })
+          };
+        }
+        
+        if (!password || typeof password !== 'string' || password.length < 6) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Password must be at least 6 characters' })
+          };
+        }
+        
+        if (!displayName || typeof displayName !== 'string' || !displayName.trim()) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Display name is required and must be a non-empty string' })
+          };
+        }
+        
+        if (displayName.trim().length < 2 || displayName.length > 100) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Display name must be between 2 and 100 characters' })
+          };
+        }
+
+        try {
+          console.log('Admin Users Function: Creating user in Firebase Auth...');
+          
+          // Create user in Firebase Authentication
+          const userRecord = await auth.createUser({
+            email: email.trim(),
+            password: password,
+            displayName: displayName.trim(),
+            emailVerified: true // Admin-created accounts are automatically verified
+          });
+          
+          console.log('Admin Users Function: User created in Firebase Auth:', userRecord.uid);
+
+          // Create user settings in Firestore
+          console.log('Admin Users Function: Creating user settings in Firestore...');
+          const userSettingsRef = db.collection('users').doc(userRecord.uid).collection('userSettings').doc('preferences');
+          await userSettingsRef.set({
+            role: 'user', // Default role
+            canManageMultipleBlogs: false,
+            currency: '$',
+            maxBlogs: 1,
+            totalStorageMB: 100,
+            displayName: displayName.trim(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdBy: requestingUserId
+          });
+          
+          console.log('Admin Users Function: User settings created');
+
+          // Create default blog for the new user
+          console.log('Admin Users Function: Creating default blog...');
+          const blogId = `blog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          const blogRef = db.collection('users').doc(userRecord.uid).collection('blogs').doc(blogId);
+          
+          await blogRef.set({
+            name: 'My Blog',
+            description: 'My personal blog',
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            isDefault: true,
+            contentCount: 0,
+            productCount: 0,
+            status: 'active'
+          });
+          
+          console.log('Admin Users Function: Default blog created:', blogId);
+
+          return {
+            statusCode: 201,
+            headers,
+            body: JSON.stringify({ 
+              success: true,
+              message: 'User account created successfully',
+              user: {
+                uid: userRecord.uid,
+                email: userRecord.email,
+                displayName: userRecord.displayName,
+                emailVerified: userRecord.emailVerified,
+                creationTime: userRecord.metadata.creationTime,
+                role: 'user',
+                maxBlogs: 1,
+                totalStorageMB: 100,
+                defaultBlogId: blogId
+              }
+            })
+          };
+        } catch (error) {
+          console.error('Admin Users Function: Error in POST operation:', error);
+          
+          // Provide specific error messages based on Firebase error codes
+          let errorMessage = 'Failed to create user account';
+          let statusCode = 500;
+          
+          if (error.code === 'auth/email-already-exists') {
+            errorMessage = 'An account with this email already exists';
+            statusCode = 400;
+          } else if (error.code === 'auth/invalid-email') {
+            errorMessage = 'Invalid email address';
+            statusCode = 400;
+          } else if (error.code === 'auth/weak-password') {
+            errorMessage = 'Password is too weak';
+            statusCode = 400;
+          } else if (error.code === 'auth/insufficient-permission') {
+            errorMessage = 'Insufficient permissions to create users';
+            statusCode = 403;
+          }
+          
+          return {
+            statusCode,
+            headers,
+            body: JSON.stringify({ 
+              error: errorMessage,
+              code: error.code,
+              details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            })
+          };
+        }
+      }
+
       case 'GET': {
         console.log('Admin Users Function: Fetching users list...');
         // List all users with their settings
