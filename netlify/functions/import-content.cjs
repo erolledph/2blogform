@@ -241,10 +241,24 @@ exports.handler = async (event, context) => {
       const item = items[i];
       const itemIndex = i + 1; // 1-based indexing for user-friendly error messages
       
+      console.log(`Processing item ${itemIndex}/${items.length}:`, {
+        title: item.title,
+        slug: item.slug,
+        status: item.status,
+        statusType: typeof item.status
+      });
+      
       try {
         // Validate item
         const validationErrors = validateContentItem(item, itemIndex);
+        console.log(`Validation result for item ${itemIndex}:`, {
+          hasErrors: validationErrors.length > 0,
+          errors: validationErrors,
+          normalizedStatus: item.status
+        });
+        
         if (validationErrors.length > 0) {
+          console.error(`Item ${itemIndex} validation failed:`, validationErrors);
           errors.push({
             item: itemIndex,
             message: validationErrors.join(', ')
@@ -255,6 +269,7 @@ exports.handler = async (event, context) => {
         // Check for duplicate slug
         const existingQuery = await contentRef.where('slug', '==', item.slug).limit(1).get();
         if (!existingQuery.empty) {
+          console.error(`Item ${itemIndex} has duplicate slug:`, item.slug);
           errors.push({
             item: itemIndex,
             message: `Duplicate slug "${item.slug}" - item already exists`
@@ -288,13 +303,25 @@ exports.handler = async (event, context) => {
           likeCount: 0
         };
 
+        console.log(`Prepared content data for item ${itemIndex}:`, {
+          title: contentData.title,
+          slug: contentData.slug,
+          status: contentData.status,
+          publishDate: contentData.publishDate ? 'SET' : 'NULL'
+        });
         // Add to batch
         const docRef = contentRef.doc();
         batch.set(docRef, contentData);
+        console.log(`Item ${itemIndex} added to batch successfully`);
         successCount++;
 
       } catch (error) {
         console.error(`Error processing item ${itemIndex}:`, error);
+        console.error(`Item ${itemIndex} processing error details:`, {
+          itemData: item,
+          errorMessage: error.message,
+          errorStack: error.stack
+        });
         errors.push({
           item: itemIndex,
           message: `Processing error: ${error.message}`
@@ -304,8 +331,19 @@ exports.handler = async (event, context) => {
 
     // Commit batch if there are successful items
     if (successCount > 0) {
+      console.log(`Committing batch with ${successCount} items...`);
       await batch.commit();
+      console.log('Batch commit successful');
+    } else {
+      console.log('No items to commit - batch is empty');
     }
+
+    console.log('Import process completed:', {
+      totalItems: items.length,
+      successCount,
+      errorCount: errors.length,
+      errors: errors.slice(0, 10) // Log first 10 errors
+    });
 
     return {
       statusCode: 200,

@@ -214,21 +214,32 @@ export default function ManageContentPage({ activeBlogId }) {
         try {
           jsonData = JSON.parse(fileContent);
         } catch (parseError) {
+          console.error('JSON parsing failed:', parseError);
           toast.error('Invalid JSON file format');
           return;
         }
 
         if (!Array.isArray(jsonData)) {
+          console.error('JSON data is not an array:', typeof jsonData, jsonData);
           toast.error('JSON file must contain an array of content items');
           return;
         }
 
         if (jsonData.length === 0) {
+          console.error('JSON array is empty');
           toast.error('JSON file is empty');
           return;
         }
 
+        console.log('Starting import process:', {
+          totalItems: jsonData.length,
+          blogId: activeBlogId,
+          sampleItem: jsonData[0]
+        });
+
         const token = await getAuthToken();
+        console.log('Auth token obtained for import');
+        
         const response = await fetch('/api/import/content', {
           method: 'POST',
           headers: {
@@ -241,12 +252,25 @@ export default function ManageContentPage({ activeBlogId }) {
           })
         });
 
+        console.log('Import response received:', {
+          status: response.status,
+          statusText: response.statusText,
+          ok: response.ok,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
+          console.error('Import request failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorData
+          });
           throw new Error(errorData.error || `HTTP ${response.status}`);
         }
 
         const results = await response.json();
+        console.log('Import results:', results);
         
         if (results.successCount > 0) {
           toast.success(`Successfully imported ${results.successCount} of ${results.totalItems} content item${results.successCount !== 1 ? 's' : ''}`);
@@ -256,9 +280,23 @@ export default function ManageContentPage({ activeBlogId }) {
         if (results.errorCount > 0) {
           toast.error(`${results.errorCount} item${results.errorCount !== 1 ? 's' : ''} failed to import. Check console for details.`);
           console.error('Import errors:', results.errors);
+          
+          // Log detailed error information for each failed item
+          results.errors.forEach((error, index) => {
+            console.error(`Import error ${index + 1}:`, {
+              item: error.item,
+              message: error.message,
+              originalData: jsonData[error.item - 1] // item numbers are 1-based
+            });
+          });
         }
 
       } catch (error) {
+        console.error('Import process failed:', {
+          error: error.message,
+          stack: error.stack,
+          name: error.name
+        });
         toast.error(error.message || 'Failed to import content');
       } finally {
         setImporting(false);

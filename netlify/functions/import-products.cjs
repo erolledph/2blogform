@@ -242,10 +242,26 @@ exports.handler = async (event, context) => {
       const item = items[i];
       const itemIndex = i + 1; // 1-based indexing for user-friendly error messages
       
+      console.log(`Processing product ${itemIndex}/${items.length}:`, {
+        name: item.name,
+        slug: item.slug,
+        status: item.status,
+        statusType: typeof item.status,
+        price: item.price,
+        priceType: typeof item.price
+      });
+      
       try {
         // Validate item
         const validationErrors = validateProductItem(item, itemIndex);
+        console.log(`Validation result for product ${itemIndex}:`, {
+          hasErrors: validationErrors.length > 0,
+          errors: validationErrors,
+          normalizedStatus: item.status
+        });
+        
         if (validationErrors.length > 0) {
+          console.error(`Product ${itemIndex} validation failed:`, validationErrors);
           errors.push({
             item: itemIndex,
             message: validationErrors.join(', ')
@@ -256,6 +272,7 @@ exports.handler = async (event, context) => {
         // Check for duplicate slug
         const existingQuery = await productsRef.where('slug', '==', item.slug).limit(1).get();
         if (!existingQuery.empty) {
+          console.error(`Product ${itemIndex} has duplicate slug:`, item.slug);
           errors.push({
             item: itemIndex,
             message: `Duplicate slug "${item.slug}" - product already exists`
@@ -287,13 +304,27 @@ exports.handler = async (event, context) => {
           productData.imageUrl = productData.imageUrls[0];
         }
 
+        console.log(`Prepared product data for item ${itemIndex}:`, {
+          name: productData.name,
+          slug: productData.slug,
+          status: productData.status,
+          price: productData.price,
+          percentOff: productData.percentOff,
+          imageCount: productData.imageUrls.length
+        });
         // Add to batch
         const docRef = productsRef.doc();
         batch.set(docRef, productData);
+        console.log(`Product ${itemIndex} added to batch successfully`);
         successCount++;
 
       } catch (error) {
         console.error(`Error processing item ${itemIndex}:`, error);
+        console.error(`Product ${itemIndex} processing error details:`, {
+          itemData: item,
+          errorMessage: error.message,
+          errorStack: error.stack
+        });
         errors.push({
           item: itemIndex,
           message: `Processing error: ${error.message}`
@@ -303,8 +334,19 @@ exports.handler = async (event, context) => {
 
     // Commit batch if there are successful items
     if (successCount > 0) {
+      console.log(`Committing batch with ${successCount} products...`);
       await batch.commit();
+      console.log('Batch commit successful');
+    } else {
+      console.log('No products to commit - batch is empty');
     }
+
+    console.log('Product import process completed:', {
+      totalItems: items.length,
+      successCount,
+      errorCount: errors.length,
+      errors: errors.slice(0, 10) // Log first 10 errors
+    });
 
     return {
       statusCode: 200,
