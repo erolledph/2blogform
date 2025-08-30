@@ -13,7 +13,7 @@ import Modal from '@/components/shared/Modal';
 import UploadDiagnostics from '@/components/shared/UploadDiagnostics';
 import ImageDisplayDiagnostics from '@/components/shared/ImageDisplayDiagnostics';
 import SkeletonLoader from '@/components/shared/SkeletonLoader';
-import { Save, ArrowLeft, DollarSign, Percent, Image as ImageIcon, Trash2, Plus, Upload } from 'lucide-react';
+import { Save, ArrowLeft, DollarSign, Percent, Image as ImageIcon, Trash2, Plus, Upload, Info } from 'lucide-react';
 import { generateSlug, parseArrayInput } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 import 'easymde/dist/easymde.min.css';
@@ -46,6 +46,7 @@ export default function CreateProductPage({ activeBlogId }) {
   const [errors, setErrors] = useState({});
   const [galleryModal, setGalleryModal] = useState({ isOpen: false });
   const [uploadModal, setUploadModal] = useState({ isOpen: false });
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Auto-save functionality for editing
@@ -434,9 +435,19 @@ export default function CreateProductPage({ activeBlogId }) {
       <div className="page-header mb-16">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
           <div>
-            <h1 className="page-title">
-              {isEditing ? 'Edit Product' : 'Create New Product'}
-            </h1>
+            <div className="flex items-center gap-4">
+              <h1 className="page-title">
+                {isEditing ? 'Edit Product' : 'Create New Product'}
+              </h1>
+              <button
+                type="button"
+                onClick={() => setShowInfoModal(true)}
+                className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-muted/50"
+                title="Field Guide & Validation Rules"
+              >
+                <Info className="h-6 w-6" />
+              </button>
+            </div>
             {/* Auto-save indicator for editing */}
             {isEditing && (
               <div className="mt-6">
@@ -799,6 +810,175 @@ export default function CreateProductPage({ activeBlogId }) {
           initialMaxWidth={1920}
           initialMaxHeight={1080}
         />
+      </Modal>
+
+      {/* Information Modal */}
+      <Modal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title="Product Creation Guide"
+        size="xl"
+      >
+        <div className="space-y-8">
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <h3 className="text-lg font-semibold text-green-800 mb-3">🛍️ Product Creation Guide</h3>
+            <p className="text-sm text-green-700">
+              This guide explains how to fill out each field and the validation rules that apply to product creation.
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            {/* Product Details Section */}
+            <div>
+              <h4 className="text-lg font-semibold text-foreground mb-4">Product Details</h4>
+              <div className="space-y-4">
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Product Name *</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• <strong>Required field</strong> - must not be empty</li>
+                    <li>• Minimum 3 characters, maximum 200 characters</li>
+                    <li>• Can contain letters, numbers, spaces, and common punctuation</li>
+                    <li>• Used to generate the URL slug automatically</li>
+                    <li>• Example: "Premium Wireless Headphones"</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Slug *</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• <strong>Required field</strong> - auto-generated from product name</li>
+                    <li>• Maximum 100 characters</li>
+                    <li>• Only lowercase letters, numbers, and hyphens allowed</li>
+                    <li>• Cannot start or end with hyphens</li>
+                    <li>• Cannot contain consecutive hyphens</li>
+                    <li>• Must be unique across all your products</li>
+                    <li>• Example: "premium-wireless-headphones"</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Description *</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• <strong>Required field</strong> - detailed product description</li>
+                    <li>• Minimum 10 characters, maximum 10,000 characters</li>
+                    <li>• Written in Markdown format</li>
+                    <li>• Use the preview tab to see formatting</li>
+                    <li>• Include features, specifications, and benefits</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Pricing Section */}
+            <div>
+              <h4 className="text-lg font-semibold text-foreground mb-4">Pricing</h4>
+              <div className="space-y-4">
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Price *</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• <strong>Required field</strong> - product price</li>
+                    <li>• Must be a valid number greater than 0</li>
+                    <li>• Maximum value: $999,999.99</li>
+                    <li>• Can have up to 2 decimal places</li>
+                    <li>• Currency symbol is set in your account settings</li>
+                    <li>• Example: "199.99" (without currency symbol)</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Percent Off</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Optional discount percentage</li>
+                    <li>• Must be between 0 and 100</li>
+                    <li>• Can have up to 2 decimal places</li>
+                    <li>• Automatically calculates discounted price</li>
+                    <li>• Example: "15" for 15% off</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Product Images Section */}
+            <div>
+              <h4 className="text-lg font-semibold text-foreground mb-4">Product Images</h4>
+              <div className="p-4 border border-border rounded-lg">
+                <h5 className="font-medium text-foreground mb-2">Image Guidelines</h5>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Up to 5 images per product</li>
+                  <li>• Supported formats: JPEG, PNG, GIF, WebP</li>
+                  <li>• Maximum file size: 10MB per image</li>
+                  <li>• First image becomes the main product image</li>
+                  <li>• Images are automatically optimized and compressed</li>
+                  <li>• Recommended dimensions: 800x800px or larger</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Organization Section */}
+            <div>
+              <h4 className="text-lg font-semibold text-foreground mb-4">Organization</h4>
+              <div className="space-y-4">
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Category</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Optional field for product categorization</li>
+                    <li>• Maximum 100 characters</li>
+                    <li>• Can contain letters, numbers, spaces, hyphens, underscores, and ampersands</li>
+                    <li>• Example: "Electronics", "Clothing & Accessories"</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Tags</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Comma-separated list of tags</li>
+                    <li>• Example: "wireless, bluetooth, premium, noise-cancelling"</li>
+                    <li>• Used for detailed product filtering</li>
+                    <li>• More specific than categories</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* External Link Section */}
+            <div>
+              <h4 className="text-lg font-semibold text-foreground mb-4">External Link</h4>
+              <div className="p-4 border border-border rounded-lg">
+                <h5 className="font-medium text-foreground mb-2">Product URL</h5>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Optional external link to purchase or learn more</li>
+                  <li>• Must be a valid URL starting with http:// or https://</li>
+                  <li>• Maximum 500 characters</li>
+                  <li>• Can be affiliate links, store pages, or product details</li>
+                  <li>• Example: "https://example.com/products/wireless-headphones"</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Publishing Section */}
+            <div>
+              <h4 className="text-lg font-semibold text-foreground mb-4">Publishing</h4>
+              <div className="p-4 border border-border rounded-lg">
+                <h5 className="font-medium text-foreground mb-2">Status Options</h5>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Draft:</strong> Product is saved but not publicly visible</li>
+                  <li>• <strong>Published:</strong> Product is live and accessible via API</li>
+                  <li>• Only published products appear in your public API endpoints</li>
+                  <li>• You can change status anytime after creation</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4 border-t border-border">
+            <button
+              onClick={() => setShowInfoModal(false)}
+              className="btn-primary"
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

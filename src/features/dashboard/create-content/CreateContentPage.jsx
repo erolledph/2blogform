@@ -12,7 +12,7 @@ import Modal from '@/components/shared/Modal';
 import UploadDiagnostics from '@/components/shared/UploadDiagnostics';
 import ImageDisplayDiagnostics from '@/components/shared/ImageDisplayDiagnostics';
 import SkeletonLoader from '@/components/shared/SkeletonLoader';
-import { Save, ArrowLeft, Image as ImageIcon, Trash2, Upload } from 'lucide-react';
+import { Save, ArrowLeft, Image as ImageIcon, Trash2, Upload, Info } from 'lucide-react';
 import { generateSlug, parseArrayInput } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 import 'easymde/dist/easymde.min.css';
@@ -48,6 +48,7 @@ export default function CreateContentPage({ activeBlogId }) {
   const [errors, setErrors] = useState({});
   const [galleryModal, setGalleryModal] = useState({ isOpen: false });
   const [uploadModal, setUploadModal] = useState({ isOpen: false });
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Auto-save functionality
@@ -412,9 +413,19 @@ export default function CreateContentPage({ activeBlogId }) {
       <div className="page-header mb-16">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
           <div>
-            <h1 className="page-title">
-              {isEditing ? 'Edit Content' : 'Create New Content'}
-            </h1>
+            <div className="flex items-center gap-4">
+              <h1 className="page-title">
+                {isEditing ? 'Edit Content' : 'Create New Content'}
+              </h1>
+              <button
+                type="button"
+                onClick={() => setShowInfoModal(true)}
+                className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-md hover:bg-muted/50"
+                title="Field Guide & Validation Rules"
+              >
+                <Info className="h-6 w-6" />
+              </button>
+            </div>
             {/* Auto-save indicator for editing */}
             {isEditing && (
               <div className="mt-6">
@@ -714,6 +725,175 @@ export default function CreateContentPage({ activeBlogId }) {
           initialMaxWidth={1920}
           initialMaxHeight={1080}
         />
+      </Modal>
+
+      {/* Information Modal */}
+      <Modal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title="Content Creation Guide"
+        size="xl"
+      >
+        <div className="space-y-8">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-lg font-semibold text-blue-800 mb-3">📝 Content Creation Guide</h3>
+            <p className="text-sm text-blue-700">
+              This guide explains how to fill out each field and the validation rules that apply.
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            {/* Content Details Section */}
+            <div>
+              <h4 className="text-lg font-semibold text-foreground mb-4">Content Details</h4>
+              <div className="space-y-4">
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Title *</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• <strong>Required field</strong> - must not be empty</li>
+                    <li>• Minimum 3 characters, maximum 200 characters</li>
+                    <li>• Can contain letters, numbers, spaces, and common punctuation</li>
+                    <li>• Used to generate the URL slug automatically</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Slug *</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• <strong>Required field</strong> - auto-generated from title</li>
+                    <li>• Maximum 100 characters</li>
+                    <li>• Only lowercase letters, numbers, and hyphens allowed</li>
+                    <li>• Cannot start or end with hyphens</li>
+                    <li>• Cannot contain consecutive hyphens</li>
+                    <li>• Must be unique across all your content</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Content *</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• <strong>Required field</strong> - main article content</li>
+                    <li>• Minimum 10 characters, maximum 50,000 characters</li>
+                    <li>• Written in Markdown format</li>
+                    <li>• Use the preview tab to see how it will look</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* SEO Settings Section */}
+            <div>
+              <h4 className="text-lg font-semibold text-foreground mb-4">SEO Settings</h4>
+              <div className="space-y-4">
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">SEO Title</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Optional field for search engine optimization</li>
+                    <li>• Maximum 160 characters (recommended: 50-60 for best results)</li>
+                    <li>• Should include your main keyword</li>
+                    <li>• Will appear as the clickable title in search results</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Keywords</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Comma-separated list of keywords</li>
+                    <li>• Example: "react, javascript, tutorial, web development"</li>
+                    <li>• Used for SEO and content organization</li>
+                    <li>• Focus on 3-5 main keywords</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Meta Description</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Optional but highly recommended for SEO</li>
+                    <li>• Maximum 160 characters (recommended: 150-160)</li>
+                    <li>• Minimum 50 characters for better SEO</li>
+                    <li>• Brief summary that appears in search results</li>
+                    <li>• Should entice users to click on your content</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Organization Section */}
+            <div>
+              <h4 className="text-lg font-semibold text-foreground mb-4">Organization</h4>
+              <div className="space-y-4">
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Categories</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Comma-separated list of categories</li>
+                    <li>• Example: "Web Development, Technology, Tutorials"</li>
+                    <li>• Used for content organization and filtering</li>
+                    <li>• Keep categories broad and consistent</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Tags</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Comma-separated list of tags</li>
+                    <li>• Example: "react, hooks, javascript, frontend"</li>
+                    <li>• More specific than categories</li>
+                    <li>• Used for detailed content filtering</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 border border-border rounded-lg">
+                  <h5 className="font-medium text-foreground mb-2">Author</h5>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Optional field for author name</li>
+                    <li>• Maximum 100 characters</li>
+                    <li>• Only letters, spaces, hyphens, apostrophes, and periods</li>
+                    <li>• Example: "John Smith" or "Jane Doe-Wilson"</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Featured Image Section */}
+            <div>
+              <h4 className="text-lg font-semibold text-foreground mb-4">Featured Image</h4>
+              <div className="p-4 border border-border rounded-lg">
+                <h5 className="font-medium text-foreground mb-2">Image Guidelines</h5>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Optional but recommended for better engagement</li>
+                  <li>• Supported formats: JPEG, PNG, GIF, WebP</li>
+                  <li>• Maximum file size: 10MB</li>
+                  <li>• Recommended dimensions: 1200x630px for social sharing</li>
+                  <li>• Images are automatically optimized and compressed</li>
+                  <li>• Use descriptive alt text for accessibility</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Status Section */}
+            <div>
+              <h4 className="text-lg font-semibold text-foreground mb-4">Publishing</h4>
+              <div className="p-4 border border-border rounded-lg">
+                <h5 className="font-medium text-foreground mb-2">Status Options</h5>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• <strong>Draft:</strong> Content is saved but not publicly visible</li>
+                  <li>• <strong>Published:</strong> Content is live and accessible via API</li>
+                  <li>• Only published content appears in your public API endpoints</li>
+                  <li>• You can change status anytime after creation</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4 border-t border-border">
+            <button
+              onClick={() => setShowInfoModal(false)}
+              className="btn-primary"
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

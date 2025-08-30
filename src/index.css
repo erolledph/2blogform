@@ -1408,3 +1408,7 @@
   animation: shimmer 1.5s infinite;
   border-radius: 4px;
 }
+
+.page-title {
+  margin: 10px;
+}
