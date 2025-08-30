@@ -100,7 +100,7 @@ function validateContentItem(item, index) {
     errors.push('Meta description must be a string with maximum 160 characters');
   }
   
-  if (item.seoTitle && (typeof item.seoTitle !== 'string' || item.seoTitle.length > 60)) {
+  if (item.seoTitle && (typeof item.seoTitle !== 'string' || item.seoTitle.length > 160)) {
     errors.push('SEO title must be a string with maximum 60 characters');
   }
   
