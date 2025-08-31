@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import Modal from './Modal';
@@ -16,8 +15,6 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
     displayName: ''
   });
   const [errors, setErrors] = useState({});
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validateForm = () => {
     const newErrors = {};
@@ -215,52 +212,34 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
           />
           
           {/* Password Field */}
-          <div className="relative">
-            <InputField
-              label="Password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="new-password"
-              required
-              placeholder="Create a password (min 6 characters)"
-              value={formData.password}
-              onChange={handleInputChange}
-              error={errors.password}
-              icon={Lock}
-              className="w-full"
-            />
-            <button
-              type="button"
-              className="absolute right-3 top-[42px] text-muted-foreground hover:text-foreground"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-            </button>
-          </div>
-          
+          <InputField
+            label="Password"
+            name="password"
+            autoComplete="new-password"
+            required
+            placeholder="Create a password (min 6 characters)"
+            value={formData.password}
+            onChange={handleInputChange}
+            error={errors.password}
+            icon={Lock}
+            showPasswordToggle={true}
+            className="w-full"
+          />
+
           {/* Confirm Password Field */}
-          <div className="relative">
-            <InputField
-              label="Confirm Password"
-              name="confirmPassword"
-              type={showConfirmPassword ? 'text' : 'password'}
-              autoComplete="new-password"
-              required
-              placeholder="Confirm the password"
-              value={formData.confirmPassword}
-              onChange={handleInputChange}
-              error={errors.confirmPassword}
-              icon={Lock}
-              className="w-full"
-            />
-            <button
-              type="button"
-              className="absolute right-3 top-[42px] text-muted-foreground hover:text-foreground"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            >
-              {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-            </button>
-          </div>
+          <InputField
+            label="Confirm Password"
+            name="confirmPassword"
+            autoComplete="new-password"
+            required
+            placeholder="Confirm the password"
+            value={formData.confirmPassword}
+            onChange={handleInputChange}
+            error={errors.confirmPassword}
+            icon={Lock}
+            showPasswordToggle={true}
+            className="w-full"
+          />
         </div>
 
         <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
