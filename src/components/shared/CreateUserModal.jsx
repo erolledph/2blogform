@@ -214,7 +214,7 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
           />
           
           {/* Password Field */}
-          <div className="relative">
+          <div className="relative flex items-center">
             <InputField
               label="Password"
               name="password"
@@ -226,11 +226,11 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
               onChange={handleInputChange}
               error={errors.password}
               icon={Lock}
-              className="w-full"
+              className="w-full pr-10"
             />
             <button
               type="button"
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-3 flex items-center justify-center h-full text-muted-foreground hover:text-foreground"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -238,7 +238,7 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
           </div>
           
           {/* Confirm Password Field */}
-          <div className="relative">
+          <div className="relative flex items-center">
             <InputField
               label="Confirm Password"
               name="confirmPassword"
@@ -250,11 +250,11 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
               onChange={handleInputChange}
               error={errors.confirmPassword}
               icon={Lock}
-              className="w-full"
+              className="w-full pr-10"
             />
             <button
               type="button"
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-3 flex items-center justify-center h-full text-muted-foreground hover:text-foreground"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
             >
               {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
