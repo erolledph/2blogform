@@ -83,6 +83,27 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
         [name]: ''
       }));
     }
+    
+    // Also clear related errors for password confirmation
+    if (name === 'password' && errors.confirmPassword && formData.confirmPassword) {
+      // Re-validate confirm password when password changes
+      if (value === formData.confirmPassword) {
+        setErrors(prev => ({
+          ...prev,
+          confirmPassword: ''
+        }));
+      }
+    }
+    
+    if (name === 'confirmPassword' && errors.confirmPassword) {
+      // Clear confirm password error if it now matches
+      if (value === formData.password) {
+        setErrors(prev => ({
+          ...prev,
+          confirmPassword: ''
+        }));
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -165,6 +186,17 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
     onClose();
   };
 
+  // Check if form is valid for submit button state
+  const isFormValid = () => {
+    return formData.email.trim() && 
+           formData.password && 
+           formData.confirmPassword && 
+           formData.displayName.trim() &&
+           formData.password === formData.confirmPassword &&
+           formData.password.length >= 6 &&
+           /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) &&
+           Object.keys(errors).length === 0;
+  };
   return (
     <Modal
       isOpen={isOpen}
@@ -264,7 +296,7 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
           </button>
           <button
             type="submit"
-            disabled={creating || Object.keys(errors).length > 0}
+            disabled={creating || !isFormValid()}
             className="btn-primary"
           >
             {creating ? (
