@@ -12,11 +12,6 @@
   status = 200
 
 [[redirects]]
-  from = "/api/admin/blog-create"
-  to = "/.netlify/functions/admin-blog-create"
-  status = 200
-
-[[redirects]]
   from = "/api/admin/users"
   to = "/.netlify/functions/admin-users"
   status = 200

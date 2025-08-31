@@ -120,18 +120,7 @@ export default function RegisterPage() {
       });
       
       // Create default blog
-      // For new user registration, we need to create the default blog with proper auth
-      try {
-        // Get auth token for the newly created user
-        const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
-        const token = await userCredential.user.getIdToken();
-        
-        // Create default blog using server-side function
-        await blogService.createNewBlog(user.uid, 'My Blog', 'My personal blog', token);
-      } catch (blogError) {
-        console.warn('Could not create default blog during registration:', blogError);
-        // Don't fail registration if blog creation fails
-      }
+      await blogService.ensureDefaultBlog(user.uid);
       
       toast.success('Account created successfully! Welcome to Admin CMS!');
       navigate('/dashboard');

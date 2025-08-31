@@ -47,15 +47,10 @@ export default function CreateBlogModal({ isOpen, onClose, onBlogCreated }) {
       setCheckingLimits(false);
       setCreating(true);
       
-      // Get authentication token for server-side validation
-      const { getAuthToken } = await import('@/hooks/useAuth');
-      const authToken = await getAuthToken();
-      
       const newBlog = await blogService.createNewBlog(
         currentUser.uid,
         formData.name.trim(),
-        formData.description.trim(),
-        authToken
+        formData.description.trim()
       );
       
       toast.success('Blog created successfully');
@@ -72,15 +67,7 @@ export default function CreateBlogModal({ isOpen, onClose, onBlogCreated }) {
       onClose();
     } catch (error) {
       console.error('Error creating blog:', error);
-      
-      // Handle specific error codes from server
-      if (error.message.includes('BLOG_LIMIT_EXCEEDED')) {
-        toast.error(error.message);
-      } else if (error.message.includes('Authentication token')) {
-        toast.error('Authentication failed. Please try logging out and back in.');
-      } else {
-        toast.error(error.message || 'Failed to create blog');
-      }
+      toast.error(error.message || 'Failed to create blog');
     } finally {
       setCheckingLimits(false);
       setCreating(false);

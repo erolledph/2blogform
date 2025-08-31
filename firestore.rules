@@ -4,12 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // User-specific blog management
     match /users/{userId}/blogs/{blogId} {
-      // Allow authenticated users to read and update their own blogs
-      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
-      
-      // Blog creation is now handled by server-side function to enforce maxBlogs limit
-      // This prevents client-side bypass of the blog limit
-      allow create: if false;
+      // Allow authenticated users to manage their own blogs
+      allow read, write, create, delete: if request.auth != null && request.auth.uid == userId;
     }
 
     // User-specific blog content and products

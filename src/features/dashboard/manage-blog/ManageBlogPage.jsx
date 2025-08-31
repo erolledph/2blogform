@@ -160,9 +160,6 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
     setActiveBlogId(newBlog.id);
     
     toast.success(`Switched to "${newBlog.name}"`);
-    
-    // Refresh blog data to ensure consistency
-    await fetchBlogData();
   };
 
   const handleBlogSwitch = (blog) => {
