@@ -31,6 +31,69 @@ if (!admin.apps.length) {
 const bucket = admin.storage().bucket();
 const auth = admin.auth();
 
+// Helper function to validate user storage limits
+async function validateStorageQuota(userId, additionalBytes = 0) {
+  try {
+    // Get user settings from Firestore
+    const userSettingsRef = db.collection('users').doc(userId).collection('userSettings').doc('preferences');
+    const userSettingsDoc = await userSettingsRef.get();
+    
+    const userSettings = userSettingsDoc.exists ? userSettingsDoc.data() : {
+      totalStorageMB: 100,
+      role: 'user'
+    };
+    
+    const limitBytes = (userSettings.totalStorageMB || 100) * 1024 * 1024;
+    
+    // Calculate current usage by listing all user files
+    let currentUsageBytes = 0;
+    
+    try {
+      const [publicFiles] = await bucket.getFiles({ prefix: `users/${userId}/public_images/` });
+      const [privateFiles] = await bucket.getFiles({ prefix: `users/${userId}/private/` });
+      
+      const allFiles = [...publicFiles, ...privateFiles];
+      
+      for (const file of allFiles) {
+        try {
+          const [metadata] = await file.getMetadata();
+          currentUsageBytes += parseInt(metadata.size) || 0;
+        } catch (error) {
+          console.warn(`Could not get metadata for ${file.name}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Error calculating storage usage:', error);
+      // Be conservative - deny upload if we can't calculate usage
+      return {
+        allowed: false,
+        reason: 'Unable to verify storage quota',
+        currentUsage: 0,
+        limit: limitBytes
+      };
+    }
+    
+    const wouldExceed = (currentUsageBytes + additionalBytes) > limitBytes;
+    
+    return {
+      allowed: !wouldExceed,
+      reason: wouldExceed ? `Storage quota exceeded. Current: ${Math.round(currentUsageBytes / 1024 / 1024)}MB, Limit: ${userSettings.totalStorageMB}MB` : null,
+      currentUsage: currentUsageBytes,
+      limit: limitBytes,
+      userSettings
+    };
+  } catch (error) {
+    console.error('Error validating storage quota:', error);
+    return {
+      allowed: false,
+      reason: 'Storage validation failed',
+      error: error.message
+    };
+  }
+}
+
+const db = admin.firestore();
+
 // Enhanced validation function for paths
 function validateUserPath(path, userId, operation = 'access') {
   console.log(`Validating path for ${operation}:`, { path, userId });
@@ -344,16 +407,37 @@ exports.handler = async (event, context) => {
               validateUserPath(sourcePath, userId, 'copy source');
               validateUserPath(destPath, userId, 'copy destination');
               
-              console.log(`Copying file from ${sourcePath} to ${destPath}`);
-              
+              // Get file size for storage validation
               const sourceFile = bucket.file(sourcePath);
-              const destFile = bucket.file(destPath);
-              
-              // Check if source file exists
               const [sourceExists] = await sourceFile.exists();
               if (!sourceExists) {
                 throw new Error('Source file does not exist');
               }
+              
+              const [metadata] = await sourceFile.getMetadata();
+              const fileSize = parseInt(metadata.size) || 0;
+              
+              // Validate storage quota before copying
+              const storageValidation = await validateStorageQuota(userId, fileSize);
+              if (!storageValidation.allowed) {
+                return {
+                  statusCode: 403,
+                  headers,
+                  body: JSON.stringify({ 
+                    error: storageValidation.reason,
+                    code: 'STORAGE_QUOTA_EXCEEDED',
+                    details: {
+                      currentUsage: Math.round(storageValidation.currentUsage / 1024 / 1024),
+                      limit: Math.round(storageValidation.limit / 1024 / 1024),
+                      fileSize: Math.round(fileSize / 1024 / 1024)
+                    }
+                  })
+                };
+              }
+              
+              console.log(`Copying file from ${sourcePath} to ${destPath}`);
+              
+              const destFile = bucket.file(destPath);
               
               // Copy the file
               await sourceFile.copy(destFile);

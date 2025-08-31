@@ -32,21 +32,9 @@ export default function CreateBlogModal({ isOpen, onClose, onBlogCreated }) {
     }
 
     try {
-      setCheckingLimits(true);
-      
-      // Check user's blog limits before creating
-      const userBlogs = await blogService.fetchUserBlogs(currentUser.uid);
-      const maxBlogs = currentUser.maxBlogs || 1;
-      
-      if (userBlogs.length >= maxBlogs) {
-        toast.error(`You have reached your limit of ${maxBlogs} blog${maxBlogs > 1 ? 's' : ''}. Contact an administrator to increase your limit.`);
-        setCheckingLimits(false);
-        return;
-      }
-      
-      setCheckingLimits(false);
       setCreating(true);
       
+      // Server-side validation will handle limit checking
       const newBlog = await blogService.createNewBlog(
         currentUser.uid,
         formData.name.trim(),
@@ -67,9 +55,16 @@ export default function CreateBlogModal({ isOpen, onClose, onBlogCreated }) {
       onClose();
     } catch (error) {
       console.error('Error creating blog:', error);
-      toast.error(error.message || 'Failed to create blog');
+      
+      // Handle specific error codes from server
+      if (error.message.includes('BLOG_LIMIT_EXCEEDED')) {
+        toast.error('Blog limit exceeded. Contact an administrator to increase your limit.');
+      } else if (error.message.includes('Blog limit exceeded')) {
+        toast.error(error.message);
+      } else {
+        toast.error(error.message || 'Failed to create blog');
+      }
     } finally {
-      setCheckingLimits(false);
       setCreating(false);
     }
   };

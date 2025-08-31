@@ -108,6 +108,25 @@ export function AuthProvider({ children }) {
           // Check for admin notifications before updating profile
           await checkForAdminNotifications(user, newProfile, userProfile);
           
+          // SECURITY: Validate that client-side profile matches server data
+          // This prevents manipulation of role/limits in browser
+          const serverValidatedProfile = {
+            role: userSettings.role || 'user',
+            canManageMultipleBlogs: userSettings.canManageMultipleBlogs || false,
+            currency: userSettings.currency || '$',
+            maxBlogs: userSettings.maxBlogs || 1,
+            totalStorageMB: userSettings.totalStorageMB || 100
+          };
+          
+          // Log any discrepancies for security monitoring
+          if (JSON.stringify(newProfile) !== JSON.stringify(serverValidatedProfile)) {
+            console.warn('Client-server profile mismatch detected:', {
+              client: newProfile,
+              server: serverValidatedProfile,
+              userId: user.uid
+            });
+          }
+          
           // Ensure user has a default blog when they first log in
           if (!userProfile) {
             try {
@@ -121,7 +140,7 @@ export function AuthProvider({ children }) {
           
           // Store raw Firebase user and separate profile data
           setCurrentUser(user);
-          setUserProfile(newProfile);
+          setUserProfile(serverValidatedProfile); // Use server-validated data
         } catch (error) {
           console.error('Error fetching user settings:', error);
           console.error('Auth error details:', {

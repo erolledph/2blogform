@@ -32,28 +32,42 @@ export const blogService = {
   // Create a new blog for a user
   async createNewBlog(userId, blogName, description = '') {
     try {
-      // Generate a unique blog ID (you could also let Firestore auto-generate)
-      const blogId = `blog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const blogRef = doc(db, 'users', userId, 'blogs', blogId);
+      // Client-side validation should still exist but server-side is authoritative
+      const userBlogs = await this.fetchUserBlogs(userId);
       
-      const blogData = {
-        name: blogName.trim(),
-        description: description.trim(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isDefault: false,
-        // Additional metadata
-        contentCount: 0,
-        productCount: 0,
-        status: 'active'
-      };
+      // Get user settings to check actual limits
+      const { settingsService } = await import('./settingsService');
+      const userSettings = await settingsService.getUserSettings(userId);
+      const maxBlogs = userSettings.maxBlogs || 1;
       
-      await setDoc(blogRef, blogData);
+      if (userBlogs.length >= maxBlogs) {
+        throw new Error(`Blog limit exceeded. You have ${userBlogs.length} blogs, limit is ${maxBlogs}. Contact an administrator to increase your limit.`);
+      }
       
-      return {
-        id: blogId,
-        ...blogData
-      };
+      // Use server-side function for secure blog creation
+      const { useAuth } = await import('@/hooks/useAuth');
+      const { getAuthToken } = useAuth();
+      const token = await getAuthToken();
+      
+      const response = await fetch('/.netlify/functions/admin-blog', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: blogName.trim(),
+          description: description.trim()
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return result.blog;
     } catch (error) {
       console.error('Error creating new blog:', error);
       throw error;

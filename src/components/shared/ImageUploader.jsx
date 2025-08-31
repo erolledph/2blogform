@@ -100,11 +100,22 @@ export default function ImageUploader({
 
     // Check storage limits
     const estimatedCompressedSize = file.size * 0.8; // Conservative estimate
-    const storageLimit = (currentUser?.totalStorageMB || 100) * 1024 * 1024; // Convert MB to bytes
+    
+    // Get actual storage limit from server instead of trusting client data
+    let actualStorageLimit;
+    try {
+      const { settingsService } = await import('@/services/settingsService');
+      const userSettings = await settingsService.getUserSettings(currentUser.uid);
+      actualStorageLimit = (userSettings.totalStorageMB || 100) * 1024 * 1024;
+    } catch (error) {
+      console.error('Could not fetch user settings, using default limit:', error);
+      actualStorageLimit = 100 * 1024 * 1024; // Default 100MB
+    }
+    
     const currentUsageBytes = storageUsage.used * 1024 * 1024; // Convert MB to bytes
     
-    if (currentUsageBytes + estimatedCompressedSize > storageLimit) {
-      const limitMB = currentUser?.totalStorageMB || 100;
+    if (currentUsageBytes + estimatedCompressedSize > actualStorageLimit) {
+      const limitMB = Math.round(actualStorageLimit / 1024 / 1024);
       const currentUsageMB = (currentUsageBytes / (1024 * 1024)).toFixed(1);
       toast.error(`Upload would exceed your storage limit of ${limitMB} MB. Current usage: ${currentUsageMB} MB. Contact an administrator to increase your storage.`);
       return;

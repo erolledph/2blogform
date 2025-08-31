@@ -191,7 +191,18 @@ export const storageService = {
         limitMB
       });
       
-      const stats = await this.getUserStorageStats(userId, limitMB);
+      // Get actual user settings from server instead of relying on client data
+      const { settingsService } = await import('./settingsService');
+      const userSettings = await settingsService.getUserSettings(userId);
+      const actualLimitMB = userSettings.totalStorageMB || 100;
+      
+      console.log('Using server-validated storage limit:', {
+        clientLimitMB: limitMB,
+        serverLimitMB: actualLimitMB,
+        usingLimit: actualLimitMB
+      });
+      
+      const stats = await this.getUserStorageStats(userId, actualLimitMB);
       const canUpload = stats.remainingBytes >= fileSizeBytes;
       
       console.log('Upload permission result:', {
@@ -204,7 +215,7 @@ export const storageService = {
       
       return {
         canUpload,
-        reason: canUpload ? null : 'Storage limit exceeded',
+        reason: canUpload ? null : `Storage limit exceeded. Current: ${Math.round(stats.usedBytes / 1024 / 1024)}MB, Limit: ${actualLimitMB}MB`,
         currentUsage: stats.usedBytes,
         limit: stats.limitBytes,
         fileSize: fileSizeBytes,
@@ -219,32 +230,14 @@ export const storageService = {
         error: error.message
       });
       
-      // Enhanced error handling - be more strict about quota enforcement
-      // Only allow upload if it's a non-critical error (like network timeout)
-      const isNetworkError = error.message.includes('network') || 
-                            error.message.includes('timeout') || 
-                            error.message.includes('fetch');
-      
-      if (isNetworkError) {
-        console.warn('Network error during quota check, allowing upload with warning');
-        return {
-          canUpload: true,
-          reason: null,
-          warning: 'Could not verify storage quota due to network error',
-          currentUsage: 0,
-          limit: limitMB * 1024 * 1024,
-          fileSize: fileSizeBytes
-        };
-      }
-      
-      // For other errors, be conservative and deny upload
-      console.error('Critical error during quota check, denying upload');
+      // SECURITY FIX: Always deny upload on quota validation errors
+      console.error('Storage quota validation failed, denying upload for security');
       return {
         canUpload: false,
-        reason: 'Unable to verify storage quota - upload denied for safety',
+        reason: 'Storage quota validation failed - upload denied for security',
         error: error.message,
         currentUsage: 0,
-        limit: limitMB * 1024 * 1024,
+        limit: 100 * 1024 * 1024, // Default limit
         fileSize: fileSizeBytes
       };
     }

@@ -24,6 +24,51 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const auth = admin.auth();
 
+// Helper function to get user settings and validate limits
+async function validateUserLimits(userId, operation) {
+  try {
+    // Get user settings from Firestore
+    const userSettingsRef = db.collection('users').doc(userId).collection('userSettings').doc('preferences');
+    const userSettingsDoc = await userSettingsRef.get();
+    
+    const userSettings = userSettingsDoc.exists ? userSettingsDoc.data() : {
+      maxBlogs: 1,
+      totalStorageMB: 100,
+      role: 'user'
+    };
+    
+    if (operation === 'create_blog') {
+      // Check current blog count
+      const blogsRef = db.collection('users').doc(userId).collection('blogs');
+      const blogsSnapshot = await blogsRef.get();
+      const currentBlogCount = blogsSnapshot.size;
+      const maxBlogs = userSettings.maxBlogs || 1;
+      
+      if (currentBlogCount >= maxBlogs) {
+        return {
+          allowed: false,
+          reason: `Blog limit exceeded. User has ${currentBlogCount} blogs, limit is ${maxBlogs}`,
+          currentCount: currentBlogCount,
+          limit: maxBlogs
+        };
+      }
+    }
+    
+    return {
+      allowed: true,
+      userSettings,
+      currentCount: operation === 'create_blog' ? (await db.collection('users').doc(userId).collection('blogs').get()).size : 0
+    };
+  } catch (error) {
+    console.error('Error validating user limits:', error);
+    return {
+      allowed: false,
+      reason: 'Unable to validate user limits',
+      error: error.message
+    };
+  }
+}
+
 // Helper function to delete all documents in a collection
 async function deleteCollection(collectionRef, batchSize = 100) {
   const query = collectionRef.limit(batchSize);
@@ -101,6 +146,98 @@ exports.handler = async (event, context) => {
 
     const { httpMethod } = event;
     const userId = decodedToken.uid;
+    
+    if (httpMethod === 'POST') {
+      // Create new blog - ADD SERVER-SIDE VALIDATION
+      const data = JSON.parse(event.body);
+      const { name, description } = data;
+      
+      // Enhanced input validation
+      if (!name || typeof name !== 'string' || !name.trim()) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Blog name is required and must be a non-empty string' })
+        };
+      }
+      
+      if (name.trim().length < 2 || name.length > 100) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Blog name must be between 2 and 100 characters' })
+        };
+      }
+      
+      if (description && (typeof description !== 'string' || description.length > 500)) {
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Description must be a string with maximum 500 characters' })
+        };
+      }
+      
+      // CRITICAL: Server-side blog limit validation
+      const limitValidation = await validateUserLimits(userId, 'create_blog');
+      
+      if (!limitValidation.allowed) {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ 
+            error: limitValidation.reason,
+            code: 'BLOG_LIMIT_EXCEEDED',
+            details: {
+              currentCount: limitValidation.currentCount,
+              limit: limitValidation.limit || 1
+            }
+          })
+        };
+      }
+      
+      try {
+        // Generate unique blog ID
+        const blogId = `blog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const blogRef = db.collection('users').doc(userId).collection('blogs').doc(blogId);
+        
+        const blogData = {
+          name: name.trim(),
+          description: (description || '').trim(),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          isDefault: false,
+          contentCount: 0,
+          productCount: 0,
+          status: 'active',
+          createdBy: userId
+        };
+        
+        await blogRef.set(blogData);
+        
+        return {
+          statusCode: 201,
+          headers,
+          body: JSON.stringify({ 
+            success: true,
+            message: 'Blog created successfully',
+            blog: {
+              id: blogId,
+              ...blogData
+            }
+          })
+        };
+      } catch (error) {
+        console.error('Error creating blog:', error);
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ 
+            error: 'Failed to create blog',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+          })
+        };
+      }
+    }
     
     if (httpMethod === 'DELETE') {
       // Delete blog and all its content
