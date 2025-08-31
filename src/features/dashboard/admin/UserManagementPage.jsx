@@ -22,7 +22,8 @@ import {
   Database,
   Trash2,
   UserPlus,
-  RefreshCw
+  RefreshCw,
+  Download
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -250,6 +251,57 @@ export default function UserManagementPage() {
     toast.success(`User account created successfully for ${newUser?.email || 'new user'}`);
   };
 
+  const exportUsersToCsv = () => {
+    if (users.length === 0) {
+      toast.error('No users to export');
+      return;
+    }
+
+    try {
+      // CSV headers
+      const headers = ['Name', 'Email', 'Role', 'Max Blogs', 'Storage (MB)', 'Created Date'];
+      
+      // Convert users data to CSV rows
+      const csvRows = users.map(user => {
+        const name = (user.displayName || 'No name').replace(/"/g, '""'); // Escape quotes
+        const email = (user.email || '').replace(/"/g, '""');
+        const role = (user.role || 'user').replace(/"/g, '""');
+        const maxBlogs = user.maxBlogs || 1;
+        const storage = user.totalStorageMB || 100;
+        const createdDate = user.creationTime 
+          ? format(new Date(user.creationTime), 'yyyy-MM-dd HH:mm:ss')
+          : 'N/A';
+        
+        return [
+          `"${name}"`,
+          `"${email}"`,
+          `"${role}"`,
+          maxBlogs,
+          storage,
+          `"${createdDate}"`
+        ].join(',');
+      });
+      
+      // Combine headers and rows
+      const csvContent = [headers.join(','), ...csvRows].join('\n');
+      
+      // Create and download CSV file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `users-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success(`Successfully exported ${users.length} user${users.length !== 1 ? 's' : ''} to CSV`);
+    } catch (error) {
+      console.error('Error exporting users to CSV:', error);
+      toast.error('Failed to export users to CSV');
+    }
+  };
   const toggleAdminRole = async (user) => {
     const newRole = user.role === 'admin' ? 'user' : 'admin';
     await handleUpdateUser(user.uid, { 
@@ -260,7 +312,7 @@ export default function UserManagementPage() {
   const columns = [
     {
       key: 'email',
-      title: 'User',
+      title: 'User Information',
       render: (value, row) => (
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
@@ -279,7 +331,7 @@ export default function UserManagementPage() {
     },
     {
       key: 'role',
-      title: 'Role',
+      title: 'User Role',
       render: (value, row) => (
         <div className="flex items-center space-x-2">
           {value === 'admin' ? (
@@ -302,7 +354,7 @@ export default function UserManagementPage() {
     },
     {
       key: 'maxBlogs',
-      title: 'Max Blogs',
+      title: 'Blog Limit',
       render: (value, row) => (
         <div className="text-center">
           <div className="text-sm font-medium text-foreground">{value || 1}</div>
@@ -312,7 +364,7 @@ export default function UserManagementPage() {
     },
     {
       key: 'totalStorageMB',
-      title: 'Storage Limit',
+      title: 'Storage Quota',
       render: (value, row) => (
         <div className="text-center">
           <div className="text-sm font-medium text-foreground">{value || 100} MB</div>
@@ -322,7 +374,7 @@ export default function UserManagementPage() {
     },
     {
       key: 'emailVerified',
-      title: 'Email Status',
+      title: 'Email Verification',
       render: (value) => (
         <div className="flex items-center space-x-2">
           {value ? (
@@ -341,7 +393,7 @@ export default function UserManagementPage() {
     },
     {
       key: 'creationTime',
-      title: 'Created',
+      title: 'Account Created',
       render: (value) => (
         <span className="text-sm text-foreground">
           {value ? format(new Date(value), 'MMM dd, yyyy') : 'N/A'}
@@ -350,7 +402,7 @@ export default function UserManagementPage() {
     },
     {
       key: 'actions',
-      title: 'Actions',
+      title: 'User Actions',
       sortable: false,
       render: (_, row) => (
         <div className="flex items-center space-x-2">
@@ -435,6 +487,14 @@ export default function UserManagementPage() {
           >
             Refresh
           </LoadingButton>
+          <LoadingButton
+            onClick={exportUsersToCsv}
+            variant="secondary"
+            icon={Download}
+            disabled={loading || users.length === 0}
+          >
+            Export to CSV
+          </LoadingButton>
           <button
             onClick={() => setCreateUserModal({ isOpen: true })}
             className="btn-primary inline-flex items-center"
@@ -470,7 +530,7 @@ export default function UserManagementPage() {
             <div className="card-content p-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-amber-600 mb-3">Administrators</p>
+                  <p className="text-sm font-medium text-amber-600 mb-3">Admin Users</p>
                   <p className="text-3xl font-bold text-amber-900 leading-none">
                     {users.filter(u => u.role === 'admin').length}
                   </p>
@@ -498,7 +558,7 @@ export default function UserManagementPage() {
             <div className="card-content p-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-orange-600 mb-3">Total Storage</p>
+                  <p className="text-sm font-medium text-orange-600 mb-3">Total Storage Allocated</p>
                   <p className="text-3xl font-bold text-orange-900 leading-none">
                     {(users.reduce((sum, u) => sum + (u.totalStorageMB || 100), 0) / 1024).toFixed(1)} GB
                   </p>
