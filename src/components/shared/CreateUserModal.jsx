@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import Modal from './Modal';
@@ -214,7 +215,7 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
           />
           
           {/* Password Field */}
-          <div className="relative flex items-center">
+          <div className="relative">
             <InputField
               label="Password"
               name="password"
@@ -226,11 +227,11 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
               onChange={handleInputChange}
               error={errors.password}
               icon={Lock}
-              className="w-full pr-10"
+              className="w-full"
             />
             <button
               type="button"
-              className="absolute right-3 flex items-center justify-center h-full text-muted-foreground hover:text-foreground"
+              className="absolute right-3 top-[42px] text-muted-foreground hover:text-foreground"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -238,7 +239,7 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
           </div>
           
           {/* Confirm Password Field */}
-          <div className="relative flex items-center">
+          <div className="relative">
             <InputField
               label="Confirm Password"
               name="confirmPassword"
@@ -250,11 +251,11 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
               onChange={handleInputChange}
               error={errors.confirmPassword}
               icon={Lock}
-              className="w-full pr-10"
+              className="w-full"
             />
             <button
               type="button"
-              className="absolute right-3 flex items-center justify-center h-full text-muted-foreground hover:text-foreground"
+              className="absolute right-3 top-[42px] text-muted-foreground hover:text-foreground"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
             >
               {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
