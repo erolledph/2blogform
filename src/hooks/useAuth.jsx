@@ -111,8 +111,10 @@ export function AuthProvider({ children }) {
           // Ensure user has a default blog when they first log in
           if (!userProfile) {
             try {
+              // Get auth token for blog creation
+              const token = await getIdToken(user, true);
               await import('@/services/blogService').then(({ blogService }) => 
-                blogService.ensureDefaultBlog(user.uid)
+                blogService.ensureDefaultBlog(user.uid, token)
               );
             } catch (blogError) {
               console.warn('Could not ensure default blog during auth:', blogError);

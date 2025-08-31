@@ -66,15 +66,24 @@ export default function DashboardPage() {
     const initializeBlog = async () => {
       if (currentUser?.uid && !blogInitialized) {
         try {
+          // Get auth token for blog operations
+          const { getIdToken } = await import('firebase/auth');
+          const { auth } = await import('@/firebase');
+          const token = await getIdToken(auth.currentUser, true);
+          
           // Ensure user has a default blog and get the appropriate blog ID
-          const defaultBlogId = await blogService.ensureDefaultBlog(currentUser.uid);
+          const defaultBlogId = await blogService.ensureDefaultBlog(currentUser.uid, token);
           setActiveBlogId(defaultBlogId);
           setBlogInitialized(true);
         } catch (error) {
           console.error('Error initializing blog:', error);
           // Create a new default blog if initialization fails
           try {
-            const newBlogId = await blogService.createNewBlog(currentUser.uid, 'My Blog', 'My personal blog');
+            const { getIdToken } = await import('firebase/auth');
+            const { auth } = await import('@/firebase');
+            const token = await getIdToken(auth.currentUser, true);
+            
+            const newBlog = await blogService.createNewBlog(currentUser.uid, 'My Blog', 'My personal blog', token);
             setActiveBlogId(newBlogId.id);
             setBlogInitialized(true);
             toast.success('Created your first blog successfully');

@@ -30,30 +30,28 @@ export const blogService = {
   },
 
   // Create a new blog for a user
-  async createNewBlog(userId, blogName, description = '') {
+  async createNewBlog(userId, blogName, description = '', authToken = null) {
     try {
-      // Generate a unique blog ID (you could also let Firestore auto-generate)
-      const blogId = `blog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const blogRef = doc(db, 'users', userId, 'blogs', blogId);
-      
-      const blogData = {
-        name: blogName.trim(),
-        description: description.trim(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isDefault: false,
-        // Additional metadata
-        contentCount: 0,
-        productCount: 0,
-        status: 'active'
-      };
-      
-      await setDoc(blogRef, blogData);
-      
-      return {
-        id: blogId,
-        ...blogData
-      };
+      // Use server-side function to enforce maxBlogs limit
+      const response = await fetch('/api/admin/blog-create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          name: blogName.trim(),
+          description: (description || '').trim()
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result.blog;
     } catch (error) {
       console.error('Error creating new blog:', error);
       throw error;
@@ -98,16 +96,19 @@ export const blogService = {
   },
 
   // Ensure user has a default blog (create one if they don't have any)
-  async ensureDefaultBlog(userId) {
+  async ensureDefaultBlog(userId, authToken = null) {
     try {
       const blogs = await this.fetchUserBlogs(userId);
       
       if (blogs.length === 0) {
         // Create a default blog for the user
-        const defaultBlog = await this.createNewBlog(userId, 'My Blog', 'My personal blog');
+        const defaultBlog = await this.createNewBlog(userId, 'My Blog', 'My personal blog', authToken);
         
         // Mark it as default
-        await this.updateBlog(userId, defaultBlog.id, { isDefault: true });
+        if (!authToken) {
+          // Only update if we're not using server-side creation (which already sets isDefault)
+          await this.updateBlog(userId, defaultBlog.id, { isDefault: true });
+        }
         
         return defaultBlog.id;
       }
