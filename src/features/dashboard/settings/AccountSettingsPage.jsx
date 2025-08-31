@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { settingsService } from '@/services/settingsService';
+import { updateProfile } from 'firebase/auth';
+import { auth } from '@/firebase';
 import InputField from '@/components/shared/InputField';
 import LoadingButton from '@/components/shared/LoadingButton';
 import { AccountSettingsSkeleton } from '@/components/shared/SkeletonLoader';
@@ -138,12 +140,27 @@ export default function AccountSettingsPage() {
     setProfileLoading(true);
 
     try {
+      // Update user settings in Firestore
       await settingsService.setUserSettings(currentUser.uid, {
         displayName: profileData.displayName.trim(),
         bio: profileData.bio.trim(),
         website: profileData.website.trim(),
         location: profileData.location.trim()
       });
+      
+      // Also update the display name in Firebase Authentication for consistency
+      if (profileData.displayName.trim() !== currentUser.displayName) {
+        try {
+          await updateProfile(auth.currentUser, {
+            displayName: profileData.displayName.trim()
+          });
+          console.log('Firebase Auth display name updated successfully');
+        } catch (authUpdateError) {
+          console.warn('Failed to update Firebase Auth display name:', authUpdateError);
+          // Don't fail the entire operation if Auth update fails
+          // The Firestore data is the source of truth for the admin table
+        }
+      }
       
       // Invalidate user settings cache
       invalidateUserSettingsCache(currentUser.uid);

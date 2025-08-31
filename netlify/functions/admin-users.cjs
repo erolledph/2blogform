@@ -359,7 +359,7 @@ exports.handler = async (event, context) => {
               users.push({
                 uid: userRecord.uid,
                 email: userRecord.email,
-                displayName: userRecord.displayName,
+                displayName: settings.displayName || userRecord.displayName || 'No name',
                 disabled: userRecord.disabled,
                 emailVerified: userRecord.emailVerified,
                 creationTime: userRecord.metadata.creationTime,
@@ -376,7 +376,7 @@ exports.handler = async (event, context) => {
               users.push({
                 uid: userRecord.uid,
                 email: userRecord.email,
-                displayName: userRecord.displayName,
+                displayName: userRecord.displayName || 'No name',
                 disabled: userRecord.disabled,
                 emailVerified: userRecord.emailVerified,
                 creationTime: userRecord.metadata.creationTime,
