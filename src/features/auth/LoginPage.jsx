@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { validateField, validatePasswordConfirmation } from '@/utils/validation';
 import InputField from '@/components/shared/InputField';
 import toast from 'react-hot-toast';
 import { Lock, Mail } from 'lucide-react';
@@ -18,23 +19,13 @@ export default function LoginPage() {
   const validateForm = () => {
     const newErrors = {};
     
-    // Email validation
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    } else if (formData.email.length > 254) {
-      newErrors.email = 'Email is too long';
-    } else if (formData.email.length < 5) {
-      newErrors.email = 'Email is too short';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
+    // Email validation using centralized rules
+    const emailError = validateField('email', formData.email);
+    if (emailError) newErrors.email = emailError;
     
-    // Password validation
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    }
+    // Password validation using centralized rules
+    const passwordError = validateField('password', formData.password, ['required']);
+    if (passwordError) newErrors.password = passwordError;
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;

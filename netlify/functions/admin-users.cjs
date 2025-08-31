@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const { validateObject, validateStorageQuota } = require('./shared/validation.cjs');
 
 console.log('Admin Users Function: Starting initialization...');
 console.log('Environment check:', {
@@ -191,44 +192,19 @@ exports.handler = async (event, context) => {
         });
         const { email, password, displayName } = data;
         
-        // Enhanced input validation
-        if (!email || typeof email !== 'string' || !email.trim()) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Email is required and must be a non-empty string' })
-          };
-        }
+        // Use centralized validation
+        const validationErrors = validateObject(data, {
+          email: 'email',
+          password: 'password',
+          displayName: 'displayName'
+        });
         
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        if (Object.keys(validationErrors).length > 0) {
+          const firstError = Object.values(validationErrors)[0];
           return {
             statusCode: 400,
             headers,
-            body: JSON.stringify({ error: 'Invalid email format' })
-          };
-        }
-        
-        if (!password || typeof password !== 'string' || password.length < 6) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Password must be at least 6 characters' })
-          };
-        }
-        
-        if (!displayName || typeof displayName !== 'string' || !displayName.trim()) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Display name is required and must be a non-empty string' })
-          };
-        }
-        
-        if (displayName.trim().length < 2 || displayName.length > 100) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Display name must be between 2 and 100 characters' })
+            body: JSON.stringify({ error: firstError })
           };
         }
 
@@ -436,23 +412,15 @@ exports.handler = async (event, context) => {
         });
         const { userId, role, canManageMultipleBlogs, maxBlogs, totalStorageMB } = data;
         
-        // Enhanced input validation
-        if (!userId) {
+        // Basic validation
+        if (!userId || typeof userId !== 'string' || !userId.trim()) {
           return {
             statusCode: 400,
             headers,
-            body: JSON.stringify({ error: 'User ID is required' })
+            body: JSON.stringify({ error: 'User ID is required and must be a non-empty string' })
           };
         }
-
-        // Validate userId format
-        if (typeof userId !== 'string' || !userId.trim()) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'User ID must be a non-empty string' })
-          };
-        }
+        
         // Validate role
         if (role && !['admin', 'user'].includes(role)) {
           return {
@@ -462,7 +430,7 @@ exports.handler = async (event, context) => {
           };
         }
 
-        // Validate canManageMultipleBlogs
+        // Validate boolean
         if (canManageMultipleBlogs !== undefined && typeof canManageMultipleBlogs !== 'boolean') {
           return {
             statusCode: 400,
@@ -471,21 +439,14 @@ exports.handler = async (event, context) => {
           };
         }
 
-        // Validate maxBlogs
-        if (maxBlogs !== undefined && (!Number.isInteger(maxBlogs) || maxBlogs < 1 || maxBlogs > 50)) {
+        // Use centralized storage quota validation
+        const quotaErrors = validateStorageQuota(maxBlogs, totalStorageMB);
+        if (Object.keys(quotaErrors).length > 0) {
+          const firstError = Object.values(quotaErrors)[0];
           return {
             statusCode: 400,
             headers,
-            body: JSON.stringify({ error: 'maxBlogs must be a positive integer between 1 and 50' })
-          };
-        }
-
-        // Validate totalStorageMB
-        if (totalStorageMB !== undefined && (!Number.isInteger(totalStorageMB) || totalStorageMB < 100 || totalStorageMB > 100000)) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'totalStorageMB must be a positive integer between 100 and 100,000' })
+            body: JSON.stringify({ error: firstError })
           };
         }
         try {

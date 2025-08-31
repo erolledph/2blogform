@@ -3,14 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useContentById, useContent } from '@/hooks/useContent';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { validateField, validateArray } from '@/utils/validation';
 import SimpleMDE from 'react-simplemde-editor';
 import InputField from '@/components/shared/InputField';
 import AutoSaveIndicator from '@/components/shared/AutoSaveIndicator';
 import ImageGalleryModal from '@/components/shared/ImageGalleryModal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import Modal from '@/components/shared/Modal';
-import UploadDiagnostics from '@/components/shared/UploadDiagnostics';
-import ImageDisplayDiagnostics from '@/components/shared/ImageDisplayDiagnostics';
 import SkeletonLoader from '@/components/shared/SkeletonLoader';
 import { Save, ArrowLeft, Image as ImageIcon, Trash2, Upload, Info } from 'lucide-react';
 import { generateSlug, parseArrayInput } from '@/utils/helpers';
@@ -162,70 +161,33 @@ export default function CreateContentPage({ activeBlogId }) {
   const validateForm = () => {
     const newErrors = {};
     
-    // Title validation
-    if (!formData.title.trim()) {
-      newErrors.title = 'Title is required';
-    } else if (formData.title.trim().length < 3) {
-      newErrors.title = 'Title must be at least 3 characters';
-    } else if (formData.title.length > 200) {
-      newErrors.title = 'Title must be less than 200 characters';
-    } else if (!/^[a-zA-Z0-9\s\-_.,!?()&:;'"]+$/.test(formData.title.trim())) {
-      newErrors.title = 'Title contains invalid characters';
-    }
+    // Title validation using centralized rules
+    const titleError = validateField('title', formData.title);
+    if (titleError) newErrors.title = titleError;
     
-    // Slug validation
-    if (!formData.slug.trim()) {
-      newErrors.slug = 'Slug is required';
-    } else if (formData.slug.trim().length < 3) {
-      newErrors.slug = 'Slug must be at least 3 characters';
-    } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
-      newErrors.slug = 'Slug can only contain lowercase letters, numbers, and hyphens';
-    } else if (formData.slug.length > 100) {
-      newErrors.slug = 'Slug must be less than 100 characters';
-    } else if (formData.slug.startsWith('-') || formData.slug.endsWith('-')) {
-      newErrors.slug = 'Slug cannot start or end with a hyphen';
-    } else if (formData.slug.includes('--')) {
-      newErrors.slug = 'Slug cannot contain consecutive hyphens';
-    }
+    // Slug validation using centralized rules
+    const slugError = validateField('slug', formData.slug);
+    if (slugError) newErrors.slug = slugError;
     
-    // Content validation
-    if (!formData.content.trim()) {
-      newErrors.content = 'Content is required';
-    } else if (formData.content.trim().length < 10) {
-      newErrors.content = 'Content must be at least 10 characters';
-    } else if (formData.content.length > 50000) {
-      newErrors.content = 'Content must be less than 50,000 characters';
-    }
+    // Content validation using centralized rules
+    const contentError = validateField('content', formData.content);
+    if (contentError) newErrors.content = contentError;
 
-    // Meta description validation
-    if (formData.metaDescription && formData.metaDescription.length > 160) {
-      newErrors.metaDescription = 'Meta description should be less than 160 characters';
-    } else if (formData.metaDescription && formData.metaDescription.length > 0 && formData.metaDescription.length < 50) {
-      newErrors.metaDescription = 'Meta description should be at least 50 characters for better SEO';
-    }
+    // Meta description validation using centralized rules
+    const metaDescError = validateField('metaDescription', formData.metaDescription);
+    if (metaDescError) newErrors.metaDescription = metaDescError;
 
-    // SEO title validation
-    if (formData.seoTitle && formData.seoTitle.length > 60) {
-      newErrors.seoTitle = 'SEO title should be less than 60 characters';
-    } else if (formData.seoTitle && formData.seoTitle.length > 0 && formData.seoTitle.length < 10) {
-      newErrors.seoTitle = 'SEO title should be at least 10 characters';
-    }
+    // SEO title validation using centralized rules
+    const seoTitleError = validateField('seoTitle', formData.seoTitle);
+    if (seoTitleError) newErrors.seoTitle = seoTitleError;
 
-    // Author validation
-    if (formData.author && formData.author.length > 100) {
-      newErrors.author = 'Author name must be less than 100 characters';
-    } else if (formData.author && formData.author.length > 0 && !/^[a-zA-Z\s\-'\.]+$/.test(formData.author)) {
-      newErrors.author = 'Author name can only contain letters, spaces, hyphens, apostrophes, and periods';
-    }
+    // Author validation using centralized rules
+    const authorError = validateField('author', formData.author);
+    if (authorError) newErrors.author = authorError;
 
-    // Featured image URL validation
-    if (formData.featuredImageUrl && formData.featuredImageUrl.length > 0) {
-      try {
-        new URL(formData.featuredImageUrl);
-      } catch {
-        newErrors.featuredImageUrl = 'Please enter a valid image URL';
-      }
-    }
+    // Featured image URL validation using centralized rules
+    const imageUrlError = validateField('url', formData.featuredImageUrl);
+    if (imageUrlError) newErrors.featuredImageUrl = imageUrlError;
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '@/firebase';
+import { validateField } from '@/utils/validation';
 import InputField from '@/components/shared/InputField';
 import toast from 'react-hot-toast';
 import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
@@ -15,20 +16,9 @@ export default function ForgotPasswordPage() {
   const validateForm = () => {
     const newErrors = {};
     
-    // Email validation
-    if (!email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Email is invalid';
-    } else if (email.length > 254) {
-      newErrors.email = 'Email is too long';
-    } else if (email.length < 5) {
-      newErrors.email = 'Email is too short';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Please enter a valid email address';
-    } else if (email.includes(' ')) {
-      newErrors.email = 'Email cannot contain spaces';
-    }
+    // Email validation using centralized rules
+    const emailError = validateField('email', email);
+    if (emailError) newErrors.email = emailError;
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;

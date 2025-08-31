@@ -2,6 +2,7 @@ import React, { useState, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { blogService } from '@/services/blogService';
+import { webSocketService } from '@/services/webSocketService';
 import toast from 'react-hot-toast';
 import Sidebar from './Sidebar';
 import Header from './Header';
@@ -70,6 +71,13 @@ export default function DashboardPage() {
           const defaultBlogId = await blogService.ensureDefaultBlog(currentUser.uid);
           setActiveBlogId(defaultBlogId);
           setBlogInitialized(true);
+          
+          // Connect WebSocket with blog context
+          try {
+            await webSocketService.connect(currentUser.uid, defaultBlogId);
+          } catch (wsError) {
+            console.warn('WebSocket connection failed:', wsError);
+          }
         } catch (error) {
           console.error('Error initializing blog:', error);
           // Create a new default blog if initialization fails
@@ -94,6 +102,7 @@ export default function DashboardPage() {
     if (!currentUser?.uid) {
       setBlogInitialized(false);
       setActiveBlogId(null);
+      webSocketService.disconnect();
     }
   }, [currentUser?.uid]);
 

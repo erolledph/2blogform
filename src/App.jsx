@@ -28,7 +28,7 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
           <Router>
-            <div className="min-h-screen bg-neutral-50">
+            <div className="min-h-screen bg-background">
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />

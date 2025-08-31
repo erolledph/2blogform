@@ -8,7 +8,7 @@ import InputField from './InputField';
 import Modal from './Modal';
 import LoadingSpinner from './LoadingSpinner';
 import { Upload, Image as ImageIcon, FileImage, CheckCircle, AlertTriangle, Settings } from 'lucide-react';
-import { firebaseErrorHandler } from '@/utils/firebaseErrorHandler';
+import { debugUtils } from '@/utils/debugUtils';
 import { formatBytes } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 
@@ -261,18 +261,22 @@ export default function ImageUploader({
 
       // Check if compressed file is larger than original
       if (compressedBlob.size > selectedFile.size) {
-        // Additional storage check for larger compressed files
-        const storageLimit = (currentUser?.totalStorageMB || 100) * 1024 * 1024;
-        const currentUsageBytes = storageUsage.used * 1024 * 1024;
+        // Improved handling for larger compressed files
+        console.warn('Compressed file is larger than original:', {
+          originalSize: selectedFile.size,
+          compressedSize: compressedBlob.size,
+          increase: compressedBlob.size - selectedFile.size
+        });
         
-        if (currentUsageBytes + compressedBlob.size > storageLimit) {
-          toast.error(`Upload would exceed your storage limit of ${currentUser?.totalStorageMB || 100} MB. Try reducing quality or dimensions.`);
-          setCompressing(false);
-          return;
+        // Auto-revert to original if compression increases size significantly
+        if (compressedBlob.size > selectedFile.size * 1.2) {
+          console.log('Using original file due to poor compression ratio');
+          await executeUpload(selectedFile);
+        } else {
+          // Show confirmation for minor increases
+          setFinalCompressedBlob(compressedBlob);
+          setConfirmUploadModal(true);
         }
-        
-        setFinalCompressedBlob(compressedBlob);
-        setConfirmUploadModal(true);
       } else {
         await executeUpload(compressedBlob);
       }
@@ -411,18 +415,39 @@ export default function ImageUploader({
     } catch (error) {
       console.error('Error uploading image:', error);
       
-      // Enhanced error handling with specific guidance
-      const errorInfo = firebaseErrorHandler.handleStorageError(error);
+      // Simplified error handling for production
+      debugUtils.logError('ImageUpload', error, {
+        fileName: `${newFileName.trim()}.${outputFormat}`,
+        fullPath: fullPath,
+        userId: currentUser.uid
+      });
+      
+      let userMessage = 'Upload failed. Please try again.';
+      const errorType = debugUtils.categorizeError(error);
+      
+      switch (errorType) {
+        case 'permission':
+          userMessage = 'Permission denied. Please check your authentication and try logging out and back in.';
+          break;
+        case 'quota':
+          userMessage = 'Storage quota exceeded. Please contact an administrator to increase your storage limit.';
+          break;
+        case 'network':
+          userMessage = 'Network error during upload. Please check your connection and try again.';
+          break;
+        default:
+          userMessage = error.message || 'Upload failed. Please try again.';
+      }
       
       if (onUploadError) {
         onUploadError({
           ...error,
-          userMessage: errorInfo.userMessage,
-          technical: errorInfo.technical,
-          action: errorInfo.action
+          userMessage,
+          technical: error.message,
+          action: 'RETRY'
         });
       } else {
-        toast.error(errorInfo.userMessage);
+        toast.error(userMessage);
       }
     } finally {
       setUploading(false);

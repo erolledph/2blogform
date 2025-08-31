@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const { validateObject, validateArray } = require('./shared/validation.cjs');
 
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
@@ -72,7 +73,7 @@ exports.handler = async (event, context) => {
         // Create new content
         const data = JSON.parse(event.body);
         
-        // Enhanced input validation
+        // Centralized validation
         if (!data.blogId) {
           return {
             statusCode: 400,
@@ -81,62 +82,36 @@ exports.handler = async (event, context) => {
           };
         }
         
-        // Validate required fields
-        if (!data.title || typeof data.title !== 'string' || !data.title.trim()) {
+        // Use centralized validation
+        const validationErrors = validateObject(data, {
+          title: 'title',
+          slug: 'slug',
+          content: 'content',
+          metaDescription: 'metaDescription',
+          seoTitle: 'seoTitle',
+          author: 'author'
+        });
+        
+        if (Object.keys(validationErrors).length > 0) {
+          const firstError = Object.values(validationErrors)[0];
           return {
             statusCode: 400,
             headers,
-            body: JSON.stringify({ error: 'Title is required and must be a non-empty string' })
+            body: JSON.stringify({ error: firstError })
           };
         }
         
-        if (!data.slug || typeof data.slug !== 'string' || !data.slug.trim()) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Slug is required and must be a non-empty string' })
-          };
-        }
+        // Validate arrays
+        const arrayErrors = [];
+        if (data.keywords && !Array.isArray(data.keywords)) arrayErrors.push('Keywords must be an array');
+        if (data.categories && !Array.isArray(data.categories)) arrayErrors.push('Categories must be an array');
+        if (data.tags && !Array.isArray(data.tags)) arrayErrors.push('Tags must be an array');
         
-        if (!data.content || typeof data.content !== 'string' || !data.content.trim()) {
+        if (arrayErrors.length > 0) {
           return {
             statusCode: 400,
             headers,
-            body: JSON.stringify({ error: 'Content is required and must be a non-empty string' })
-          };
-        }
-        
-        // Validate field lengths
-        if (data.title.length > 200) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Title must be less than 200 characters' })
-          };
-        }
-        
-        if (data.slug.length > 100) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Slug must be less than 100 characters' })
-          };
-        }
-        
-        if (data.content.length > 50000) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Content must be less than 50,000 characters' })
-          };
-        }
-        
-        // Validate slug format
-        if (!/^[a-z0-9-]+$/.test(data.slug)) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Slug can only contain lowercase letters, numbers, and hyphens' })
+            body: JSON.stringify({ error: arrayErrors[0] })
           };
         }
         
@@ -146,65 +121,6 @@ exports.handler = async (event, context) => {
             statusCode: 400,
             headers,
             body: JSON.stringify({ error: 'Status must be either "draft" or "published"' })
-          };
-        }
-        
-        // Validate arrays
-        if (data.keywords && !Array.isArray(data.keywords)) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Keywords must be an array' })
-          };
-        }
-        
-        if (data.categories && !Array.isArray(data.categories)) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Categories must be an array' })
-          };
-        }
-        
-        if (data.tags && !Array.isArray(data.tags)) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Tags must be an array' })
-          };
-        }
-        
-        // Validate optional string fields
-        if (data.metaDescription && (typeof data.metaDescription !== 'string' || data.metaDescription.length > 160)) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Meta description must be a string with maximum 160 characters' })
-          };
-        }
-        
-        if (data.seoTitle && (typeof data.seoTitle !== 'string' || data.seoTitle.length > 60)) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'SEO title must be a string with maximum 60 characters' })
-          };
-        }
-        
-        if (data.author && (typeof data.author !== 'string' || data.author.length > 100)) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Author must be a string with maximum 100 characters' })
-          };
-        }
-        
-        // Validate featured image URL
-        if (data.featuredImageUrl && typeof data.featuredImageUrl !== 'string') {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({ error: 'Featured image URL must be a string' })
           };
         }
         

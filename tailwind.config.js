@@ -9,13 +9,12 @@ export default {
       colors: {
         border: "hsl(214.3 31.8% 91.4%)",
         input: "hsl(214.3 31.8% 91.4%)",
-        ring: "hsl(142 76% 36%)",
+        ring: "hsl(210 11% 15%)",
         background: "hsl(0 0% 100%)",
         foreground: "hsl(222.2 84% 4.9%)",
         
-        /* New design colors from HTML */
         primary: {
-          DEFAULT: "hsl(210 11% 15%)", /* Medium-inspired dark gray */
+          DEFAULT: "hsl(142 76% 36%)",
           foreground: "hsl(0 0% 98%)",
           50: '#f8fafc',
           100: '#f1f5f9',
@@ -29,12 +28,12 @@ export default {
           900: '#0f172a',
         },
         secondary: {
-          DEFAULT: "hsl(210 40% 98%)",
-          foreground: "hsl(210 11% 15%)",
+          DEFAULT: "hsl(150 10% 95%)",
+          foreground: "hsl(142 76% 36%)",
         },
         accent: {
-          DEFAULT: "hsl(210 40% 96%)",
-          foreground: "hsl(210 11% 15%)",
+          DEFAULT: "hsl(150 10% 90%)",
+          foreground: "hsl(142 76% 36%)",
         },
         destructive: {
           DEFAULT: "hsl(0 84.2% 60.2%)",

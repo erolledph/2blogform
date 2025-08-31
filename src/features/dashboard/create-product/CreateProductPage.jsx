@@ -4,14 +4,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAutoSave } from '@/hooks/useAutoSave';
 import { settingsService } from '@/services/settingsService';
 import { productsService } from '@/services/productsService';
+import { validateField, validateImageUrls } from '@/utils/validation';
 import SimpleMDE from 'react-simplemde-editor';
 import InputField from '@/components/shared/InputField';
 import AutoSaveIndicator from '@/components/shared/AutoSaveIndicator';
 import ImageGalleryModal from '@/components/shared/ImageGalleryModal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import Modal from '@/components/shared/Modal';
-import UploadDiagnostics from '@/components/shared/UploadDiagnostics';
-import ImageDisplayDiagnostics from '@/components/shared/ImageDisplayDiagnostics';
 import SkeletonLoader from '@/components/shared/SkeletonLoader';
 import { Save, ArrowLeft, DollarSign, Percent, Image as ImageIcon, Trash2, Plus, Upload, Info } from 'lucide-react';
 import { generateSlug, parseArrayInput } from '@/utils/helpers';
@@ -201,93 +200,40 @@ export default function CreateProductPage({ activeBlogId }) {
   const validateForm = () => {
     const newErrors = {};
     
-    // Product name validation
-    if (!formData.name.trim()) {
-      newErrors.name = 'Product name is required';
-    } else if (formData.name.trim().length < 3) {
-      newErrors.name = 'Product name must be at least 3 characters';
-    } else if (formData.name.length > 200) {
-      newErrors.name = 'Product name must be less than 200 characters';
-    } else if (!/^[a-zA-Z0-9\s\-_.,!?()&:;'"]+$/.test(formData.name.trim())) {
-      newErrors.name = 'Product name contains invalid characters';
-    }
+    // Product name validation using centralized rules
+    const nameError = validateField('productName', formData.name);
+    if (nameError) newErrors.name = nameError;
     
-    // Slug validation
-    if (!formData.slug.trim()) {
-      newErrors.slug = 'Slug is required';
-    } else if (formData.slug.trim().length < 3) {
-      newErrors.slug = 'Slug must be at least 3 characters';
-    } else if (!/^[a-z0-9-]+$/.test(formData.slug)) {
-      newErrors.slug = 'Slug can only contain lowercase letters, numbers, and hyphens';
-    } else if (formData.slug.length > 100) {
-      newErrors.slug = 'Slug must be less than 100 characters';
-    } else if (formData.slug.startsWith('-') || formData.slug.endsWith('-')) {
-      newErrors.slug = 'Slug cannot start or end with a hyphen';
-    } else if (formData.slug.includes('--')) {
-      newErrors.slug = 'Slug cannot contain consecutive hyphens';
-    }
+    // Slug validation using centralized rules
+    const slugError = validateField('slug', formData.slug);
+    if (slugError) newErrors.slug = slugError;
     
-    // Description validation
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    } else if (formData.description.trim().length < 10) {
-      newErrors.description = 'Description must be at least 10 characters';
-    } else if (formData.description.length > 10000) {
-      newErrors.description = 'Description must be less than 10,000 characters';
-    }
+    // Description validation using centralized rules
+    const descriptionError = validateField('description', formData.description);
+    if (descriptionError) newErrors.description = descriptionError;
 
-    // Price validation
-    if (!formData.price || isNaN(parseFloat(formData.price)) || parseFloat(formData.price) < 0) {
-      newErrors.price = 'Valid price is required';
-    } else if (parseFloat(formData.price) > 999999.99) {
-      newErrors.price = 'Price cannot exceed $999,999.99';
-    } else if (parseFloat(formData.price) === 0) {
-      newErrors.price = 'Price must be greater than 0';
-    } else if (!/^\d+(\.\d{1,2})?$/.test(formData.price)) {
-      newErrors.price = 'Price can have at most 2 decimal places';
-    }
+    // Price validation using centralized rules
+    const priceError = validateField('price', formData.price);
+    if (priceError) newErrors.price = priceError;
 
-    // Percent off validation
-    if (formData.percentOff && (isNaN(parseFloat(formData.percentOff)) || parseFloat(formData.percentOff) < 0 || parseFloat(formData.percentOff) > 100)) {
-      newErrors.percentOff = 'Percent off must be between 0 and 100';
-    } else if (formData.percentOff && !/^\d+(\.\d{1,2})?$/.test(formData.percentOff)) {
-      newErrors.percentOff = 'Percent off can have at most 2 decimal places';
-    }
+    // Percent off validation using centralized rules
+    const percentOffError = validateField('percentOff', formData.percentOff);
+    if (percentOffError) newErrors.percentOff = percentOffError;
 
-    // Category validation
-    if (formData.category && formData.category.length > 100) {
-      newErrors.category = 'Category must be less than 100 characters';
-    } else if (formData.category && formData.category.length > 0 && !/^[a-zA-Z0-9\s\-_&]+$/.test(formData.category)) {
-      newErrors.category = 'Category can only contain letters, numbers, spaces, hyphens, underscores, and ampersands';
-    }
+    // Category validation using centralized rules
+    const categoryError = validateField('category', formData.category);
+    if (categoryError) newErrors.category = categoryError;
 
-    // Product URL validation
-    if (formData.productUrl && formData.productUrl.length > 500) {
-      newErrors.productUrl = 'Product URL must be less than 500 characters';
-    } else if (formData.productUrl && formData.productUrl.length > 0) {
-      try {
-        new URL(formData.productUrl);
-      } catch {
-        newErrors.productUrl = 'Please enter a valid URL';
-      }
-    }
+    // Product URL validation using centralized rules
+    const productUrlError = validateField('url', formData.productUrl, ['format']);
+    if (productUrlError) newErrors.productUrl = productUrlError;
+    
+    const productUrlLengthError = validateField('url', formData.productUrl, ['length']);
+    if (productUrlLengthError) newErrors.productUrl = productUrlLengthError;
 
-    // Image URLs validation
-    if (formData.imageUrls && formData.imageUrls.length > 5) {
-      newErrors.imageUrls = 'Maximum 5 images allowed per product';
-    } else if (formData.imageUrls && formData.imageUrls.length > 0) {
-      const invalidUrls = formData.imageUrls.filter(url => {
-        try {
-          new URL(url);
-          return false;
-        } catch {
-          return true;
-        }
-      });
-      if (invalidUrls.length > 0) {
-        newErrors.imageUrls = `${invalidUrls.length} image URL${invalidUrls.length > 1 ? 's are' : ' is'} invalid`;
-      }
-    }
+    // Image URLs validation using centralized rules
+    const imageUrlsError = validateImageUrls(formData.imageUrls);
+    if (imageUrlsError) newErrors.imageUrls = imageUrlsError;
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;

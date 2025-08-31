@@ -1,5 +1,6 @@
 // Utility functions
 
+// Centralized slug generation
 export const generateSlug = (title) => {
   return title
     .toLowerCase()
@@ -9,10 +10,12 @@ export const generateSlug = (title) => {
     .trim('-');
 };
 
+// Centralized array parsing
 export const parseArrayInput = (value) => {
   return value.split(',').map(item => item.trim()).filter(item => item);
 };
 
+// Centralized date formatting
 export const formatDate = (date) => {
   if (!date) return 'N/A';
   

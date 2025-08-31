@@ -8,6 +8,7 @@ import {
 import { auth } from '@/firebase';
 import { settingsService } from '@/services/settingsService';
 import { useCache } from './useCache';
+import { webSocketService } from '@/services/webSocketService';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -141,6 +142,11 @@ export function AuthProvider({ children }) {
           // Store raw Firebase user and separate profile data
           setCurrentUser(user);
           setUserProfile(serverValidatedProfile); // Use server-validated data
+          
+          // Dispatch auth state change for WebSocket auto-connect
+          window.dispatchEvent(new CustomEvent('auth-state-changed', {
+            detail: { user, blogId: null } // blogId will be set later
+          }));
         } catch (error) {
           console.error('Error fetching user settings:', error);
           console.error('Auth error details:', {
@@ -162,6 +168,10 @@ export function AuthProvider({ children }) {
         setCurrentUser(null);
         setUserProfile(null);
         setLastNotificationCheck(null);
+        
+        // Disconnect WebSocket on logout
+        webSocketService.disconnect();
+        
         // Clear cache when user logs out
         cache.clear();
       }

@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const { validateObject } = require('./shared/validation.cjs');
 
 // Initialize Firebase Admin SDK
 if (!admin.apps.length) {
@@ -152,23 +153,21 @@ exports.handler = async (event, context) => {
       const data = JSON.parse(event.body);
       const { name, description } = data;
       
-      // Enhanced input validation
-      if (!name || typeof name !== 'string' || !name.trim()) {
+      // Use centralized validation
+      const validationErrors = validateObject(data, {
+        name: 'blogName'
+      });
+      
+      if (Object.keys(validationErrors).length > 0) {
+        const firstError = Object.values(validationErrors)[0];
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'Blog name is required and must be a non-empty string' })
+          body: JSON.stringify({ error: firstError })
         };
       }
       
-      if (name.trim().length < 2 || name.length > 100) {
-        return {
-          statusCode: 400,
-          headers,
-          body: JSON.stringify({ error: 'Blog name must be between 2 and 100 characters' })
-        };
-      }
-      
+      // Additional description validation
       if (description && (typeof description !== 'string' || description.length > 500)) {
         return {
           statusCode: 400,

@@ -9,7 +9,7 @@ import { TableSkeleton, StatCardSkeleton } from '@/components/shared/SkeletonLoa
 import Modal from '@/components/shared/Modal';
 import ImageUploader from '@/components/shared/ImageUploader';
 import InputField from '@/components/shared/InputField';
-import { firebaseErrorHandler } from '@/utils/firebaseErrorHandler';
+import { debugUtils } from '@/utils/debugUtils';
 import { 
   Folder, 
   FileImage, 
@@ -271,9 +271,9 @@ export default function FileStoragePage() {
     } catch (error) {
       console.error('Error creating folder:', error);
       
-      // Use enhanced error handling
-      const errorInfo = firebaseErrorHandler.handleStorageError(error);
-      toast.error(errorInfo.userMessage || 'Failed to create folder');
+      // Simplified error handling
+      debugUtils.logError('CreateFolder', error, { folderPath: `${currentPath}/${trimmedName}` });
+      toast.error(error.message || 'Failed to create folder');
     } finally {
       setOperationLoading(false);
     }
@@ -340,9 +340,9 @@ export default function FileStoragePage() {
     } catch (error) {
       console.error('Error renaming item:', error);
       
-      // Use enhanced error handling
-      const errorInfo = firebaseErrorHandler.handleStorageError(error);
-      toast.error(errorInfo.userMessage || 'Failed to rename item');
+      // Simplified error handling
+      debugUtils.logError('RenameItem', error, { itemPath: item.fullPath, newName: trimmedName });
+      toast.error(error.message || 'Failed to rename item');
     } finally {
       setOperationLoading(false);
     }
@@ -415,9 +415,9 @@ export default function FileStoragePage() {
     } catch (error) {
       console.error('Error moving item:', error);
       
-      // Use enhanced error handling
-      const errorInfo = firebaseErrorHandler.handleStorageError(error);
-      toast.error(errorInfo.userMessage || 'Failed to move item');
+      // Simplified error handling
+      debugUtils.logError('MoveItem', error, { itemPath: item.fullPath, destination: selectedDestination });
+      toast.error(error.message || 'Failed to move item');
     } finally {
       setOperationLoading(false);
     }
@@ -478,9 +478,9 @@ export default function FileStoragePage() {
     } catch (error) {
       console.error('Error deleting item:', error);
       
-      // Use enhanced error handling
-      const errorInfo = firebaseErrorHandler.handleStorageError(error);
-      toast.error(errorInfo.userMessage || 'Failed to delete item');
+      // Simplified error handling
+      debugUtils.logError('DeleteItem', error, { itemPath: item.fullPath, itemType: item.type });
+      toast.error(error.message || 'Failed to delete item');
     } finally {
       setDeletingItemId(null);
     }
