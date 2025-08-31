@@ -21,7 +21,8 @@ import {
   HardDrive,
   Database,
   Trash2,
-  UserPlus
+  UserPlus,
+  RefreshCw
 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -30,6 +31,7 @@ export default function UserManagementPage() {
   const { currentUser, getAuthToken } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [editModal, setEditModal] = useState({ isOpen: false, user: null });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, user: null });
@@ -49,9 +51,22 @@ export default function UserManagementPage() {
     }
   }, [isAdmin]);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchUsers();
+      toast.success('User list refreshed successfully');
+    } catch (error) {
+      toast.error('Failed to refresh user list');
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const fetchUsers = async () => {
     try {
-      setLoading(true);
+      if (!refreshing) {
+        setLoading(true);
+      }
       setError(null);
       
       const token = await getAuthToken();
@@ -102,9 +117,13 @@ export default function UserManagementPage() {
       }
       
       setError(userMessage);
-      toast.error('Failed to fetch users');
+      if (!refreshing) {
+        toast.error('Failed to fetch users');
+      }
     } finally {
-      setLoading(false);
+      if (!refreshing) {
+        setLoading(false);
+      }
     }
   };
 
@@ -406,6 +425,16 @@ export default function UserManagementPage() {
           </p>
         </div>
         <div className="flex items-center space-x-4">
+          <LoadingButton
+            onClick={handleRefresh}
+            loading={refreshing}
+            loadingText="Refreshing..."
+            variant="secondary"
+            icon={RefreshCw}
+            disabled={loading}
+          >
+            Refresh
+          </LoadingButton>
           <button
             onClick={() => setCreateUserModal({ isOpen: true })}
             className="btn-primary inline-flex items-center"
