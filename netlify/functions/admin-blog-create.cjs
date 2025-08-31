@@ -15,10 +15,15 @@ if (!admin.apps.length) {
     client_x509_cert_url: process.env.FIREBASE_CLIENT_X509_CERT_URL
   };
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    projectId: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph"
-  });
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      projectId: process.env.FIREBASE_PROJECT_ID || "admin-cms-ph"
+    });
+  } catch (initError) {
+    console.error('Firebase Admin SDK initialization failed:', initError);
+    throw new Error(`Firebase initialization failed: ${initError.message}`);
+  }
 }
 
 const db = admin.firestore();
