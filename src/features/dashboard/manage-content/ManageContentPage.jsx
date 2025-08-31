@@ -6,7 +6,7 @@ import DataTable from '@/components/shared/DataTable';
 import LoadingButton from '@/components/shared/LoadingButton';
 import { TableSkeleton } from '@/components/shared/SkeletonLoader';
 import Modal from '@/components/shared/Modal';
-import { Edit, Trash2, Plus, ImageIcon, BarChart3, AlertTriangle, Eye, Upload, Download, FileText } from 'lucide-react';
+import { Edit, Trash2, Plus, ImageIcon, BarChart3, AlertTriangle, Eye, Upload, Download, FileText, CheckSquare, Square } from 'lucide-react';
 import { format } from 'date-fns';
 import { getStatusBadgeClass } from '@/utils/helpers';
 import toast from 'react-hot-toast';
@@ -573,47 +573,9 @@ export default function ManageContentPage({ activeBlogId }) {
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-12">
         <div className="page-header mb-0 flex-1">
           <h1 className="page-title mb-2">Manage Content</h1>
-          {selectedItems.length > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-6 mt-6">
-              <p className="text-base text-primary font-medium">
-                {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
-              </p>
-              <div className="flex flex-wrap gap-3 sm:gap-4">
-                <button
-                  onClick={handleBulkPublish}
-                  disabled={publishingLoading}
-                  className="btn-secondary btn-sm min-w-[120px]"
-                >
-                  {publishingLoading ? 'Publishing...' : 'Publish Selected'}
-                </button>
-                <button
-                  onClick={handleBulkUnpublish}
-                  disabled={unpublishingLoading}
-                  className="btn-secondary btn-sm min-w-[130px]"
-                >
-                  {unpublishingLoading ? 'Unpublishing...' : 'Unpublish Selected'}
-                </button>
-                <button
-                  onClick={handleBulkDelete}
-                  disabled={deletingLoading}
-                  className="btn-danger btn-sm min-w-[120px]"
-                >
-                  {deletingLoading ? 'Deleting...' : 'Delete Selected'}
-                </button>
-                <LoadingButton
-                  onClick={handleExportSelected}
-                  loading={exportingSelectedLoading}
-                  loadingText="Exporting..."
-                  variant="secondary"
-                  size="sm"
-                  icon={Download}
-                  className="min-w-[140px]"
-                >
-                  Export Selected ({selectedItems.length})
-                </LoadingButton>
-              </div>
-            </div>
-          )}
+          <p className="page-description">
+            Edit, organize, and manage your blog content
+          </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-4">
           <Link to="/dashboard/create" className="btn-primary inline-flex items-center">
@@ -640,6 +602,71 @@ export default function ManageContentPage({ activeBlogId }) {
           </LoadingButton>
         </div>
       </div>
+
+      {/* Bulk Actions Bar */}
+      {selectedItems.length > 0 && (
+        <div className="card border-blue-200 bg-blue-50 mb-8">
+          <div className="card-content p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+              <div className="flex items-center space-x-4">
+                <CheckSquare className="h-5 w-5 text-blue-600" />
+                <span className="text-base font-medium text-blue-800">
+                  {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <LoadingButton
+                  onClick={handleBulkPublish}
+                  loading={publishingLoading}
+                  loadingText="Publishing..."
+                  variant="secondary"
+                  size="sm"
+                  className="min-w-[120px]"
+                >
+                  Publish
+                </LoadingButton>
+                <LoadingButton
+                  onClick={handleBulkUnpublish}
+                  loading={unpublishingLoading}
+                  loadingText="Drafting..."
+                  variant="secondary"
+                  size="sm"
+                  className="min-w-[120px]"
+                >
+                  Draft
+                </LoadingButton>
+                <LoadingButton
+                  onClick={handleBulkDelete}
+                  loading={deletingLoading}
+                  loadingText="Deleting..."
+                  variant="danger"
+                  size="sm"
+                  className="min-w-[120px]"
+                >
+                  Delete
+                </LoadingButton>
+                <LoadingButton
+                  onClick={handleExportSelected}
+                  loading={exportingSelectedLoading}
+                  loadingText="Exporting..."
+                  variant="secondary"
+                  size="sm"
+                  icon={Download}
+                  className="min-w-[140px]"
+                >
+                  Export ({selectedItems.length})
+                </LoadingButton>
+                <button
+                  onClick={() => setSelectedItems([])}
+                  className="btn-ghost btn-sm"
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Content Table */}
       {loading ? (
@@ -703,27 +730,10 @@ export default function ManageContentPage({ activeBlogId }) {
                 selectedItems={selectedItems}
                 onSelectAll={handleSelectAll}
                 onSelectRow={handleSelectRow}
-                enableAnimations={true}
-                onFiltersChange={(filters) => {
-                  // Filters are handled internally by DataTable
-                  // This callback can be used for additional logic if needed
-                }}
               />
             </div>
           </div>
         )
-      )}
-
-      {/* Clear Selection Button */}
-      {selectedItems.length > 0 && (
-        <div className="flex justify-center mt-8">
-          <button
-            onClick={() => setSelectedItems([])}
-            className="btn-ghost btn-sm"
-          >
-            Clear Selection
-          </button>
-        </div>
       )}
 
       {/* Delete Confirmation Modal */}

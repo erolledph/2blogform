@@ -10,7 +10,11 @@ export default function DataTable({
   pageSize = 10,
   className = '',
   onRowClick,
-  loading = false
+  loading = false,
+  selectable = false,
+  selectedItems = [],
+  onSelectAll = null,
+  onSelectRow = null
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -74,6 +78,21 @@ export default function DataTable({
       : <ArrowDown className="h-4 w-4 text-primary" />;
   };
 
+  const handleSelectAll = (e) => {
+    const isChecked = e.target.checked;
+    if (onSelectAll) {
+      onSelectAll(isChecked);
+    }
+  };
+
+  const handleRowSelect = (itemId, isSelected) => {
+    if (onSelectRow) {
+      onSelectRow(itemId, isSelected);
+    }
+  };
+
+  const isAllSelected = selectedItems.length === data.length && data.length > 0;
+  const isIndeterminate = selectedItems.length > 0 && selectedItems.length < data.length;
   if (loading) {
     return (
       <div className={`bg-card rounded-lg border border-border ${className}`}>
@@ -114,6 +133,19 @@ export default function DataTable({
         <table className="w-full">
           <thead>
             <tr className="border-b border-border">
+              {selectable && (
+                <th className="px-6 py-4 text-left">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={(input) => {
+                      if (input) input.indeterminate = isIndeterminate;
+                    }}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 text-primary rounded border-border focus:ring-primary"
+                  />
+                </th>
+              )}
               {columns.map((column) => (
                 <th
                   key={column.key}
@@ -133,7 +165,7 @@ export default function DataTable({
           <tbody>
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-6 py-12 text-center text-muted-foreground">
+                <td colSpan={columns.length + (selectable ? 1 : 0)} className="px-6 py-12 text-center text-muted-foreground">
                   No data available
                 </td>
               </tr>
@@ -146,6 +178,20 @@ export default function DataTable({
                   }`}
                   onClick={() => onRowClick && onRowClick(item)}
                 >
+                  {selectable && (
+                    <td className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(item.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleRowSelect(item.id, e.target.checked);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-4 h-4 text-primary rounded border-border focus:ring-primary"
+                      />
+                    </td>
+                  )}
                   {columns.map((column) => (
                     <td key={column.key} className="px-6 py-4 text-sm text-foreground">
                       {column.render ? column.render(item[column.key], item) : item[column.key]}
@@ -163,6 +209,11 @@ export default function DataTable({
         <div className="flex items-center justify-between px-6 py-4 border-t border-border">
           <div className="text-sm text-muted-foreground">
             Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, sortedData.length)} of {sortedData.length} results
+            {selectable && selectedItems.length > 0 && (
+              <span className="ml-4 text-primary font-medium">
+                • {selectedItems.length} selected
+              </span>
+            )}
           </div>
           <div className="flex items-center space-x-2">
             <button
