@@ -186,17 +186,6 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
     onClose();
   };
 
-  // Check if form is valid for submit button state
-  const isFormValid = () => {
-    return formData.email.trim() && 
-           formData.password && 
-           formData.confirmPassword && 
-           formData.displayName.trim() &&
-           formData.password === formData.confirmPassword &&
-           formData.password.length >= 6 &&
-           /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) &&
-           Object.keys(errors).length === 0;
-  };
   return (
     <Modal
       isOpen={isOpen}
@@ -296,7 +285,7 @@ export default function CreateUserModal({ isOpen, onClose, onUserCreated }) {
           </button>
           <button
             type="submit"
-            disabled={creating || !isFormValid()}
+            disabled={creating}
             className="btn-primary"
           >
             {creating ? (
