@@ -144,9 +144,7 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
   };
 
   const handleBlogCreated = async (newBlog) => {
-    setAllBlogs(prev => [newBlog, ...prev]);
     setActiveBlogId(newBlog.id);
-    toast.success(`Switched to "${newBlog.name}"`);
   };
 
   const handleBlogSwitch = (blog) => {
