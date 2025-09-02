@@ -12,7 +12,6 @@ import toast from 'react-hot-toast';
 export default function AccountSettingsPage() {
   const { currentUser, invalidateUserSettingsCache } = useAuth();
   const [currency, setCurrency] = useState('$');
-  const [displayName, setDisplayName] = useState('');
   const [profileData, setProfileData] = useState({
     displayName: '',
     bio: '',
@@ -22,8 +21,8 @@ export default function AccountSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [profileSaved, setProfileSaved] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
 
   const currencyOptions = [
     { value: '$', label: 'US Dollar ($)' },
@@ -72,13 +71,22 @@ export default function AccountSettingsPage() {
   }, [currentUser]);
 
   const fetchUserSettings = async () => {
-    if (!currentUser?.uid) return;
-    
+    if (!currentUser?.uid) {
+      toast.error('No user ID available');
+      setInitialLoading(false);
+      return;
+    }
+
     try {
       setInitialLoading(true);
       const settings = await settingsService.getUserSettings(currentUser.uid);
+      
+      // Validate response structure
+      if (!settings || typeof settings !== 'object') {
+        throw new Error('Invalid settings response');
+      }
+
       setCurrency(settings.currency || '$');
-      setDisplayName(settings.displayName || '');
       setProfileData({
         displayName: settings.displayName || '',
         bio: settings.bio || '',
@@ -86,8 +94,18 @@ export default function AccountSettingsPage() {
         location: settings.location || ''
       });
     } catch (error) {
-      console.error('Error fetching user settings:', error);
-      toast.error('Failed to load user settings');
+      console.error('Error fetching user settings:', {
+        error,
+        message: error.message,
+        response: error.response?.data,
+      });
+      
+      // Check for non-JSON response
+      if (error.message.includes('Unexpected token')) {
+        toast.error('Failed to load settings: Invalid server response');
+      } else {
+        toast.error('Failed to load user settings');
+      }
     } finally {
       setInitialLoading(false);
     }
@@ -95,31 +113,18 @@ export default function AccountSettingsPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    
     if (!currentUser?.uid) {
       toast.error('User not authenticated');
       return;
     }
 
     setLoading(true);
-
     try {
-      await settingsService.setUserSettings(currentUser.uid, {
-        currency
-      });
-      
-      // Also save currency to public app settings so it's available in the API
-      await settingsService.setPublicAppSettings(currentUser.uid, {
-        currency
-      });
-      
-      // Invalidate user settings cache to ensure fresh data on next fetch
+      await settingsService.setUserSettings(currentUser.uid, { currency });
+      await settingsService.setPublicAppSettings(currentUser.uid, { currency });
       invalidateUserSettingsCache(currentUser.uid);
-      
       setSaved(true);
       toast.success('Settings saved successfully!');
-      
-      // Reset saved state after 2 seconds
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -131,44 +136,33 @@ export default function AccountSettingsPage() {
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
-    
     if (!currentUser?.uid) {
       toast.error('User not authenticated');
       return;
     }
 
     setProfileLoading(true);
-
     try {
-      // Update user settings in Firestore
       await settingsService.setUserSettings(currentUser.uid, {
         displayName: profileData.displayName.trim(),
         bio: profileData.bio.trim(),
         website: profileData.website.trim(),
         location: profileData.location.trim()
       });
-      
-      // Also update the display name in Firebase Authentication for consistency
+
       if (profileData.displayName.trim() !== currentUser.displayName) {
         try {
           await updateProfile(auth.currentUser, {
             displayName: profileData.displayName.trim()
           });
-          console.log('Firebase Auth display name updated successfully');
         } catch (authUpdateError) {
           console.warn('Failed to update Firebase Auth display name:', authUpdateError);
-          // Don't fail the entire operation if Auth update fails
-          // The Firestore data is the source of truth for the admin table
         }
       }
-      
-      // Invalidate user settings cache
+
       invalidateUserSettingsCache(currentUser.uid);
-      
       setProfileSaved(true);
       toast.success('Profile updated successfully!');
-      
-      // Reset saved state after 2 seconds
       setTimeout(() => setProfileSaved(false), 2000);
     } catch (error) {
       console.error('Error saving profile:', error);
@@ -184,42 +178,37 @@ export default function AccountSettingsPage() {
       ...prev,
       [name]: value
     }));
-    
-    // Reset saved state when user makes changes
     if (profileSaved) {
       setProfileSaved(false);
     }
   };
 
-
   return (
-    <div className="section-spacing">
-      <div className="page-header mb-16">
-        <h1 className="page-title">Account Settings</h1>
-        <p className="page-description">
-          Manage your account information and preferences
-        </p>
-      </div>
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
+      <header className="mb-12">
+        <h1 className="text-3xl font-bold text-foreground">Account Settings</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Manage your account information and preferences</p>
+      </header>
 
       {initialLoading ? (
         <AccountSettingsSkeleton />
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
+        <div className="space-y-8">
           {/* Profile Information */}
-          <div className="card">
-            <div className="card-header">
-              <div className="flex items-center space-x-4">
-                <div className="p-4 bg-blue-100 rounded-lg">
-                  <User className="h-8 w-8 text-blue-600" />
+          <section className="bg-card rounded-xl shadow-sm border border-border">
+            <div className="p-6 border-b border-border">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <User className="h-6 w-6 text-primary" aria-hidden="true" />
                 </div>
-                <h2 className="card-title">Profile Information</h2>
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">Profile Information</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Update your personal information and bio</p>
+                </div>
               </div>
-              <p className="card-description">
-                Update your personal information and bio
-              </p>
             </div>
-            <div className="card-content">
-              <form onSubmit={handleProfileSave} className="space-y-8">
+            <form onSubmit={handleProfileSave} className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <InputField
                   label="Display Name"
                   name="displayName"
@@ -227,23 +216,9 @@ export default function AccountSettingsPage() {
                   onChange={handleProfileInputChange}
                   placeholder="Your full name"
                   disabled={profileLoading}
+                  className="w-full"
+                  required
                 />
-                
-                <div>
-                  <label className="block text-base font-medium text-foreground mb-3">
-                    Bio
-                  </label>
-                  <textarea
-                    name="bio"
-                    rows={4}
-                    className="input-field resize-none"
-                    value={profileData.bio}
-                    onChange={handleProfileInputChange}
-                    placeholder="Tell us about yourself..."
-                    disabled={profileLoading}
-                  />
-                </div>
-                
                 <InputField
                   label="Website"
                   name="website"
@@ -252,8 +227,8 @@ export default function AccountSettingsPage() {
                   onChange={handleProfileInputChange}
                   placeholder="https://yourwebsite.com"
                   disabled={profileLoading}
+                  className="w-full"
                 />
-                
                 <InputField
                   label="Location"
                   name="location"
@@ -261,92 +236,104 @@ export default function AccountSettingsPage() {
                   onChange={handleProfileInputChange}
                   placeholder="City, Country"
                   disabled={profileLoading}
+                  className="w-full"
                 />
-                
+                <div className="md:col-span-2">
+                  <label htmlFor="bio" className="block text-sm font-medium text-foreground mb-2">
+                    Bio
+                  </label>
+                  <textarea
+                    id="bio"
+                    name="bio"
+                    rows={4}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-50"
+                    value={profileData.bio}
+                    onChange={handleProfileInputChange}
+                    placeholder="Tell us about yourself..."
+                    disabled={profileLoading}
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end">
                 <LoadingButton
                   type="submit"
                   loading={profileLoading}
                   loadingText="Saving..."
                   variant="primary"
-                  className="w-full"
+                  className="w-full sm:w-auto px-6"
                   icon={profileSaved ? Check : Save}
                 >
                   {profileSaved ? 'Saved!' : 'Save Profile'}
                 </LoadingButton>
-              </form>
-            </div>
-          </div>
+              </div>
+            </form>
+          </section>
 
           {/* User Information */}
-          <div className="card">
-            <div className="card-header">
-              <div className="flex items-center space-x-4">
-                <div className="p-4 bg-primary/10 rounded-lg">
-                  <User className="h-8 w-8 text-primary" />
+          <section className="bg-card rounded-xl shadow-sm border border-border">
+            <div className="p-6 border-b border-border">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <User className="h-6 w-6 text-primary" aria-hidden="true" />
                 </div>
-                <h2 className="card-title">User Information</h2>
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">User Information</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Your account details and system information</p>
+                </div>
               </div>
-              <p className="card-description">
-                Your account details and system information
-              </p>
             </div>
-            <div className="card-content space-y-8">
-              <InputField
-                label="Email Address"
-                value={currentUser?.email || 'Not available'}
-                disabled
-                className="opacity-75 cursor-not-allowed"
-              />
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Your email address cannot be changed from this interface
-              </p>
-              
-              <InputField
-                label="User ID"
-                value={currentUser?.uid || 'Not available'}
-                disabled
-                className="opacity-75 cursor-not-allowed"
-              />
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Your unique user identifier used in API endpoints
-              </p>
-              
-              <InputField
-                label="Role"
-                value={currentUser?.role === 'admin' ? 'Administrator' : 'User'}
-                disabled
-                className="opacity-75 cursor-not-allowed"
-              />
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Your current role in the system
-              </p>
+            <div className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <InputField
+                  label="Email Address"
+                  value={currentUser?.email || 'Not available'}
+                  disabled
+                  className="w-full opacity-75 cursor-not-allowed"
+                />
+                <InputField
+                  label="Role"
+                  value={currentUser?.role === 'admin' ? 'Administrator' : 'User'}
+                  disabled
+                  className="w-full opacity-75 cursor-not-allowed"
+                />
+                <div className="sm:col-span-2">
+                  <InputField
+                    label="User ID"
+                    value={currentUser?.uid || 'Not available'}
+                    disabled
+                    className="w-full opacity-75 cursor-not-allowed"
+                  />
+                  <p className="text-sm text-muted-foreground mt-2">Your unique user identifier used in API endpoints</p>
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
 
           {/* Currency Settings */}
-          <div className="card">
-            <div className="card-header">
-              <div className="flex items-center space-x-4">
-                <div className="p-4 bg-green-100 rounded-lg">
-                  <DollarSign className="h-8 w-8 text-green-600" />
+          <section className="bg-card rounded-xl shadow-sm border border-border">
+            <div className="p-6 border-b border-border">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <DollarSign className="h-6 w-6 text-green-600" aria-hidden="true" />
                 </div>
-                <h2 className="card-title">Currency Settings</h2>
-              </div>
-              <p className="card-description">
-                Choose your preferred currency symbol for displaying prices and financial data
-              </p>
-            </div>
-            <div className="card-content">
-              <form onSubmit={handleSave} className="space-y-8">
                 <div>
-                  <label htmlFor="currency" className="block text-base font-medium text-foreground mb-3">
+                  <h2 className="text-xl font-semibold text-foreground">Currency Settings</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Choose your preferred currency for prices</p>
+                </div>
+              </div>
+            </div>
+            <form onSubmit={handleSave} className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="currency" className="block text-sm font-medium text-foreground mb-2">
                     Currency Symbol
                   </label>
                   <select
                     id="currency"
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
-                    className="input-field w-full"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-50"
+                    disabled={loading}
                   >
                     {currencyOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -355,70 +342,64 @@ export default function AccountSettingsPage() {
                     ))}
                   </select>
                 </div>
-                
-                <div className="p-6 bg-muted/30 rounded-lg border border-border">
-                  <h4 className="text-sm font-medium text-foreground mb-3">Preview</h4>
-                  <p className="text-lg text-muted-foreground">
-                    Sample price: <span className="font-semibold text-foreground">{currency}99.99</span>
-                  </p>
+                <div className="p-4 bg-muted/30 rounded-lg border border-border flex items-center">
+                  <div>
+                    <h4 className="text-sm font-medium text-foreground mb-2">Preview</h4>
+                    <p className="text-base text-muted-foreground">
+                      Sample price: <span className="font-semibold text-foreground">{currency}99.99</span>
+                    </p>
+                  </div>
                 </div>
-                
+              </div>
+              <div className="mt-6 flex justify-end">
                 <LoadingButton
                   type="submit"
                   loading={loading}
                   loadingText="Saving..."
                   variant="primary"
+                  className="w-full sm:w-auto px-6"
                   icon={saved ? Check : Save}
                 >
                   {saved ? 'Saved!' : 'Save Settings'}
                 </LoadingButton>
-              </form>
-            </div>
-          </div>
+              </div>
+            </form>
+          </section>
 
           {/* Additional Settings */}
-          <div className="card">
-            <div className="card-header">
-              <h2 className="card-title">Additional Settings</h2>
-              <p className="card-description">
-                System information and additional configuration options
-              </p>
+          <section className="bg-card rounded-xl shadow-sm border border-border">
+            <div className="p-6 border-b border-border">
+              <h2 className="text-xl font-semibold text-foreground">Additional Settings</h2>
+              <p className="text-sm text-muted-foreground mt-1">System information and account configuration</p>
             </div>
-            <div className="card-content">
-              <div className="space-y-8">
-                {/* Account Limits */}
-                <div className="p-6 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h3 className="text-base font-semibold text-blue-800 mb-6">Account Limits</h3>
-                  <div className="grid grid-cols-2 gap-6 text-sm">
+            <div className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="text-sm font-semibold text-blue-800 mb-4">Account Limits</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium text-blue-700">Max Blogs:</span>
-                      <div className="text-blue-600 text-lg font-semibold">{currentUser?.maxBlogs || 1}</div>
+                      <div className="text-blue-600 font-semibold">{currentUser?.maxBlogs || 1}</div>
                     </div>
                     <div>
                       <span className="font-medium text-blue-700">Storage Limit:</span>
-                      <div className="text-blue-600 text-lg font-semibold">{currentUser?.totalStorageMB || 100} MB</div>
+                      <div className="text-blue-600 font-semibold">{currentUser?.totalStorageMB || 100} MB</div>
                     </div>
                   </div>
                 </div>
-                
-                {/* Version Information */}
-                <div className="p-6 bg-muted/30 rounded-lg border border-border">
+                <div className="p-4 bg-muted/30 rounded-lg border border-border">
+                  <h3 className="text-sm font-semibold text-foreground mb-4">System Information</h3>
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-base font-semibold text-foreground mb-3">System Information</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">Current application version and build details</p>
-                    </div>
+                    <p className="text-sm text-muted-foreground">Current application version</p>
                     <div className="text-right">
-                      <div className="text-xl font-bold text-primary">v2.0.0</div>
+                      <div className="text-lg font-bold text-primary">v2.0.0</div>
                       <div className="text-sm text-muted-foreground">User-Isolated CMS</div>
                     </div>
                   </div>
                 </div>
-                
-                {/* Account Statistics */}
-                <div className="p-6 bg-green-50 border border-green-200 rounded-lg">
-                  <h3 className="text-base font-semibold text-green-800 mb-6">Account Statistics</h3>
-                  <div className="grid grid-cols-2 gap-6 text-sm">
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg sm:col-span-2">
+                  <h3 className="text-sm font-semibold text-green-800 mb-4">Account Statistics</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="font-medium text-green-700">Member Since:</span>
                       <div className="text-green-600 font-medium">
@@ -441,7 +422,7 @@ export default function AccountSettingsPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </section>
         </div>
       )}
     </div>
