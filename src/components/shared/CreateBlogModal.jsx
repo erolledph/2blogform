@@ -7,7 +7,7 @@ import { Plus, BookOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function CreateBlogModal({ isOpen, onClose, onBlogCreated }) {
-  const { currentUser } = useAuth();
+  const { currentUser, getAuthToken } = useAuth();
   const [creating, setCreating] = useState(false);
   const [checkingLimits, setCheckingLimits] = useState(false);
   const [formData, setFormData] = useState({
@@ -38,7 +38,8 @@ export default function CreateBlogModal({ isOpen, onClose, onBlogCreated }) {
       const newBlog = await blogService.createNewBlog(
         currentUser.uid,
         formData.name.trim(),
-        formData.description.trim()
+        formData.description.trim(),
+        getAuthToken
       );
       
       toast.success('Blog created successfully');

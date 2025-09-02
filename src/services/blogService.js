@@ -45,8 +45,6 @@ export const blogService = {
       }
       
       // Use server-side function for secure blog creation
-      const { useAuth } = await import('@/hooks/useAuth');
-      const { getAuthToken } = useAuth();
       const token = await getAuthToken();
       
       const response = await fetch('/.netlify/functions/admin-blog', {
