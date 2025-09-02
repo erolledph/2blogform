@@ -16,6 +16,7 @@ export default function ManageContentPage({ activeBlogId }) {
   const { getAuthToken, currentUser } = useAuth();
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, content: null });
   const [analyticsModal, setAnalyticsModal] = useState({ isOpen: false, content: null });
+  const [bulkDeleteModal, setBulkDeleteModal] = useState({ isOpen: false });
   const [selectedItems, setSelectedItems] = useState([]);
   const [importing, setImporting] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState(null);
@@ -139,7 +140,12 @@ export default function ManageContentPage({ activeBlogId }) {
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}? This action cannot be undone.`)) {
+    setBulkDeleteModal({ isOpen: true });
+  };
+
+  const confirmBulkDelete = async () => {
+    if (selectedItems.length === 0) {
+      setBulkDeleteModal({ isOpen: false });
       return;
     }
 
@@ -171,6 +177,7 @@ export default function ManageContentPage({ activeBlogId }) {
       toast.success(`Successfully deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
       
       setSelectedItems([]);
+      setBulkDeleteModal({ isOpen: false });
       invalidateCache();
       refetch();
     } catch (error) {
@@ -789,6 +796,53 @@ export default function ManageContentPage({ activeBlogId }) {
             activeBlogId={activeBlogId}
           />
         )}
+      </Modal>
+
+      {/* Bulk Delete Confirmation Modal */}
+      <Modal
+        isOpen={bulkDeleteModal.isOpen}
+        onClose={() => setBulkDeleteModal({ isOpen: false })}
+        title="Delete Selected Content"
+        size="md"
+      >
+        <div className="space-y-6">
+          <div className="flex items-start space-x-4">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                Delete {selectedItems.length} Content Item{selectedItems.length !== 1 ? 's' : ''}?
+              </h3>
+              <p className="text-base text-muted-foreground mb-4">
+                Are you sure you want to delete the {selectedItems.length} selected content item{selectedItems.length !== 1 ? 's' : ''}?
+              </p>
+            </div>
+          </div>
+
+
+
+          <div className="flex justify-end space-x-4 pt-4 border-t border-border">
+            <button
+              onClick={() => setBulkDeleteModal({ isOpen: false })}
+              disabled={deletingLoading}
+              className="btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmBulkDelete}
+              disabled={deletingLoading}
+              className="btn-danger"
+            >
+              {deletingLoading ? (
+                'Deleting...'
+              ) : (
+                `Delete ${selectedItems.length} Item${selectedItems.length !== 1 ? 's' : ''}`
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
