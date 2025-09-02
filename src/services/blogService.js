@@ -30,7 +30,7 @@ export const blogService = {
   },
 
   // Create a new blog for a user
-  async createNewBlog(userId, blogName, description = '') {
+  async createNewBlog(userId, blogName, description = '', getAuthToken) {
     try {
       // Client-side validation should still exist but server-side is authoritative
       const userBlogs = await this.fetchUserBlogs(userId);
