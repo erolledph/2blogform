@@ -44,11 +44,9 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
         setLoading(true);
       }
       
-      // Fetch all blogs for the user
       const blogs = await blogService.fetchUserBlogs(currentUser.uid);
       setAllBlogs(blogs);
       
-      // If no blogs exist, this shouldn't happen due to ensureDefaultBlog
       if (blogs.length === 0) {
         console.warn('No blogs found for user');
         setCurrentBlog(null);
@@ -56,7 +54,6 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
         return;
       }
       
-      // Find the current active blog
       const activeBlog = blogs.find(blog => blog.id === activeBlogId);
       
       if (activeBlog) {
@@ -66,7 +63,6 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
           description: activeBlog.description || ''
         });
       } else {
-        // Active blog not found in the list, switch to the first available blog
         console.warn(`Active blog ${activeBlogId} not found, switching to first available blog`);
         const firstBlog = blogs[0];
         setActiveBlogId(firstBlog.id);
@@ -79,7 +75,6 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
       }
     } catch (error) {
       console.error('Error fetching blog data:', error);
-      // Only show error toast if it's not a refresh operation
       if (!refreshing) {
         toast.error('Failed to load blog data');
       }
@@ -97,7 +92,6 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
       [name]: value
     }));
     
-    // Reset saved state when user makes changes
     if (saved) {
       setSaved(false);
     }
@@ -114,7 +108,6 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
     const originalBlog = { ...currentBlog };
     const originalAllBlogs = [...allBlogs];
     
-    // Optimistic UI update
     const updatedBlog = {
       ...currentBlog,
       name: formData.name.trim(),
@@ -139,12 +132,10 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
       setSaved(true);
       toast.success('Blog updated successfully');
       
-      // Reset saved state after 2 seconds
       setTimeout(() => setSaved(false), 2000);
     } catch (error) {
       console.error('Error updating blog:', error);
       toast.error('Failed to update blog');
-      // Rollback on error
       setCurrentBlog(originalBlog);
       setAllBlogs(originalAllBlogs);
     } finally {
@@ -153,12 +144,8 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
   };
 
   const handleBlogCreated = async (newBlog) => {
-    // Optimistic UI update - add new blog to the list
     setAllBlogs(prev => [newBlog, ...prev]);
-    
-    // Switch to the new blog
     setActiveBlogId(newBlog.id);
-    
     toast.success(`Switched to "${newBlog.name}"`);
   };
 
@@ -178,7 +165,6 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
     const originalAllBlogs = [...allBlogs];
     const remainingBlogs = allBlogs.filter(blog => blog.id !== activeBlogId);
     
-    // Optimistic UI update - remove blog and switch to another
     setAllBlogs(remainingBlogs);
     if (remainingBlogs.length > 0) {
       setActiveBlogId(remainingBlogs[0].id);
@@ -195,18 +181,14 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
       await blogService.deleteBlog(currentUser.uid, activeBlogId, token);
       
       toast.success(`Blog deleted. Switched to "${remainingBlogs[0].name}"`);
-      
       setDeleteModalOpen(false);
     } catch (error) {
       console.error('Error deleting blog:', error);
-      
       if (error.message.includes('LAST_BLOG_DELETION_FORBIDDEN')) {
         toast.error('Cannot delete your last blog. Users must have at least one blog.');
       } else {
         toast.error(error.message || 'Failed to delete blog');
       }
-      
-      // Rollback on error
       setAllBlogs(originalAllBlogs);
       setActiveBlogId(activeBlogId);
       setCurrentBlog(originalAllBlogs.find(blog => blog.id === activeBlogId));
@@ -237,85 +219,82 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
 
   if (loading) {
     return (
-      <div className="section-spacing">
-        <div className="space-y-8">
+      <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
+        <div className="space-y-6">
           <SkeletonLoader lines={2} height="xl" />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-            <SkeletonLoader type="card" />
-            <SkeletonLoader type="card" />
-          </div>
+          <SkeletonLoader type="card" />
+          <SkeletonLoader type="card" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="section-spacing">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 mb-12">
-        <div className="page-header mb-0 flex-1">
-          <h1 className="page-title mb-2">Manage Blog</h1>
-          <p className="page-description">
-            Configure your blog settings and create new blogs
-          </p>
-        </div>
-        <div className="flex items-center space-x-6">
-          <button
-            onClick={refreshBlogData}
-            disabled={refreshing}
-            className="btn-secondary inline-flex items-center"
-          >
-            <RefreshCw className={`h-5 w-5 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </button>
+    <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
+      <div className="flex flex-col gap-6 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Manage Blog</h1>
+            <p className="text-sm sm:text-base text-gray-600">
+              Configure your blog settings and create new blogs
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={refreshBlogData}
+              disabled={refreshing}
+              className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Current Blog Status Bar */}
-      {currentBlog && (
-        <div className="card border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 mb-12">
-          <div className="card-content p-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-6">
-                <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                  <BookOpen className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-blue-900 mb-2">Currently Managing: {currentBlog.name}</h2>
-                  <p className="text-blue-700 leading-relaxed">
-                    {currentBlog.description || 'No description provided'}
-                  </p>
-                  <div className="flex items-center space-x-4 mt-3 text-sm text-blue-600">
-                    <span>Blog ID: {currentBlog.id.substring(0, 12)}...</span>
-                    <span>•</span>
-                    <span>Created: {currentBlog.createdAt?.toDate().toLocaleDateString()}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold text-blue-900 leading-none">{allBlogs.length}</div>
-                <div className="text-sm text-blue-600">Total Blogs</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div className="flex flex-col gap-6">
         {/* Current Blog Settings */}
-        <div className="card">
-          <div className="card-header">
-            <div className="flex items-center space-x-4">
-              <div className="p-4 bg-green-100 rounded-lg">
-                <Edit className="h-8 w-8 text-green-600" />
+        <div className="bg-white shadow-sm rounded-xl p-6">
+          <div className="mb-6">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <Edit className="h-6 w-6 text-green-600" />
               </div>
-              <h2 className="card-title">Edit Blog Details</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Edit Blog Details</h2>
             </div>
-            <p className="card-description">
+            <p className="text-sm text-gray-600">
               Update your blog name and description
             </p>
           </div>
-          <div className="card-content">
-            <form onSubmit={handleSave} className="space-y-8">
+          <div>
+            {currentBlog && (
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 mb-6 p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                      <BookOpen className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-blue-900 mb-1">Currently Managing: {currentBlog.name}</h2>
+                      <p className="text-sm text-blue-700 line-clamp-2">
+                        {currentBlog.description || 'No description provided'}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-blue-600">
+                        <span>Blog ID: {currentBlog.id.substring(0, 8)}...</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span>Created: {currentBlog.createdAt?.toDate().toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-blue-900">{allBlogs.length}</div>
+                    <div className="text-xs text-blue-600">Total Blogs</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSave} className="space-y-6">
               <InputField
                 label="Blog Name"
                 name="name"
@@ -324,16 +303,17 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                 value={formData.name}
                 onChange={handleInputChange}
                 disabled={saving}
+                className="w-full"
               />
 
               <div>
-                <label className="block text-base font-medium text-foreground mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Description (Optional)
                 </label>
                 <textarea
                   name="description"
-                  rows={5}
-                  className="input-field resize-none"
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                   value={formData.description}
                   onChange={handleInputChange}
                   placeholder="Brief description of your blog"
@@ -344,7 +324,7 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               <button
                 type="submit"
                 disabled={saving || !formData.name.trim()}
-                className="btn-primary w-full"
+                className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 {saved ? (
                   <>
@@ -360,24 +340,23 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               </button>
             </form>
 
-            {/* Delete Blog Section */}
             {allBlogs.length > 1 && (
-              <div className="border-t border-border pt-8">
-                <h4 className="text-base font-medium text-foreground mb-6">Danger Zone</h4>
-                <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-start space-x-3">
-                    <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="border-t border-gray-200 pt-6 mt-6">
+                <h4 className="text-sm font-medium text-gray-700 mb-4">Danger Zone</h4>
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
                     <div className="flex-1">
-                      <h5 className="text-sm font-medium text-red-800 mb-3">Delete This Blog</h5>
-                      <p className="text-sm text-red-700 mb-6 leading-relaxed">
+                      <h5 className="text-sm font-medium text-red-800 mb-2">Delete This Blog</h5>
+                      <p className="text-sm text-red-700 mb-4">
                         This will permanently delete this blog and all its content and products. This action cannot be undone.
                       </p>
                       <button
                         type="button"
                         onClick={() => setDeleteModalOpen(true)}
-                        className="btn-danger btn-sm"
+                        className="flex items-center px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
+                        <Trash2 className="h-4 w-4 mr-1" />
                         Delete Blog
                       </button>
                     </div>
@@ -389,48 +368,47 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
         </div>
 
         {/* Blog Management */}
-        <div className="card">
-          <div className="card-header">
-            <div className="flex items-center space-x-4">
-              <div className="p-4 bg-purple-100 rounded-lg">
-                <Database className="h-8 w-8 text-purple-600" />
+        <div className="bg-white shadow-sm rounded-xl p-6">
+          <div className="mb-6">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <Database className="h-6 w-6 text-purple-600" />
               </div>
-              <h2 className="card-title">Blog Management</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Blog Management</h2>
             </div>
-            <p className="card-description">
+            <p className="text-sm text-gray-600">
               Switch between blogs and create new ones
             </p>
           </div>
-          <div className="card-content space-y-8">
-            {/* Current Blogs List */}
+          <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-foreground mb-6">Your Blogs</h3>
-              <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Blogs</h3>
+              <div className="space-y-3">
                 {allBlogs.map((blog) => (
                   <div
                     key={blog.id}
                     onClick={() => handleBlogSwitch(blog)}
-                    className={`p-6 border-2 rounded-xl transition-all duration-200 ${
+                    className={`p-4 border rounded-lg transition-all duration-200 ${
                       blog.id === activeBlogId
-                        ? 'border-blue-500 bg-gradient-to-r from-blue-50 to-blue-100 shadow-lg transform scale-105'
-                        : 'border-gray-200 bg-white hover:bg-gray-50 cursor-pointer hover:border-blue-300 hover:shadow-md'
+                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                        : 'border-gray-200 bg-white hover:bg-gray-50 cursor-pointer hover:border-blue-300'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg ${
                           blog.id === activeBlogId 
                             ? 'bg-blue-500' 
                             : 'bg-gray-100'
                         }`}>
-                          <BookOpen className={`h-5 w-5 ${
+                          <BookOpen className={`h-4 w-4 ${
                             blog.id === activeBlogId 
                               ? 'text-white' 
                               : 'text-gray-600'
                           }`} />
                         </div>
-                        <div>
-                          <div className={`font-semibold ${
+                        <div className="flex-1">
+                          <div className={`font-semibold text-sm ${
                             blog.id === activeBlogId 
                               ? 'text-blue-900' 
                               : 'text-gray-900'
@@ -438,7 +416,7 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                             {blog.name}
                           </div>
                           {blog.description && (
-                            <div className={`text-sm mt-2 leading-relaxed ${
+                            <div className={`text-xs mt-1 line-clamp-2 ${
                               blog.id === activeBlogId 
                                 ? 'text-blue-700' 
                                 : 'text-gray-600'
@@ -446,7 +424,7 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                               {blog.description}
                             </div>
                           )}
-                          <div className={`text-xs mt-2 ${
+                          <div className={`text-xs mt-1 ${
                             blog.id === activeBlogId 
                               ? 'text-blue-600' 
                               : 'text-gray-500'
@@ -455,15 +433,15 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center gap-2">
                         {blog.id === activeBlogId && (
-                          <span className="px-4 py-2 bg-blue-500 text-white text-xs font-semibold rounded-full">
+                          <span className="px-3 py-1 bg-blue-500 text-white text-xs font-medium rounded-full">
                             Active
                           </span>
                         )}
                         {blog.id !== activeBlogId && (
                           <span className="text-xs text-gray-500 hover:text-blue-600 transition-colors">
-                            Click to switch
+                            Switch
                           </span>
                         )}
                       </div>
@@ -472,204 +450,191 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                 ))}
               </div>
               
-              {/* Instructions for switching blogs */}
               {allBlogs.length > 1 && (
-                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-sm text-blue-700 leading-relaxed">
-                    💡 <strong>Tip:</strong> Click on any blog above to switch to it. The active blog determines which content and products you're managing.
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    💡 <strong>Tip:</strong> Click on any blog to switch to it. The active blog determines which content and products you're managing.
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Create New Blog Section */}
-            <div className="border-t border-border pt-8">
-              <h3 className="text-lg font-semibold text-foreground mb-6">Create New Blog</h3>
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Blog</h3>
               
               {(canManageMultipleBlogs || (currentUser?.maxBlogs && currentUser.maxBlogs > 1)) ? (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {allBlogs.length < (currentUser?.maxBlogs || 1) ? (
                     <>
-                      <p className="text-base text-muted-foreground leading-relaxed">
+                      <p className="text-sm text-gray-600">
                         You can create up to {currentUser?.maxBlogs || 1} blogs. Currently have {allBlogs.length}.
                       </p>
                       <button
                         onClick={() => setCreateModalOpen(true)}
-                        className="btn-primary w-full"
+                        className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Create New Blog ({allBlogs.length}/{currentUser?.maxBlogs || 1})
                       </button>
                     </>
                   ) : (
-                    <div className="p-6 bg-amber-50 border border-amber-200 rounded-lg">
-                      <h4 className="text-sm font-medium text-amber-800 mb-3">Blog Limit Reached</h4>
-                      <p className="text-sm text-amber-700 mb-4 leading-relaxed">
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      <h4 className="text-sm font-medium text-amber-800 mb-2">Blog Limit Reached</h4>
+                      <p className="text-sm text-amber-700">
                         You have reached your maximum of {currentUser?.maxBlogs || 1} blog{(currentUser?.maxBlogs || 1) > 1 ? 's' : ''}. 
-                        To create more blogs, contact an administrator to increase your limit.
+                        Contact an administrator to increase your limit.
                       </p>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="p-6 bg-amber-50 border border-amber-200 rounded-lg">
-                  <h4 className="text-sm font-medium text-amber-800 mb-3">Multi-Blog Access Required</h4>
-                  <p className="text-sm text-amber-700 mb-4 leading-relaxed">
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                  <h4 className="text-sm font-medium text-amber-800 mb-2">Multi-Blog Access Required</h4>
+                  <p className="text-sm text-amber-700">
                     You currently have access to one blog. To create additional blogs, you need multi-blog access permissions.
-                  </p>
-                  <p className="text-xs text-amber-600">
-                    Contact your administrator to request multi-blog access if you need to manage multiple blogs.
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Blog Statistics */}
-            <div className="border-t border-border pt-8">
-              <h3 className="text-lg font-semibold text-foreground mb-6">Statistics</h3>
-              <div className="grid grid-cols-2 gap-6">
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Statistics</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
-                  <div className="text-3xl font-bold text-blue-900 leading-none">{allBlogs.length}</div>
-                  <div className="text-sm text-blue-600">Total Blogs</div>
+                  <div className="text-2xl font-bold text-blue-900">{allBlogs.length}</div>
+                  <div className="text-xs text-blue-600">Total Blogs</div>
                 </div>
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
-                  <div className="text-3xl font-bold text-green-900 leading-none">
+                  <div className="text-2xl font-bold text-green-900">
                     {currentUser?.maxBlogs || 1}
                   </div>
-                  <div className="text-sm text-green-600">Max Allowed</div>
+                  <div className="text-xs text-green-600">Max Allowed</div>
                 </div>
               </div>
               
-              {/* Storage Information */}
-              <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                <div className="flex items-center justify-between">
+              <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <div className="text-xl font-bold text-purple-900 leading-none">{currentUser?.totalStorageMB || 100} MB</div>
-                    <div className="text-sm text-purple-600">Storage Limit</div>
+                    <div className="text-xl font-bold text-purple-900">{currentUser?.totalStorageMB || 100} MB</div>
+                    <div className="text-xs text-purple-600">Storage Limit</div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm text-purple-700">Shared across all blogs</div>
-                  </div>
+                  <div className="text-xs text-purple-700">Shared across all blogs</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* API Endpoints Section */}
-      <div className="card mt-12">
-        <div className="card-header">
-          <div className="flex items-center space-x-4">
-            <div className="p-4 bg-indigo-100 rounded-lg">
-              <Globe className="h-8 w-8 text-indigo-600" />
+        {/* API Endpoints Section */}
+        <div className="bg-white shadow-sm rounded-xl p-6">
+          <div className="mb-6">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="p-3 bg-indigo-100 rounded-lg">
+                <Globe className="h-6 w-6 text-indigo-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900">API Endpoints</h2>
             </div>
-            <h2 className="card-title">API Endpoints</h2>
+            <p className="text-sm text-gray-600">
+              Public API endpoints for accessing your blog content and products
+            </p>
           </div>
-          <p className="card-description">
-            Public API endpoints for accessing your blog content and products
-          </p>
-        </div>
-        <div className="card-content">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="p-6 bg-blue-50 border border-blue-200 rounded-xl">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="p-3 bg-blue-500 rounded-lg">
-                  <BookOpen className="h-5 w-5 text-white" />
+          <div className="flex flex-col gap-4">
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-blue-500 rounded-lg">
+                  <BookOpen className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-blue-800">Content API</h4>
-                  <p className="text-sm text-blue-600">Access all published blog content</p>
+                  <h4 className="text-base font-semibold text-blue-800">Content API</h4>
+                  <p className="text-xs text-blue-600">Access all published blog content</p>
                 </div>
               </div>
-              <div className="bg-white border border-blue-200 rounded-lg p-4 mb-4">
-                <code className="text-xs text-blue-800 break-all font-mono">
+              <div className="bg-white border border-blue-200 rounded-lg p-3 mb-3 overflow-x-auto">
+                <code className="text-xs text-blue-800 font-mono">
                   {getContentApiUrl()}
                 </code>
               </div>
-              <div className="flex space-x-3">
+              <div className="flex gap-3">
                 <button
                   onClick={() => copyToClipboard(getContentApiUrl(), 'Content API URL')}
-                  className="btn-secondary btn-sm flex-1"
+                  className="flex-1 flex items-center justify-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
                 >
-                  <Copy className="h-4 w-4 mr-2" />
+                  <Copy className="h-4 w-4 mr-1" />
                   Copy
                 </button>
                 <a
                   href={getContentApiUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn-secondary btn-sm flex-1 inline-flex items-center justify-center"
+                  className="flex-1 flex items-center justify-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
                 >
-                  <ExternalLink className="h-4 w-4 mr-2" />
+                  <ExternalLink className="h-4 w-4 mr-1" />
                   Open
                 </a>
               </div>
             </div>
 
-            <div className="p-6 bg-green-50 border border-green-200 rounded-xl">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="p-3 bg-green-500 rounded-lg">
-                  <Plus className="h-5 w-5 text-white" />
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-green-500 rounded-lg">
+                  <Plus className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <h4 className="text-lg font-semibold text-green-800">Products API</h4>
-                  <p className="text-sm text-green-600">Access all published products</p>
+                  <h4 className="text-base font-semibold text-green-800">Products API</h4>
+                  <p className="text-xs text-green-600">Access all published products</p>
                 </div>
               </div>
-              <div className="bg-white border border-green-200 rounded-lg p-4 mb-4">
-                <code className="text-xs text-green-800 break-all font-mono">
+              <div className="bg-white border border-green-200 rounded-lg p-3 mb-3 overflow-x-auto">
+                <code className="text-xs text-green-800 font-mono">
                   {getProductsApiUrl()}
                 </code>
               </div>
-              <div className="flex space-x-3">
+              <div className="flex gap-3">
                 <button
                   onClick={() => copyToClipboard(getProductsApiUrl(), 'Products API URL')}
-                  className="btn-secondary btn-sm flex-1"
+                  className="flex-1 flex items-center justify-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
                 >
-                  <Copy className="h-4 w-4 mr-2" />
+                  <Copy className="h-4 w-4 mr-1" />
                   Copy
                 </button>
                 <a
                   href={getProductsApiUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn-secondary btn-sm flex-1 inline-flex items-center justify-center"
+                  className="flex-1 flex items-center justify-center px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
                 >
-                  <ExternalLink className="h-4 w-4 mr-2" />
+                  <ExternalLink className="h-4 w-4 mr-1" />
                   Open
                 </a>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Blog Information Section */}
-      {currentBlog && (
-        <div className="card mt-12">
-          <div className="card-header">
-            <div className="flex items-center space-x-4">
-              <div className="p-4 bg-gray-100 rounded-lg">
-                <Database className="h-8 w-8 text-gray-600" />
+        {/* Blog Information Section */}
+        {currentBlog && (
+          <div className="bg-white shadow-sm rounded-xl p-6">
+            <div className="mb-6">
+              <div className="flex items-center gap-4 mb-2">
+                <div className="p-3 bg-gray-100 rounded-lg">
+                  <Database className="h-6 w-6 text-gray-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">Blog Information</h2>
               </div>
-              <h2 className="card-title">Blog Information</h2>
+              <p className="text-sm text-gray-600">
+                Technical details and metadata for the current blog
+              </p>
             </div>
-            <p className="card-description">
-              Technical details and metadata for the current blog
-            </p>
-          </div>
-          <div className="card-content">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Blog ID</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Blog ID</h4>
                 <div className="flex items-center justify-between">
-                  <code className="text-xs font-mono text-gray-800 bg-white px-3 py-2 rounded border">
+                  <code className="text-xs font-mono text-gray-800 bg-white px-2 py-1 rounded border truncate">
                     {currentBlog.id}
                   </code>
                   <button
                     onClick={() => copyToClipboard(currentBlog.id, 'Blog ID')}
-                    className="p-2 text-gray-600 hover:text-gray-800 transition-colors"
+                    className="p-1 text-gray-600 hover:text-gray-800 transition-colors"
                     title="Copy Blog ID"
                   >
                     <Copy className="h-3 w-3" />
@@ -677,8 +642,8 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                 </div>
               </div>
               
-              <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Created Date</h4>
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Created Date</h4>
                 <div className="text-sm text-gray-800">
                   {currentBlog.createdAt?.toDate().toLocaleDateString('en-US', {
                     year: 'numeric',
@@ -688,8 +653,8 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
                 </div>
               </div>
               
-              <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Last Updated</h4>
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Last Updated</h4>
                 <div className="text-sm text-gray-800">
                   {currentBlog.updatedAt?.toDate().toLocaleDateString('en-US', {
                     year: 'numeric',
@@ -700,17 +665,15 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Create Blog Modal */}
       <CreateBlogModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onBlogCreated={handleBlogCreated}
       />
 
-      {/* Delete Blog Confirmation Modal */}
       <Modal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
@@ -718,20 +681,20 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
         size="md"
       >
         <div className="space-y-6">
-          <div className="flex items-start space-x-4">
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <AlertTriangle className="h-6 w-6 text-red-600" />
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Delete "{currentBlog?.name}"?
               </h3>
-              <p className="text-base text-muted-foreground mb-4">
+              <p className="text-sm text-gray-600">
                 This action will permanently delete this blog and all associated content and products.
               </p>
             </div>
           </div>
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
             <h4 className="text-sm font-medium text-red-800 mb-2">What will be deleted:</h4>
             <ul className="text-sm text-red-700 space-y-1">
               <li>• All blog content and articles</li>
@@ -740,9 +703,9 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               <li>• Associated analytics data</li>
             </ul>
           </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-start space-x-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
               <div>
                 <p className="text-sm text-amber-800 font-medium">This action cannot be undone</p>
                 <p className="text-sm text-amber-700">
@@ -751,24 +714,20 @@ export default function ManageBlogPage({ activeBlogId, setActiveBlogId }) {
               </div>
             </div>
           </div>
-          <div className="flex justify-end space-x-4 pt-4 border-t border-border">
+          <div className="flex justify-end gap-4 pt-4 border-t border-gray-200">
             <button
               onClick={() => setDeleteModalOpen(false)}
               disabled={deletingBlog}
-              className="btn-secondary"
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleDeleteBlog}
               disabled={deletingBlog}
-              className="btn-danger"
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
             >
-              {deletingBlog ? (
-                'Deleting...'
-              ) : (
-                'Delete Blog'
-              )}
+              {deletingBlog ? 'Deleting...' : 'Delete Blog'}
             </button>
           </div>
         </div>
