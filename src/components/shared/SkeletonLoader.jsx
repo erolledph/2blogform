@@ -328,60 +328,199 @@ export function ProductPreviewSkeleton() {
 // Specialized skeleton for account settings forms
 export function AccountSettingsSkeleton() {
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-      {/* Profile Information Skeleton */}
-      <div className="card">
-        <div className="card-content">
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <SkeletonLoader width="1/3" height="sm" />
-              <SkeletonLoader type="button" className="w-full h-12" />
-            </div>
-            <div className="space-y-4">
-              <SkeletonLoader width="1/4" height="sm" />
-              <SkeletonLoader className="w-full h-24 rounded-md" />
-            </div>
-            <div className="space-y-4">
-              <SkeletonLoader width="1/3" height="sm" />
-              <SkeletonLoader type="button" className="w-full h-12" />
-            </div>
-            <div className="space-y-4">
-              <SkeletonLoader width="1/4" height="sm" />
-              <SkeletonLoader type="button" className="w-full h-12" />
-            </div>
-            <SkeletonLoader type="button" className="w-full h-12" />
-          </div>
-        </div>
-      </div>
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
+      {/* Header Skeleton */}
+      <header className="mb-12">
+        <SkeletonLoader width="1/3" height="xl" className="mb-2" />
+        <SkeletonLoader width="1/2" height="sm" />
+      </header>
 
-      {/* User Information Skeleton */}
-      <div className="card">
-        <div className="card-content space-y-6">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="space-y-4">
-              <SkeletonLoader width="1/3" height="sm" />
-              <SkeletonLoader type="button" className="w-full h-12 opacity-75" />
-              <SkeletonLoader width="3/4" height="sm" />
+      <div className="space-y-8">
+        {/* Profile Information Section Skeleton */}
+        <section className="bg-card rounded-xl shadow-sm border border-border">
+          {/* Section Header */}
+          <div className="p-6 border-b border-border">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-muted rounded-lg">
+                <SkeletonLoader className="w-6 h-6" />
+              </div>
+              <div className="space-y-2">
+                <SkeletonLoader width="1/2" height="lg" />
+                <SkeletonLoader width="3/4" height="sm" />
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Currency Settings Skeleton */}
-      <div className="card">
-        <div className="card-content">
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <SkeletonLoader width="1/3" height="sm" />
-              <SkeletonLoader type="button" className="w-full h-12" />
-            </div>
-            <div className="p-4 bg-muted/30 rounded-lg border border-border">
-              <SkeletonLoader width="1/4" height="sm" className="mb-2" />
-              <SkeletonLoader width="1/2" />
-            </div>
-            <SkeletonLoader type="button" className="w-full h-12" />
           </div>
-        </div>
+          
+          {/* Form Content */}
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Display Name Field */}
+              <div className="space-y-3">
+                <SkeletonLoader width="1/3" height="sm" />
+                <SkeletonLoader className="w-full h-14" />
+              </div>
+              
+              {/* Website Field */}
+              <div className="space-y-3">
+                <SkeletonLoader width="1/4" height="sm" />
+                <SkeletonLoader className="w-full h-14" />
+              </div>
+              
+              {/* Location Field */}
+              <div className="space-y-3">
+                <SkeletonLoader width="1/4" height="sm" />
+                <SkeletonLoader className="w-full h-14" />
+              </div>
+              
+              {/* Bio Field - spans full width */}
+              <div className="md:col-span-2 space-y-3">
+                <SkeletonLoader width="1/6" height="sm" />
+                <SkeletonLoader className="w-full h-24" />
+              </div>
+            </div>
+            
+            {/* Save Button */}
+            <div className="mt-6 flex justify-end">
+              <SkeletonLoader className="w-32 h-12" />
+            </div>
+          </div>
+        </section>
+
+        {/* User Information Section Skeleton */}
+        <section className="bg-card rounded-xl shadow-sm border border-border">
+          {/* Section Header */}
+          <div className="p-6 border-b border-border">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-muted rounded-lg">
+                <SkeletonLoader className="w-6 h-6" />
+              </div>
+              <div className="space-y-2">
+                <SkeletonLoader width="1/2" height="lg" />
+                <SkeletonLoader width="3/4" height="sm" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Form Content */}
+          <div className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Email Field */}
+              <div className="space-y-3">
+                <SkeletonLoader width="1/3" height="sm" />
+                <SkeletonLoader className="w-full h-14 opacity-75" />
+              </div>
+              
+              {/* Role Field */}
+              <div className="space-y-3">
+                <SkeletonLoader width="1/4" height="sm" />
+                <SkeletonLoader className="w-full h-14 opacity-75" />
+              </div>
+              
+              {/* User ID Field - spans full width */}
+              <div className="sm:col-span-2 space-y-3">
+                <SkeletonLoader width="1/4" height="sm" />
+                <SkeletonLoader className="w-full h-14 opacity-75" />
+                <SkeletonLoader width="3/4" height="sm" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Currency Settings Section Skeleton */}
+        <section className="bg-card rounded-xl shadow-sm border border-border">
+          {/* Section Header */}
+          <div className="p-6 border-b border-border">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <SkeletonLoader className="w-6 h-6" />
+              </div>
+              <div className="space-y-2">
+                <SkeletonLoader width="1/2" height="lg" />
+                <SkeletonLoader width="3/4" height="sm" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Form Content */}
+          <div className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Currency Dropdown */}
+              <div className="space-y-3">
+                <SkeletonLoader width="1/3" height="sm" />
+                <SkeletonLoader className="w-full h-14" />
+              </div>
+              
+              {/* Preview Box */}
+              <div className="p-4 bg-muted/30 rounded-lg border border-border flex items-center">
+                <div className="space-y-2">
+                  <SkeletonLoader width="1/3" height="sm" />
+                  <SkeletonLoader width="1/2" height="sm" />
+                </div>
+              </div>
+            </div>
+            
+            {/* Save Button */}
+            <div className="mt-6 flex justify-end">
+              <SkeletonLoader className="w-32 h-12" />
+            </div>
+          </div>
+        </section>
+
+        {/* Additional Settings Section Skeleton */}
+        <section className="bg-card rounded-xl shadow-sm border border-border">
+          {/* Section Header */}
+          <div className="p-6 border-b border-border">
+            <SkeletonLoader width="1/2" height="lg" className="mb-2" />
+            <SkeletonLoader width="3/4" height="sm" />
+          </div>
+          
+          {/* Content Grid */}
+          <div className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Account Limits Card */}
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <SkeletonLoader width="1/3" height="sm" className="mb-4" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <SkeletonLoader width="3/4" height="sm" />
+                    <SkeletonLoader width="1/2" height="sm" />
+                  </div>
+                  <div className="space-y-2">
+                    <SkeletonLoader width="3/4" height="sm" />
+                    <SkeletonLoader width="1/2" height="sm" />
+                  </div>
+                </div>
+              </div>
+              
+              {/* System Information Card */}
+              <div className="p-4 bg-muted/30 rounded-lg border border-border">
+                <SkeletonLoader width="1/2" height="sm" className="mb-4" />
+                <div className="flex items-center justify-between">
+                  <SkeletonLoader width="3/4" height="sm" />
+                  <div className="text-right space-y-1">
+                    <SkeletonLoader width="16" height="lg" />
+                    <SkeletonLoader width="20" height="sm" />
+                  </div>
+                </div>
+              </div>
+              
+              {/* Account Statistics Card - spans full width */}
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg sm:col-span-2">
+                <SkeletonLoader width="1/3" height="sm" className="mb-4" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <SkeletonLoader width="3/4" height="sm" />
+                    <SkeletonLoader width="1/2" height="sm" />
+                  </div>
+                  <div className="space-y-2">
+                    <SkeletonLoader width="3/4" height="sm" />
+                    <SkeletonLoader width="1/2" height="sm" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );
