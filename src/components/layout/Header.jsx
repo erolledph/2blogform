@@ -234,9 +234,6 @@ export default function Header({ onMenuClick }) {
                                         </span>
                                       )}
                                     </div>
-                                    <p className="text-xs text-muted-foreground line-clamp-2">
-                                      {notification.description}
-                                    </p>
                                     <p className="text-xs text-muted-foreground mt-1">
                                       {notification.createdAt ? notification.createdAt.toLocaleDateString() : 'Recently'}
                                     </p>
