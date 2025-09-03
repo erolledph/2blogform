@@ -4,14 +4,17 @@ import { Bell, X } from 'lucide-react';
 import { db } from '@/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { userNotificationService } from '@/services/userNotificationService';
+import { broadcastReadStateService } from '@/services/broadcastReadStateService';
 import ReactMarkdown from 'react-markdown';
 import Modal from '@/components/shared/Modal';
 import UserNotificationModal from '@/components/shared/UserNotificationModal';
 
 export default function Header({ onMenuClick }) {
   const [broadcastMessages, setBroadcastMessages] = useState([]);
+  const [readBroadcastIds, setReadBroadcastIds] = useState([]);
   const [userNotifications, setUserNotifications] = useState([]);
   const [unreadUserNotificationsCount, setUnreadUserNotificationsCount] = useState(0);
+  const [unreadBroadcastCount, setUnreadBroadcastCount] = useState(0);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
@@ -47,6 +50,26 @@ export default function Header({ onMenuClick }) {
         setBroadcastMessages(messages);
         setLoadingMessages(false);
         
+        // Calculate unread broadcast count
+        if (currentUser?.uid && messages.length > 0) {
+          const messageIds = messages.map(msg => msg.id);
+          broadcastReadStateService.getUserReadBroadcasts(currentUser.uid)
+            .then(readIds => {
+              setReadBroadcastIds(readIds);
+              const unreadCount = messageIds.filter(id => !readIds.includes(id)).length;
+              setUnreadBroadcastCount(unreadCount);
+              console.log('Broadcast read state updated:', { total: messages.length, unread: unreadCount });
+            })
+            .catch(error => {
+              console.error('Error calculating unread broadcast count:', error);
+              setReadBroadcastIds([]);
+              setUnreadBroadcastCount(messages.length); // Assume all unread on error
+            });
+        } else {
+          setReadBroadcastIds([]);
+          setUnreadBroadcastCount(0);
+        }
+        
         console.log('Real-time broadcast messages updated:', messages.length);
       },
       (error) => {
@@ -79,10 +102,27 @@ export default function Header({ onMenuClick }) {
     };
   }, [currentUser?.uid]);
 
-  const handleMessageClick = (message) => {
+  const handleMessageClick = async (message) => {
     setSelectedMessage(message);
     setMessageModal({ isOpen: true });
     setShowNotifications(false);
+    
+    // Mark broadcast message as read
+    if (currentUser?.uid) {
+      try {
+        await broadcastReadStateService.markBroadcastAsRead(currentUser.uid, message.id);
+        
+        // Update unread count immediately
+        setUnreadBroadcastCount(prev => Math.max(0, prev - 1));
+        
+        // Update read broadcast IDs state
+        setReadBroadcastIds(prev => [...prev, message.id]);
+        
+        console.log('Broadcast message marked as read:', message.id);
+      } catch (error) {
+        console.error('Failed to mark broadcast message as read:', error);
+      }
+    }
   };
 
   const handleUserNotificationClick = async (notification) => {
@@ -99,7 +139,7 @@ export default function Header({ onMenuClick }) {
     }
   };
 
-  const totalUnreadCount = broadcastMessages.length + unreadUserNotificationsCount;
+  const totalUnreadCount = unreadBroadcastCount + unreadUserNotificationsCount;
   return (
     <>
       <header className="bg-white/95 backdrop-blur-md border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-30 shadow-sm">
@@ -213,22 +253,36 @@ export default function Header({ onMenuClick }) {
                             {userNotifications.length > 0 && (
                               <div className="px-4 py-2 bg-blue-50 border-b border-blue-200">
                                 <h4 className="text-xs font-medium text-blue-800 uppercase tracking-wider">
-                                  System Announcements
+                                  System Announcements ({unreadBroadcastCount} unread)
                                 </h4>
                               </div>
                             )}
-                            {broadcastMessages.map((message) => (
+                            {broadcastMessages.map((message) => {
+                              const isMessageRead = readBroadcastIds.includes(message.id);
+                              
+                              return (
                               <div
                                 key={message.id}
-                                className="p-4 border-b border-border last:border-b-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                                className={`p-4 border-b border-border last:border-b-0 hover:bg-muted/30 cursor-pointer transition-colors ${
+                                  !isMessageRead ? 'bg-blue-50/50' : ''
+                                }`}
                                 onClick={() => handleMessageClick(message)}
                               >
                                 <div className="flex items-start space-x-3">
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                                  <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                                    !isMessageRead ? 'bg-blue-500' : 'bg-gray-300'
+                                  }`}></div>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground truncate mb-1">
-                                      {message.title}
-                                    </p>
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <p className="text-sm font-medium text-foreground truncate">
+                                        {message.title}
+                                      </p>
+                                      {!isMessageRead && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                          New
+                                        </span>
+                                      )}
+                                    </div>
                                     <p className="text-xs text-muted-foreground line-clamp-2">
                                       {message.description}
                                     </p>
@@ -238,7 +292,8 @@ export default function Header({ onMenuClick }) {
                                   </div>
                                 </div>
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>

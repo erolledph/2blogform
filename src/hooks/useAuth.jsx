@@ -10,7 +10,6 @@ import { settingsService } from '@/services/settingsService';
 import { useCache } from './useCache';
 import { webSocketService } from '@/services/webSocketService';
 import { userNotificationService } from '@/services/userNotificationService';
-import { hasObjectChanged } from '@/utils/helpers';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -152,17 +151,7 @@ export function AuthProvider({ children }) {
           
           // Store raw Firebase user and separate profile data
           setCurrentUser(user);
-          
-          // Only update userProfile if the content has actually changed
-          // This prevents unnecessary re-renders and flickering in components
-          if (!userProfile || hasObjectChanged(userProfile, serverValidatedProfile)) {
-            console.log('User profile updated:', {
-              previousProfile: userProfile,
-              newProfile: serverValidatedProfile,
-              userId: user.uid
-            });
-            setUserProfile(serverValidatedProfile);
-          }
+          setUserProfile(serverValidatedProfile); // Use server-validated data
           
           // Dispatch auth state change for WebSocket auto-connect
           window.dispatchEvent(new CustomEvent('auth-state-changed', {
@@ -176,19 +165,13 @@ export function AuthProvider({ children }) {
           });
           // Set user and default profile if fetch fails
           setCurrentUser(user);
-          
-          // Only set default profile if no profile exists or it has changed
-          const defaultProfile = {
+          setUserProfile({
             role: 'user',
             canManageMultipleBlogs: false,
             currency: '$',
             maxBlogs: 1,
             totalStorageMB: 100
-          };
-          
-          if (!userProfile || hasObjectChanged(userProfile, defaultProfile)) {
-            setUserProfile(defaultProfile);
-          }
+          });
         }
       } else {
         console.log('Auth state changed - User logged out');
@@ -206,7 +189,7 @@ export function AuthProvider({ children }) {
     });
 
     return unsubscribe;
-  }, [userProfile, cache]);
+  }, [userProfile]);
 
   // Function to invalidate user settings cache (call when settings are updated)
   const invalidateUserSettingsCache = (uid) => {
