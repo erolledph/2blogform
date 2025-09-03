@@ -273,18 +273,8 @@ export default function Header({ onMenuClick }) {
                                     !isMessageRead ? 'bg-blue-500' : 'bg-gray-300'
                                   }`}></div>
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-center space-x-2 mb-1">
-                                      <p className="text-sm font-medium text-foreground truncate">
-                                        {message.title}
-                                      </p>
-                                      {!isMessageRead && (
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                          New
-                                        </span>
-                                      )}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground line-clamp-2">
-                                      {message.description}
+                                    <p className="text-sm font-medium text-foreground truncate mb-1">
+                                      {message.title}
                                     </p>
                                     <p className="text-xs text-muted-foreground mt-1">
                                       {message.createdAt ? message.createdAt.toLocaleDateString() : 'Recently'}
