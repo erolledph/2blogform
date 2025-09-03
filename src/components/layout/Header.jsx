@@ -160,7 +160,7 @@ export default function Header({ onMenuClick }) {
 
               {/* Notifications Dropdown */}
               {showNotifications && (
-                <div className="absolute right-0 top-full mt-4 w-80 sm:w-96 bg-white border border-gray-200 rounded-xl shadow-xl z-50 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                <div className="absolute right-0 top-full mt-1 w-80 sm:w-96 bg-white border border-gray-200 rounded-xl shadow-xl z-50 animate-in fade-in-0 slide-in-from-top-2 duration-200">
                   <div className="p-4 border-b border-gray-200 flex items-center justify-between gap-4">
                     <h3 className="text-base font-semibold text-gray-800">Notifications</h3>
                     <button
