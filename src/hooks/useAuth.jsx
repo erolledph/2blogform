@@ -179,7 +179,7 @@ export function AuthProvider({ children }) {
     });
 
     return unsubscribe;
-  }, []);
+  }, [userProfile]);
 
   // Function to invalidate user settings cache (call when settings are updated)
   const invalidateUserSettingsCache = (uid) => {

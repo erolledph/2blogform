@@ -75,5 +75,15 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if false;
     }
+
+    // Broadcast messages - public read access for active messages
+    match /broadcast-messages/{messageId} {
+      // Allow public read access to active broadcast messages
+      allow read: if resource.data.isActive == true;
+      // Allow admin users to manage broadcast messages
+      allow read, write, create, delete: if request.auth != null &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)/userSettings/preferences) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)/userSettings/preferences).data.role == 'admin';
+    }
   }
 }

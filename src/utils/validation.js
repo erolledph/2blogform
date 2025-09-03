@@ -289,6 +289,35 @@ export const validationRules = {
       }
       return null;
     }
+  },
+
+  broadcastTitle: {
+    required: (value) => !value?.trim() ? 'Broadcast title is required' : null,
+    length: (value) => {
+      if (!value) return null;
+      const trimmed = value.trim();
+      if (trimmed.length < 3) return 'Broadcast title must be at least 3 characters';
+      if (value.length > 100) return 'Broadcast title must be less than 100 characters';
+      return null;
+    },
+    format: (value) => {
+      if (!value) return null;
+      if (!/^[a-zA-Z0-9\s\-_.,!?()&:;'"]+$/.test(value.trim())) {
+        return 'Broadcast title contains invalid characters';
+      }
+      return null;
+    }
+  },
+
+  broadcastDescription: {
+    required: (value) => !value?.trim() ? 'Broadcast description is required' : null,
+    length: (value) => {
+      if (!value) return null;
+      const trimmed = value.trim();
+      if (trimmed.length < 10) return 'Broadcast description must be at least 10 characters';
+      if (value.length > 160) return 'Broadcast description must be less than 160 characters';
+      return null;
+    }
   }
 };
 

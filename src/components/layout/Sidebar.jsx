@@ -19,7 +19,8 @@ import {
   Users,
   Edit,
   Upload,
-  Download
+  Download,
+  Bell
 } from 'lucide-react';
 
 const navigation = [
@@ -42,6 +43,7 @@ const manageMenuItems = [
 
 const settingsMenuItems = [
   { name: 'User Management', href: '/dashboard/user-management', icon: Users, adminOnly: true },
+  { name: 'Broadcasts', href: '/dashboard/broadcasts', icon: Bell, adminOnly: true },
   { name: 'Account Settings', href: '/dashboard/account-settings', icon: Settings },
   { name: 'Tips', href: '/dashboard/tips', icon: Lightbulb },
   { name: 'Documentation', href: '/dashboard/documentation', icon: BookOpen },

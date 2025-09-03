@@ -27,6 +27,16 @@
   status = 200
 
 [[redirects]]
+  from = "/api/admin/broadcast"
+  to = "/.netlify/functions/admin-broadcast"
+  status = 200
+
+[[redirects]]
+  from = "/api/broadcast"
+  to = "/.netlify/functions/public-broadcast-api"
+  status = 200
+
+[[redirects]]
   from = "/api/content"
   to = "/.netlify/functions/content-api"
   status = 200
