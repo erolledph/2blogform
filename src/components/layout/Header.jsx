@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { Bell, X } from 'lucide-react';
 import { db } from '@/firebase';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { userNotificationService } from '@/services/userNotificationService';
 import ReactMarkdown from 'react-markdown';
 import Modal from '@/components/shared/Modal';
+import UserNotificationModal from '@/components/shared/UserNotificationModal';
 
 export default function Header({ onMenuClick }) {
   const [broadcastMessages, setBroadcastMessages] = useState([]);
+  const [userNotifications, setUserNotifications] = useState([]);
+  const [unreadUserNotificationsCount, setUnreadUserNotificationsCount] = useState(0);
   const [loadingMessages, setLoadingMessages] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [messageModal, setMessageModal] = useState({ isOpen: false });
+  const [userNotificationModal, setUserNotificationModal] = useState({ isOpen: false, message: null });
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     // Set up real-time listener for active broadcast messages
@@ -20,7 +27,7 @@ export default function Header({ onMenuClick }) {
       orderBy('createdAt', 'desc')
     );
 
-    const unsubscribe = onSnapshot(
+    const unsubscribeBroadcast = onSnapshot(
       broadcastQuery,
       (snapshot) => {
         const messages = [];
@@ -48,9 +55,29 @@ export default function Header({ onMenuClick }) {
       }
     );
 
+    // Set up real-time listener for user notifications
+    let unsubscribeUserNotifications = () => {};
+    
+    if (currentUser?.uid) {
+      unsubscribeUserNotifications = userNotificationService.fetchNotifications(
+        currentUser.uid,
+        (notifications) => {
+          setUserNotifications(notifications);
+          setUnreadUserNotificationsCount(userNotificationService.getUnreadCount(notifications));
+          console.log('User notifications updated:', {
+            total: notifications.length,
+            unread: userNotificationService.getUnreadCount(notifications)
+          });
+        }
+      );
+    }
+
     // Cleanup listener on unmount
-    return () => unsubscribe();
-  }, []);
+    return () => {
+      unsubscribeBroadcast();
+      unsubscribeUserNotifications();
+    };
+  }, [currentUser?.uid]);
 
   const handleMessageClick = (message) => {
     setSelectedMessage(message);
@@ -58,6 +85,21 @@ export default function Header({ onMenuClick }) {
     setShowNotifications(false);
   };
 
+  const handleUserNotificationClick = async (notification) => {
+    setUserNotificationModal({ isOpen: true, message: notification });
+    setShowNotifications(false);
+    
+    // Mark notification as read if it's unread
+    if (!notification.read && currentUser?.uid) {
+      try {
+        await userNotificationService.markNotificationAsRead(currentUser.uid, notification.id);
+      } catch (error) {
+        console.error('Failed to mark notification as read:', error);
+      }
+    }
+  };
+
+  const totalUnreadCount = broadcastMessages.length + unreadUserNotificationsCount;
   return (
     <>
       <header className="bg-white/95 backdrop-blur-md border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-30 shadow-sm">
@@ -87,8 +129,10 @@ export default function Header({ onMenuClick }) {
                 title="Notifications"
               >
                 <Bell className="h-5 w-5 text-muted-foreground" />
-                {broadcastMessages.length > 0 && (
-                  <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full animate-pulse"></span>
+                {totalUnreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center font-medium">
+                    {totalUnreadCount > 9 ? '9+' : totalUnreadCount}
+                  </span>
                 )}
               </button>
 
@@ -112,34 +156,92 @@ export default function Header({ onMenuClick }) {
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
                         <p className="text-sm text-muted-foreground">Loading messages...</p>
                       </div>
-                    ) : broadcastMessages.length === 0 ? (
+                    ) : broadcastMessages.length === 0 && userNotifications.length === 0 ? (
                       <div className="p-4 text-center text-muted-foreground">
                         <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No new announcements</p>
+                        <p className="text-sm">No new notifications</p>
                       </div>
                     ) : (
-                      broadcastMessages.map((message) => (
-                        <div
-                          key={message.id}
-                          className="p-4 border-b border-border last:border-b-0 hover:bg-muted/30 cursor-pointer transition-colors"
-                          onClick={() => handleMessageClick(message)}
-                        >
-                          <div className="flex items-start space-x-3">
-                            <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate mb-1">
-                                {message.title}
-                              </p>
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                {message.description}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {message.createdAt ? message.createdAt.toLocaleDateString() : 'Recently'}
-                              </p>
+                      <div>
+                        {/* User Notifications Section */}
+                        {userNotifications.length > 0 && (
+                          <div>
+                            <div className="px-4 py-2 bg-green-50 border-b border-green-200">
+                              <h4 className="text-xs font-medium text-green-800 uppercase tracking-wider">
+                                Account Updates ({unreadUserNotificationsCount} unread)
+                              </h4>
                             </div>
+                            {userNotifications.map((notification) => (
+                              <div
+                                key={notification.id}
+                                className={`p-4 border-b border-border hover:bg-muted/30 cursor-pointer transition-colors ${
+                                  !notification.read ? 'bg-green-50/50' : ''
+                                }`}
+                                onClick={() => handleUserNotificationClick(notification)}
+                              >
+                                <div className="flex items-start space-x-3">
+                                  <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                                    !notification.read ? 'bg-green-500' : 'bg-gray-300'
+                                  }`}></div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <p className="text-sm font-medium text-foreground truncate">
+                                        {notification.title}
+                                      </p>
+                                      {!notification.read && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                          New
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground line-clamp-2">
+                                      {notification.description}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {notification.createdAt ? notification.createdAt.toLocaleDateString() : 'Recently'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        </div>
-                      ))
+                        )}
+
+                        {/* Broadcast Messages Section */}
+                        {broadcastMessages.length > 0 && (
+                          <div>
+                            {userNotifications.length > 0 && (
+                              <div className="px-4 py-2 bg-blue-50 border-b border-blue-200">
+                                <h4 className="text-xs font-medium text-blue-800 uppercase tracking-wider">
+                                  System Announcements
+                                </h4>
+                              </div>
+                            )}
+                            {broadcastMessages.map((message) => (
+                              <div
+                                key={message.id}
+                                className="p-4 border-b border-border last:border-b-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                                onClick={() => handleMessageClick(message)}
+                              >
+                                <div className="flex items-start space-x-3">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground truncate mb-1">
+                                      {message.title}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground line-clamp-2">
+                                      {message.description}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {message.createdAt ? message.createdAt.toLocaleDateString() : 'Recently'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -202,6 +304,15 @@ export default function Header({ onMenuClick }) {
           </div>
         )}
       </Modal>
+
+      {/* User Notification Modal */}
+      <UserNotificationModal
+        isOpen={userNotificationModal.isOpen}
+        onClose={() => {
+          setUserNotificationModal({ isOpen: false, message: null });
+        }}
+        message={userNotificationModal.message}
+      />
     </>
   );
 }

@@ -9,6 +9,7 @@ import { auth } from '@/firebase';
 import { settingsService } from '@/services/settingsService';
 import { useCache } from './useCache';
 import { webSocketService } from '@/services/webSocketService';
+import { userNotificationService } from '@/services/userNotificationService';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -49,7 +50,8 @@ export function AuthProvider({ children }) {
     const storageChanged = previousProfile.totalStorageMB !== newProfile.totalStorageMB;
     
     if (maxBlogsChanged || storageChanged) {
-      let message = "Congratulations! ";
+      let title = "Account Limits Updated";
+      let description = "Congratulations! ";
       const updates = [];
       
       if (maxBlogsChanged) {
@@ -61,23 +63,36 @@ export function AuthProvider({ children }) {
       }
       
       if (updates.length === 2) {
-        message += `You have been granted ${updates[0]} and ${updates[1]}!`;
+        description += `You have been granted ${updates[0]} and ${updates[1]}!`;
       } else {
-        message += `You have been granted ${updates[0]}!`;
+        description += `You have been granted ${updates[0]}!`;
       }
       
-      toast.success(message, {
-        duration: 6000,
-        style: {
-          background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-          color: 'white',
-          fontWeight: '600',
-          fontSize: '16px',
-          padding: '16px 20px',
-          borderRadius: '12px',
-          boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)'
-        }
-      });
+      // Add persistent notification to Firestore
+      try {
+        await userNotificationService.addNotification(
+          user.uid,
+          'limit_increase',
+          title,
+          description
+        );
+        console.log('Persistent notification added for limit increase');
+      } catch (error) {
+        console.error('Failed to add persistent notification:', error);
+        // Fallback to toast if notification service fails
+        toast.success(description, {
+          duration: 6000,
+          style: {
+            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+            color: 'white',
+            fontWeight: '600',
+            fontSize: '16px',
+            padding: '16px 20px',
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)'
+          }
+        });
+      }
     }
   };
   useEffect(() => {

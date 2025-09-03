@@ -56,6 +56,12 @@ service cloud.firestore {
         );
     }
 
+    // User-specific notifications
+    match /users/{userId}/userNotifications/{notificationId} {
+      // Allow authenticated users to manage their own notifications
+      allow read, write, create, delete: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Analytics collections remain at top level but include userId/blogId for filtering
     match /pageViews/{document} {
       // Allow writes for tracking (from public sites)
