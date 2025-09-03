@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
-import { broadcastService } from '@/services/broadcastService';
+import { db } from '@/firebase';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import ReactMarkdown from 'react-markdown';
 import Modal from '@/components/shared/Modal';
 
@@ -12,23 +13,44 @@ export default function Header({ onMenuClick }) {
   const [messageModal, setMessageModal] = useState({ isOpen: false });
 
   useEffect(() => {
-    fetchBroadcastMessages();
-    
-    // Refresh messages every 5 minutes
-    const interval = setInterval(fetchBroadcastMessages, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+    // Set up real-time listener for active broadcast messages
+    const broadcastQuery = query(
+      collection(db, 'broadcast-messages'),
+      where('isActive', '==', true),
+      orderBy('createdAt', 'desc')
+    );
 
-  const fetchBroadcastMessages = async () => {
-    try {
-      const messages = await broadcastService.fetchActiveBroadcastMessages();
-      setBroadcastMessages(messages);
-    } catch (error) {
-      console.error('Error fetching broadcast messages:', error);
-    } finally {
-      setLoadingMessages(false);
-    }
-  };
+    const unsubscribe = onSnapshot(
+      broadcastQuery,
+      (snapshot) => {
+        const messages = [];
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          messages.push({
+            id: doc.id,
+            title: data.title,
+            description: data.description,
+            isActive: data.isActive,
+            createdAt: data.createdAt ? data.createdAt.toDate() : null,
+            updatedAt: data.updatedAt ? data.updatedAt.toDate() : null,
+            createdBy: data.createdBy
+          });
+        });
+        
+        setBroadcastMessages(messages);
+        setLoadingMessages(false);
+        
+        console.log('Real-time broadcast messages updated:', messages.length);
+      },
+      (error) => {
+        console.error('Error in broadcast messages listener:', error);
+        setLoadingMessages(false);
+      }
+    );
+
+    // Cleanup listener on unmount
+    return () => unsubscribe();
+  }, []);
 
   const handleMessageClick = (message) => {
     setSelectedMessage(message);
@@ -112,7 +134,7 @@ export default function Header({ onMenuClick }) {
                                 {message.description}
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
-                                {message.createdAt ? new Date(message.createdAt).toLocaleDateString() : 'Recently'}
+                                {message.createdAt ? message.createdAt.toLocaleDateString() : 'Recently'}
                               </p>
                             </div>
                           </div>
@@ -156,11 +178,11 @@ export default function Header({ onMenuClick }) {
             <div className="p-4 bg-muted/30 rounded-lg border border-border">
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span>
-                  Published: {selectedMessage.createdAt ? new Date(selectedMessage.createdAt).toLocaleDateString() : 'Recently'}
+                  Published: {selectedMessage.createdAt ? selectedMessage.createdAt.toLocaleDateString() : 'Recently'}
                 </span>
-                {selectedMessage.updatedAt && selectedMessage.updatedAt !== selectedMessage.createdAt && (
+                {selectedMessage.updatedAt && selectedMessage.updatedAt.getTime() !== selectedMessage.createdAt.getTime() && (
                   <span>
-                    Updated: {new Date(selectedMessage.updatedAt).toLocaleDateString()}
+                    Updated: {selectedMessage.updatedAt.toLocaleDateString()}
                   </span>
                 )}
               </div>
