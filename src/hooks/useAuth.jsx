@@ -116,9 +116,6 @@ export function AuthProvider({ children }) {
             totalStorageMB: userSettings.totalStorageMB || 100
           };
           
-          // Check for admin notifications before updating profile
-          await checkForAdminNotifications(user, newProfile, userProfile);
-          
           // SECURITY: Validate that client-side profile matches server data
           // This prevents manipulation of role/limits in browser
           const serverValidatedProfile = {
@@ -151,7 +148,15 @@ export function AuthProvider({ children }) {
           
           // Store raw Firebase user and separate profile data
           setCurrentUser(user);
-          setUserProfile(serverValidatedProfile); // Use server-validated data
+          
+          // Use functional update to compare with previous profile and check for admin notifications
+          setUserProfile(prevProfile => {
+            // Check for admin notifications before updating profile
+            if (prevProfile) {
+              checkForAdminNotifications(user, serverValidatedProfile, prevProfile);
+            }
+            return serverValidatedProfile;
+          });
           
           // Dispatch auth state change for WebSocket auto-connect
           window.dispatchEvent(new CustomEvent('auth-state-changed', {
@@ -189,7 +194,7 @@ export function AuthProvider({ children }) {
     });
 
     return unsubscribe;
-  }, [userProfile]);
+  }, []); // Remove userProfile dependency to prevent re-render loop
 
   // Function to invalidate user settings cache (call when settings are updated)
   const invalidateUserSettingsCache = (uid) => {
