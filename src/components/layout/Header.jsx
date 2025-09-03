@@ -23,7 +23,6 @@ export default function Header({ onMenuClick }) {
   const { currentUser } = useAuth();
 
   useEffect(() => {
-    // Set up real-time listener for active broadcast messages
     const broadcastQuery = query(
       collection(db, 'broadcast-messages'),
       where('isActive', '==', true),
@@ -50,7 +49,6 @@ export default function Header({ onMenuClick }) {
         setBroadcastMessages(messages);
         setLoadingMessages(false);
         
-        // Calculate unread broadcast count
         if (currentUser?.uid && messages.length > 0) {
           const messageIds = messages.map(msg => msg.id);
           broadcastReadStateService.getUserReadBroadcasts(currentUser.uid)
@@ -58,19 +56,16 @@ export default function Header({ onMenuClick }) {
               setReadBroadcastIds(readIds);
               const unreadCount = messageIds.filter(id => !readIds.includes(id)).length;
               setUnreadBroadcastCount(unreadCount);
-              console.log('Broadcast read state updated:', { total: messages.length, unread: unreadCount });
             })
             .catch(error => {
               console.error('Error calculating unread broadcast count:', error);
               setReadBroadcastIds([]);
-              setUnreadBroadcastCount(messages.length); // Assume all unread on error
+              setUnreadBroadcastCount(messages.length);
             });
         } else {
           setReadBroadcastIds([]);
           setUnreadBroadcastCount(0);
         }
-        
-        console.log('Real-time broadcast messages updated:', messages.length);
       },
       (error) => {
         console.error('Error in broadcast messages listener:', error);
@@ -78,7 +73,6 @@ export default function Header({ onMenuClick }) {
       }
     );
 
-    // Set up real-time listener for user notifications
     let unsubscribeUserNotifications = () => {};
     
     if (currentUser?.uid) {
@@ -87,15 +81,10 @@ export default function Header({ onMenuClick }) {
         (notifications) => {
           setUserNotifications(notifications);
           setUnreadUserNotificationsCount(userNotificationService.getUnreadCount(notifications));
-          console.log('User notifications updated:', {
-            total: notifications.length,
-            unread: userNotificationService.getUnreadCount(notifications)
-          });
         }
       );
     }
 
-    // Cleanup listener on unmount
     return () => {
       unsubscribeBroadcast();
       unsubscribeUserNotifications();
@@ -107,18 +96,11 @@ export default function Header({ onMenuClick }) {
     setMessageModal({ isOpen: true });
     setShowNotifications(false);
     
-    // Mark broadcast message as read
     if (currentUser?.uid) {
       try {
         await broadcastReadStateService.markBroadcastAsRead(currentUser.uid, message.id);
-        
-        // Update unread count immediately
         setUnreadBroadcastCount(prev => Math.max(0, prev - 1));
-        
-        // Update read broadcast IDs state
         setReadBroadcastIds(prev => [...prev, message.id]);
-        
-        console.log('Broadcast message marked as read:', message.id);
       } catch (error) {
         console.error('Failed to mark broadcast message as read:', error);
       }
@@ -129,7 +111,6 @@ export default function Header({ onMenuClick }) {
     setUserNotificationModal({ isOpen: true, message: notification });
     setShowNotifications(false);
     
-    // Mark notification as read if it's unread
     if (!notification.read && currentUser?.uid) {
       try {
         await userNotificationService.markNotificationAsRead(currentUser.uid, notification.id);
@@ -140,37 +121,38 @@ export default function Header({ onMenuClick }) {
   };
 
   const totalUnreadCount = unreadBroadcastCount + unreadUserNotificationsCount;
+
   return (
     <>
-      <header className="bg-white/95 backdrop-blur-md border-b border-border px-4 sm:px-6 py-4 sticky top-0 z-30 shadow-sm">
-        <div className="flex items-center justify-between">
+      <header className="bg-white/95 backdrop-blur-lg border-b border-gray-200 px-4 sm:px-6 py-4 sticky top-0 z-40 shadow-sm transition-all duration-300">
+        <div className="flex items-center justify-between max-w-7xl mx-auto gap-4">
           {/* Left side - Mobile menu button */}
           <div className="flex items-center">
             <button
               onClick={onMenuClick}
-              className="lg:hidden p-2 rounded-md hover:bg-muted transition-colors duration-200"
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
               aria-label="Open menu"
             >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
           </div>
 
-          {/* Center - Empty space for future use */}
-          <div className="flex-1 flex justify-center"></div>
+          {/* Center - Empty space */}
+          <div className="flex-1" />
 
           {/* Right side - Notifications */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center gap-4">
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="p-2 rounded-md hover:bg-muted transition-colors duration-200 relative"
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 relative group"
                 title="Notifications"
               >
-                <Bell className="h-5 w-5 text-muted-foreground" />
+                <Bell className="h-5 w-5 text-gray-500 group-hover:text-gray-700 transition-colors" />
                 {totalUnreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center font-medium">
+                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium animate-pulse">
                     {totalUnreadCount > 9 ? '9+' : totalUnreadCount}
                   </span>
                 )}
@@ -178,54 +160,52 @@ export default function Header({ onMenuClick }) {
 
               {/* Notifications Dropdown */}
               {showNotifications && (
-                <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white border border-border rounded-lg shadow-lg z-50">
-                  <div className="p-4 border-b border-border">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-medium text-foreground">Notifications</h3>
-                      <button
-                        onClick={() => setShowNotifications(false)}
-                        className="p-1 hover:bg-muted rounded transition-colors"
-                      >
-                        <X className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                    </div>
+                <div className="absolute right-0 top-full mt-4 w-80 sm:w-96 bg-white border border-gray-200 rounded-xl shadow-xl z-50 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                  <div className="p-4 border-b border-gray-200 flex items-center justify-between gap-4">
+                    <h3 className="text-base font-semibold text-gray-800">Notifications</h3>
+                    <button
+                      onClick={() => setShowNotifications(false)}
+                      className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <X className="h-4 w-4 text-gray-500" />
+                    </button>
                   </div>
-                  <div className="max-h-80 overflow-y-auto">
+                  <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                     {loadingMessages ? (
-                      <div className="p-4 text-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto mb-2"></div>
-                        <p className="text-sm text-muted-foreground">Loading messages...</p>
+                      <div className="p-6 text-center space-y-4">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto"></div>
+                        <p className="text-sm text-gray-500">Loading notifications...</p>
                       </div>
                     ) : broadcastMessages.length === 0 && userNotifications.length === 0 ? (
-                      <div className="p-4 text-center text-muted-foreground">
-                        <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No new notifications</p>
+                      <div className="p-6 text-center space-y-4">
+                        <Bell className="h-10 w-10 mx-auto text-gray-400" />
+                        <p className="text-sm font-medium text-gray-500">No new notifications</p>
                       </div>
                     ) : (
-                      <div>
+                      <div className="space-y-2">
                         {/* User Notifications Section */}
                         {userNotifications.length > 0 && (
                           <div>
-                            <div className="px-4 py-2 bg-green-50 border-b border-green-200">
-                              <h4 className="text-xs font-medium text-green-800 uppercase tracking-wider">
+                            <div className="px-4 py-2 bg-green-50 border-b border-green-100">
+                              <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wide">
                                 Account Updates ({unreadUserNotificationsCount} unread)
                               </h4>
                             </div>
                             {userNotifications.map((notification) => (
                               <div
                                 key={notification.id}
-                                className={`p-4 border-b border-border hover:bg-muted/30 cursor-pointer transition-colors ${
-                                  !notification.read ? 'bg-green-50/50' : ''
+                                className={`px-4 py-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-all duration-150 ${
+                                  !notification.read ? 'bg-green-50/70' : ''
                                 }`}
                                 onClick={() => handleUserNotificationClick(notification)}
                               >
-                                <div className="flex items-start space-x-3">
-                                  <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                                <div className="flex items-start gap-3">
+                                  <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
                                     !notification.read ? 'bg-green-500' : 'bg-gray-300'
                                   }`}></div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center space-x-2 mb-1">
-                                      <p className="text-sm font-medium text-foreground truncate">
+                                  <div className="flex-1 min-w-0 space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-sm font-medium text-gray-800 truncate">
                                         {notification.title}
                                       </p>
                                       {!notification.read && (
@@ -234,7 +214,7 @@ export default function Header({ onMenuClick }) {
                                         </span>
                                       )}
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
+                                    <p className="text-xs text-gray-500">
                                       {notification.createdAt ? notification.createdAt.toLocaleDateString() : 'Recently'}
                                     </p>
                                   </div>
@@ -248,37 +228,36 @@ export default function Header({ onMenuClick }) {
                         {broadcastMessages.length > 0 && (
                           <div>
                             {userNotifications.length > 0 && (
-                              <div className="px-4 py-2 bg-blue-50 border-b border-blue-200">
-                                <h4 className="text-xs font-medium text-blue-800 uppercase tracking-wider">
+                              <div className="px-4 py-2 bg-blue-50 border-b border-blue-100">
+                                <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
                                   System Announcements ({unreadBroadcastCount} unread)
                                 </h4>
                               </div>
                             )}
                             {broadcastMessages.map((message) => {
                               const isMessageRead = readBroadcastIds.includes(message.id);
-                              
                               return (
-                              <div
-                                key={message.id}
-                                className={`p-4 border-b border-border last:border-b-0 hover:bg-muted/30 cursor-pointer transition-colors ${
-                                  !isMessageRead ? 'bg-blue-50/50' : ''
-                                }`}
-                                onClick={() => handleMessageClick(message)}
-                              >
-                                <div className="flex items-start space-x-3">
-                                  <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-                                    !isMessageRead ? 'bg-blue-500' : 'bg-gray-300'
-                                  }`}></div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground truncate mb-1">
-                                      {message.title}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                      {message.createdAt ? message.createdAt.toLocaleDateString() : 'Recently'}
-                                    </p>
+                                <div
+                                  key={message.id}
+                                  className={`px-4 py-3 border-b border-gray-200 last:border-b-0 hover:bg-gray-50 cursor-pointer transition-all duration-150 ${
+                                    !isMessageRead ? 'bg-blue-50/70' : ''
+                                  }`}
+                                  onClick={() => handleMessageClick(message)}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${
+                                      !isMessageRead ? 'bg-blue-500' : 'bg-gray-300'
+                                    }`}></div>
+                                    <div className="flex-1 min-w-0 space-y-1">
+                                      <p className="text-sm font-medium text-gray-800 truncate">
+                                        {message.title}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {message.createdAt ? message.createdAt.toLocaleDateString() : 'Recently'}
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
                               );
                             })}
                           </div>
@@ -301,26 +280,27 @@ export default function Header({ onMenuClick }) {
           setSelectedMessage(null);
         }}
         title={selectedMessage?.title}
-        size="md"
+        size="lg"
+        className="max-w-2xl"
       >
         {selectedMessage && (
-          <div className="space-y-6">
-            <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <Bell className="h-6 w-6 text-primary" />
+          <div className="space-y-6 p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Bell className="h-6 w-6 text-indigo-600" />
               </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-foreground mb-3">
+              <div className="flex-1 space-y-4">
+                <h3 className="text-xl font-semibold text-gray-800">
                   {selectedMessage.title}
                 </h3>
-                <div className="prose prose-sm max-w-none text-muted-foreground">
+                <div className="prose prose-sm max-w-none text-gray-600 leading-relaxed">
                   <ReactMarkdown>{selectedMessage.description}</ReactMarkdown>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 bg-muted/30 rounded-lg border border-border">
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center justify-between text-sm text-gray-500 gap-4">
                 <span>
                   Published: {selectedMessage.createdAt ? selectedMessage.createdAt.toLocaleDateString() : 'Recently'}
                 </span>
@@ -332,13 +312,13 @@ export default function Header({ onMenuClick }) {
               </div>
             </div>
 
-            <div className="flex justify-end pt-4 border-t border-border">
+            <div className="flex justify-end pt-4 border-t border-gray-200">
               <button
                 onClick={() => {
                   setMessageModal({ isOpen: false });
                   setSelectedMessage(null);
                 }}
-                className="btn-primary"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200 font-medium"
               >
                 Got it!
               </button>
