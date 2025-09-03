@@ -6,6 +6,8 @@ import {
   getIdToken
 } from 'firebase/auth';
 import { auth } from '@/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/firebase';
 import { settingsService } from '@/services/settingsService';
 import { useCache } from './useCache';
 import { webSocketService } from '@/services/webSocketService';
@@ -196,6 +198,64 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []); // Remove userProfile dependency to prevent re-render loop
 
+ // Set up real-time listener for user settings changes
+ useEffect(() => {
+   let unsubscribeUserSettings = () => {};
+   
+   if (currentUser?.uid) {
+     console.log('Setting up real-time user settings listener for:', currentUser.uid);
+     
+     const userSettingsRef = doc(db, 'users', currentUser.uid, 'userSettings', 'preferences');
+     
+     unsubscribeUserSettings = onSnapshot(
+       userSettingsRef,
+       (docSnapshot) => {
+         if (docSnapshot.exists()) {
+           const newSettings = docSnapshot.data();
+           console.log('User settings changed in real-time:', newSettings);
+           
+           const newProfile = {
+             role: newSettings.role || 'user',
+             canManageMultipleBlogs: newSettings.canManageMultipleBlogs || false,
+             currency: newSettings.currency || '$',
+             maxBlogs: newSettings.maxBlogs || 1,
+             totalStorageMB: newSettings.totalStorageMB || 100
+           };
+           
+           // Update profile and check for admin notifications
+           setUserProfile(prevProfile => {
+             if (prevProfile) {
+               checkForAdminNotifications(currentUser, newProfile, prevProfile);
+             }
+             return newProfile;
+           });
+           
+           // Invalidate cache to ensure fresh data on next fetch
+           invalidateUserSettingsCache(currentUser.uid);
+         } else {
+           console.log('User settings document does not exist, using defaults');
+           // Set default profile if document doesn't exist
+           setUserProfile({
+             role: 'user',
+             canManageMultipleBlogs: false,
+             currency: '$',
+             maxBlogs: 1,
+             totalStorageMB: 100
+           });
+         }
+       },
+       (error) => {
+         console.error('Error in user settings listener:', error);
+         // Don't update profile on error to maintain current state
+       }
+     );
+   }
+   
+   // Cleanup listener when user changes or component unmounts
+   return () => {
+     unsubscribeUserSettings();
+   };
+ }, [currentUser?.uid]); // Only depend on user ID to prevent re-subscription loops
   // Function to invalidate user settings cache (call when settings are updated)
   const invalidateUserSettingsCache = (uid) => {
     const cacheKey = `user-settings-${uid}`;
