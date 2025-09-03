@@ -49,41 +49,36 @@ export function AuthProvider({ children }) {
     const storageChanged = previousProfile.totalStorageMB !== newProfile.totalStorageMB;
     
     if (maxBlogsChanged || storageChanged) {
-      // Only show notification if this is not the initial load
-      if (lastNotificationCheck && Date.now() - lastNotificationCheck > 5000) {
-        let message = "Congratulations! ";
-        const updates = [];
-        
-        if (maxBlogsChanged) {
-          updates.push(`${newProfile.maxBlogs} blog${newProfile.maxBlogs > 1 ? 's' : ''}`);
-        }
-        
-        if (storageChanged) {
-          updates.push(`${newProfile.totalStorageMB} MB storage`);
-        }
-        
-        if (updates.length === 2) {
-          message += `You have been granted ${updates[0]} and ${updates[1]}!`;
-        } else {
-          message += `You have been granted ${updates[0]}!`;
-        }
-        
-        toast.success(message, {
-          duration: 6000,
-          style: {
-            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-            color: 'white',
-            fontWeight: '600',
-            fontSize: '16px',
-            padding: '16px 20px',
-            borderRadius: '12px',
-            boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)'
-          }
-        });
+      let message = "Congratulations! ";
+      const updates = [];
+      
+      if (maxBlogsChanged) {
+        updates.push(`${newProfile.maxBlogs} blog${newProfile.maxBlogs > 1 ? 's' : ''}`);
       }
+      
+      if (storageChanged) {
+        updates.push(`${newProfile.totalStorageMB} MB storage`);
+      }
+      
+      if (updates.length === 2) {
+        message += `You have been granted ${updates[0]} and ${updates[1]}!`;
+      } else {
+        message += `You have been granted ${updates[0]}!`;
+      }
+      
+      toast.success(message, {
+        duration: 6000,
+        style: {
+          background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+          color: 'white',
+          fontWeight: '600',
+          fontSize: '16px',
+          padding: '16px 20px',
+          borderRadius: '12px',
+          boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)'
+        }
+      });
     }
-    
-    setLastNotificationCheck(Date.now());
   };
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
