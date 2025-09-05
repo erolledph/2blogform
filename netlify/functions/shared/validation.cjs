@@ -108,7 +108,7 @@ const validationRules = {
   percentOff: {
     range: (value) => {
       if (value === undefined || value === null) return null;
-      const numValue = parseFloat(value);
+      if (value.length > 250) return 'Meta description should be less than 250 characters';
       if (isNaN(numValue) || numValue < 0 || numValue > 100) {
         return 'Percent off must be a number between 0 and 100';
       }

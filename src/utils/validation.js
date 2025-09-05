@@ -186,7 +186,7 @@ export const validationRules = {
   metaDescription: {
     length: (value) => {
       if (!value) return null;
-      if (value.length > 160) return 'Meta description should be less than 160 characters';
+      if (value.length > 250) return 'Meta description should be less than 250 characters';
       if (value.length > 0 && value.length < 50) {
         return 'Meta description should be at least 50 characters for better SEO';
       }
