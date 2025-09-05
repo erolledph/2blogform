@@ -96,8 +96,8 @@ function validateContentItem(item, index) {
   }
   
   // Validate optional fields
-  if (item.metaDescription && (typeof item.metaDescription !== 'string' || item.metaDescription.length > 160)) {
-    errors.push('Meta description must be a string with maximum 160 characters');
+  if (item.metaDescription && (typeof item.metaDescription !== 'string' || item.metaDescription.length > 250)) {
+    errors.push('Meta description must be a string with maximum 250 characters');
   }
   
   if (item.seoTitle && (typeof item.seoTitle !== 'string' || item.seoTitle.length > 160)) {
